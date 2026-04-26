@@ -116,3 +116,7 @@ The infrastructure layer contains technical adapters.
 * Spring configurations
 
 This is the only place where providers and frameworks code should live.
+
+## Roadmap
+
+See [ROADMAP.md](./ROADMAP.md)
