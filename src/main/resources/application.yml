@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: station-search-api
+  rabbitmq:
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+
+app:
+  messaging:
+    rabbit:
+      exchange:
+        name: energy.snapshot.events
+        type: topic
+        durable: true
+
+      dlx:
+        name: energy.snapshot.events.dlx
+
+      queues:
+        - name: station.snapshot.ingestion.queue
+          dlq: station.snapshot.ingestion.dlq
+          bindings:
+            - energy.snapshot.fuel.*.created
