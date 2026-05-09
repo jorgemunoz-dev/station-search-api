@@ -55,7 +55,7 @@ The main goal is to keep the domain isolated from technical concerns suhc as:
 
 ---
 
-## Package Structure Proposed
+## Package Structure
 
 ```text 
 com.petrolprice.station_search_api
@@ -79,6 +79,100 @@ com.petrolprice.station_search_api
     └── config
 ```
 
+---
+
+## Naming convention
+
+To keep consistency across the code, the following naming conventions are used:
+
+### Domain
+- Entities and value objects
+  - `Station`, `FuelPrice`, `Money`
+- Aggregation / input models:
+  - `StationUpdate`
+- Domain services:
+  - `BestOptionSelector`, `SavingsCalculator`, `StationScoringPolicy`
+
+### Application
+- Use cases:
+  - Suffix: `UseCase`
+  - Examples:
+    - `FindStationUseCase`
+    - `FindBestOptionUseCase`
+    - `ConsumeStationSnapshotUseCase`
+- Commands / Queries:
+  - Suffinx: `Command`, `Query`
+  - Example: 
+    - `FindStationQery`
+    - `CompareStationsQuery`
+- Mappers:
+  - Suffix: `Mapper`
+  - Example:
+    - `StationQueryMapper`
+- Ports:
+  - Output ports:
+    - Suffix: `{technology}Port`
+    - Example:
+      - `StationRepositoryPort`
+      - `HistoricalFuelPriceRepositoryPort`
+
+### Infrastructure
+#### REST
+
+- Controllers:
+   - Suffix: `Controller`
+   - Example:
+      - `StationController`
+
+- Request / Response DTOs:
+   - Suffix: `Request`, `Response`
+   - Examples:
+      - `FindStationsRequest`
+      - `StationResponse`
+
+---
+
+#### Messaging (RabbitMQ)
+
+- Message DTOs:
+   - Suffix: `Message`
+   - Example:
+      - `StationSnapshotMessage`
+
+- Listeners:
+   - Suffix: `Listener`
+   - Example:
+      - `StationSnapshotRabbitListener`
+
+- Message mappers:
+   - Suffix: `MessageMapper`
+   - Example:
+      - `StationSnapshotMessageMapper`
+
+---
+
+#### Persistence
+
+- JPA entities:
+   - Suffix: `Entity`
+   - Example:
+      - `StationEntity`
+      - `CurrentFuelPriceEntity`
+
+- Spring Data repositories:
+   - Suffix: `JpaRepository`
+   - Example:
+      - `StationJpaRepository`
+
+- Persistence adapters:
+   - Suffix: `PersistenceAdapter`
+   - Example:
+      - `PostgresStationPersistenceAdapter`
+
+- Entity mappers:
+   - Suffix: `EntityMapper`
+   - Example:
+      - `StationEntityMapper`
 ---
 
 ## Layer Responsibilities
