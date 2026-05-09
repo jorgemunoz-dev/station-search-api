@@ -1,0 +1,6 @@
+databaseChangeLog:
+    # =========================
+    # VERSION 1.0.0
+    # =========================
+    - includeAll:
+        path: db/changelog/versions/1.0.0/ddl

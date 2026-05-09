@@ -1,0 +1,63 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 004-create-current-fuel-price-table
+      author: jorge
+
+      changes:
+
+        - createTable:
+            tableName: station_current_fuel_price
+
+            columns:
+
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column:
+                  name: station_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: station_product_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: price
+                  type: numeric(10,3)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: station_current_fuel_price
+            baseColumnNames: station_id
+            referencedTableName: station
+            referencedColumnNames: id
+            constraintName: fk_current_price_station
+            onDelete: CASCADE
+
+        - addUniqueConstraint:
+            tableName: station_current_fuel_price
+            columnNames: station_id, station_product_type
+            constraintName: uk_station_current_fuel_price
+
+        - createIndex:
+            tableName: station_current_fuel_price
+            indexName: idx_station_current_fuel_price_station
+            columns:
+              - column:
+                  name: station_id

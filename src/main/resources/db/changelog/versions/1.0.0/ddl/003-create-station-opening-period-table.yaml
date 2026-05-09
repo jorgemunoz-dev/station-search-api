@@ -1,0 +1,63 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 003-create-station-opening-period-table
+      author: jorge
+
+      changes:
+
+        - createTable:
+            tableName: station_opening_period
+
+            columns:
+
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column:
+                  name: station_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: day_of_week
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: open_time
+                  type: time
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: close_time
+                  type: time
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: station_opening_period
+            baseColumnNames: station_id
+            referencedTableName: station
+            referencedColumnNames: id
+            constraintName: fk_opening_period_station
+            onDelete: CASCADE
+
+        - addUniqueConstraint:
+            tableName: station_opening_period
+            columnNames: station_id, day_of_week, open_time, close_time
+            constraintName: uk_station_opening_period
+
+        - createIndex:
+            tableName: station_opening_period
+            indexName: idx_station_opening_period_station
+            columns:
+              - column:
+                  name: station_id
