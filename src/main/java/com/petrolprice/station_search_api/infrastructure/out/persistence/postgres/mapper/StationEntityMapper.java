@@ -27,6 +27,19 @@ public interface StationEntityMapper {
     @Mapping(target = "updatedAt", ignore = true)
     StationEntity toEntity(Station station);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "externalId", ignore = true)
+    @Mapping(target = "country", ignore = true)
+    @Mapping(target = "street", source = "address.street")
+    @Mapping(target = "postalCode", source = "address.postalCode")
+    @Mapping(target = "locality", source = "address.locality")
+    @Mapping(target = "municipality", source = "address.municipality")
+    @Mapping(target = "province", source = "address.province")
+    @Mapping(target = "openingPeriods",ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    void updateEntityFromDomain(Station station, @MappingTarget StationEntity entity);
+
     @Named("mapOpeningPeriods")
     default List<StationOpeningPeriodEntity> mapOpeningPeriods(List<OpeningPeriod> openingPeriods) {
         if (openingPeriods == null) {

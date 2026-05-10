@@ -16,7 +16,7 @@ public class PostgresCurrentFuelStationRepositoryAdapter implements CurrentFuelP
 
     @Override
     @Transactional
-    public void upsertCurrentPrice(UUID stationId, List<FuelPrice> fuelPrices) {
+    public void upsertCurrentPrices(UUID stationId, List<FuelPrice> fuelPrices) {
         if (fuelPrices == null || fuelPrices.isEmpty()) {
             return;
         }
