@@ -2,10 +2,9 @@ package com.petrolprice.station_search_api.infrastructure.out.persistence.postgr
 
 import com.petrolprice.station_search_api.domain.type.Day;
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalTime;
 import java.util.UUID;
+import lombok.*;
 
 @Entity
 @Table(name = "station_opening_period")

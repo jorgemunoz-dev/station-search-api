@@ -1,13 +1,13 @@
 databaseChangeLog:
 
   - changeSet:
-      id: 005-create-historical-fuel-price-table
+      id: 005-create-current-fuel-price-table
       author: jorge
 
       changes:
 
         - createTable:
-            tableName: historical_fuel_price
+            tableName: station_current_fuel_price
 
             columns:
 
@@ -37,31 +37,27 @@ databaseChangeLog:
                     nullable: false
 
               - column:
-                  name: observed_at
+                  name: updated_at
                   type: timestamptz
                   constraints:
                     nullable: false
 
         - addForeignKeyConstraint:
-            baseTableName: historical_fuel_price
+            baseTableName: station_current_fuel_price
             baseColumnNames: station_id
             referencedTableName: station
             referencedColumnNames: id
-            constraintName: fk_historical_price_station
+            constraintName: fk_current_price_station
             onDelete: CASCADE
 
         - addUniqueConstraint:
-            tableName: historical_fuel_price
-            columnNames: station_id, station_product_type, observed_at
-            constraintName: uk_historical_fuel_price
+            tableName: station_current_fuel_price
+            columnNames: station_id, station_product_type
+            constraintName: uk_station_current_fuel_price
 
         - createIndex:
-            tableName: historical_fuel_price
-            indexName: idx_historical_fuel_price_station_product_observed
+            tableName: station_current_fuel_price
+            indexName: idx_station_current_fuel_price_station
             columns:
               - column:
                   name: station_id
-              - column:
-                  name: station_product_type
-              - column:
-                  name: observed_at

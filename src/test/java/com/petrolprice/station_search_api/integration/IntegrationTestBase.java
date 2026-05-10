@@ -13,19 +13,15 @@ import org.testcontainers.utility.DockerImageName;
 public abstract class IntegrationTestBase {
 
     private static final DockerImageName POSTGIS_IMAGE =
-        DockerImageName
-            .parse("postgis/postgis:16-3.4")
-            .asCompatibleSubstituteFor("postgres");
+            DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres");
 
-    static final PostgreSQLContainer<?> postgres =
-        new PostgreSQLContainer<>(POSTGIS_IMAGE)
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(POSTGIS_IMAGE)
             .withDatabaseName("station_search_test")
             .withUsername("test")
             .withPassword("test");
 
     static final RabbitMQContainer rabbit =
-        new RabbitMQContainer("rabbitmq:3.13-management")
-            .withUser("guest", "guest");
+            new RabbitMQContainer("rabbitmq:3.13-management").withUser("guest", "guest");
 
     static {
         postgres.start();

@@ -1,32 +1,36 @@
 package com.petrolprice.station_search_api.integration;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
 import com.petrolprice.station_search_api.infrastructure.in.queue.rabbit.dto.StationSnapshotMessage;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity.StationEntity;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.PostgresJPAStationRepository;
+import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
-import java.time.Duration;
-import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 public class StationSnapshotRabbitIT extends IntegrationTestBase {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
     @Autowired
     private PostgresJPAStationRepository stationJpaRepository;
+
     @Autowired
     private TransactionTemplate transactionTemplate;
+
     @Autowired
     private ObjectMapper objectMapper;
 
     @Test
     void shouldConsumeStationSnapshotAndPersistStation() throws Exception {
-        String message = """
+        String message =
+                """
             {
                 "externalId":"4375",
                 "country":"ES",
@@ -54,32 +58,23 @@ public class StationSnapshotRabbitIT extends IntegrationTestBase {
             }
         """;
 
-        StationSnapshotMessage payload = objectMapper.readValue(
-            message,
-            StationSnapshotMessage.class
-        );
+        StationSnapshotMessage payload = objectMapper.readValue(message, StationSnapshotMessage.class);
 
-        rabbitTemplate.convertAndSend(
-            "energy.snapshot.events",
-            "energy.snapshot.fuel.es.created",
-            payload
-        );
+        rabbitTemplate.convertAndSend("energy.snapshot.events", "energy.snapshot.fuel.es.created", payload);
 
-        await()
-            .atMost(Duration.ofSeconds(5))
-            .untilAsserted(() -> transactionTemplate.executeWithoutResult(status -> {
-                List<StationEntity> stations = stationJpaRepository.findAll();
+        await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> transactionTemplate.executeWithoutResult(status -> {
+                    List<StationEntity> stations = stationJpaRepository.findAll();
 
-                assertThat(stations).hasSize(1);
+                    assertThat(stations).hasSize(1);
 
-                StationEntity station = stations.getFirst();
+                    StationEntity station = stations.getFirst();
 
-                assertThat(station.getExternalId()).isEqualTo("4375");
-                assertThat(station.getBrand()).isEqualTo("REPSOL");
-                assertThat(station.getCountry().name()).isEqualTo("ES");
-                assertThat(station.getStreet()).isEqualTo("AVENIDA CASTILLA LA MANCHA, 26");
-                assertThat(station.getCurrentFuelPrices()).hasSize(3);
-                assertThat(station.getOpeningPeriods()).hasSize(7);
-            }));
+                    assertThat(station.getExternalId()).isEqualTo("4375");
+                    assertThat(station.getBrand()).isEqualTo("REPSOL");
+                    assertThat(station.getCountry().name()).isEqualTo("ES");
+                    assertThat(station.getStreet()).isEqualTo("AVENIDA CASTILLA LA MANCHA, 26");
+                    assertThat(station.getOpeningPeriods()).hasSize(7);
+                }));
     }
 }

@@ -22,5 +22,4 @@ public class StationSnapshotRabbitListener {
         Station station = mapper.toModel(event);
         consumeStationSnapshotUseCase.consume(station);
     }
-
 }

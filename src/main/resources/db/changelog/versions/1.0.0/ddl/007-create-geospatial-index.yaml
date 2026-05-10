@@ -1,7 +1,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: 006-create-geospatial-index
+      id: 007-create-geospatial-index
       author: jorge
 
       changes:

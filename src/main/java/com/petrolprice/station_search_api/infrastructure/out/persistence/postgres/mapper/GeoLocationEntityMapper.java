@@ -1,13 +1,12 @@
 package com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.mapper;
 
 import com.petrolprice.station_search_api.domain.model.GeoLocation;
+import java.math.BigDecimal;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.mapstruct.Mapper;
-
-import java.math.BigDecimal;
 
 @Mapper(componentModel = "spring")
 public abstract class GeoLocationEntityMapper {
@@ -19,12 +18,8 @@ public abstract class GeoLocationEntityMapper {
             return null;
         }
 
-        Point point = geometryFactory.createPoint(
-            new Coordinate(
-                location.getLongitude().doubleValue(),
-                location.getLatitude().doubleValue()
-            )
-        );
+        Point point = geometryFactory.createPoint(new Coordinate(
+                location.getLongitude().doubleValue(), location.getLatitude().doubleValue()));
 
         point.setSRID(4326);
         return point;
@@ -36,8 +31,8 @@ public abstract class GeoLocationEntityMapper {
         }
 
         return GeoLocation.builder()
-            .latitude(BigDecimal.valueOf(point.getY()))
-            .longitude(BigDecimal.valueOf(point.getX()))
-            .build();
+                .latitude(BigDecimal.valueOf(point.getY()))
+                .longitude(BigDecimal.valueOf(point.getX()))
+                .build();
     }
 }

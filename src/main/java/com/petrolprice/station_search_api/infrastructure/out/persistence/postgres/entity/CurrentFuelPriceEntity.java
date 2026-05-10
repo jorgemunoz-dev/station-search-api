@@ -2,12 +2,11 @@ package com.petrolprice.station_search_api.infrastructure.out.persistence.postgr
 
 import com.petrolprice.station_search_api.domain.type.StationProductType;
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.*;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "station_current_fuel_price")
@@ -22,11 +21,14 @@ public class CurrentFuelPriceEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "station_id", nullable = false)
+    private UUID stationId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "station_product_type", nullable = false, length = 50)
     private StationProductType stationProductType;
 
-    @Column(nullable = false,  precision = 10, scale = 3)
+    @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal price;
 
     @UpdateTimestamp

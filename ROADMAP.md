@@ -2,13 +2,12 @@
 
 ### MVP
 
-- [ ] STA-01 - Store stations with current prices
-  - [ ] Listen rabbitmq events with station snapshots
-  - [ ] Add geospatial index
+- [X] STA-01 - Store stations with current prices
+  - [X] Listen rabbitmq events with station snapshots
+  - [X] Add geospatial index
 
-- [ ] STA-02 - Store historical prices
-  - [ ] Move current prices to historical prices
-  - [ ] Add geospatial index
+- [X] STA-02 - Store historical prices
+  - [X] Move current prices to historical prices
 
 - [ ] STA-03 - API Search stations by radius
   - [ ] Filter by fuel type

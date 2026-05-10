@@ -1,7 +1,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: 002-create-station-table
+      id: 003-create-station-table
       author: jorge
 
       changes:

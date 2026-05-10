@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 001-enable-postgis
+      id: 002-enable-postgis
       author: jorge
 
       changes:

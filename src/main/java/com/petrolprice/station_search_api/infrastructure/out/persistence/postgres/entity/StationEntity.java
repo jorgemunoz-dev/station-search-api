@@ -2,13 +2,12 @@ package com.petrolprice.station_search_api.infrastructure.out.persistence.postgr
 
 import com.petrolprice.station_search_api.domain.type.Country;
 import jakarta.persistence.*;
+import java.time.Instant;
+import java.util.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.locationtech.jts.geom.Point;
-
-import java.time.Instant;
-import java.util.*;
 
 @Entity
 @Table(name = "station")
@@ -46,12 +45,7 @@ public class StationEntity {
     @Column(nullable = false, columnDefinition = "geography(Point,4326)")
     private Point location;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "station_id", nullable = false)
-    @Builder.Default
-    private List<CurrentFuelPriceEntity> currentFuelPrices = new ArrayList<>();
-
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "station_id", nullable = false)
     @Builder.Default
     private List<StationOpeningPeriodEntity> openingPeriods = new ArrayList<>();
@@ -63,5 +57,4 @@ public class StationEntity {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
-
 }

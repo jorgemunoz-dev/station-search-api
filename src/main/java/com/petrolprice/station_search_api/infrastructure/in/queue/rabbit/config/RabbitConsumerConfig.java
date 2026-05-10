@@ -20,15 +20,11 @@ public class RabbitConsumerConfig {
     @Bean
     public JacksonJsonMessageConverter jacksonJsonMessageConverter() {
 
-        JacksonJsonMessageConverter converter =
-            new JacksonJsonMessageConverter();
+        JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
 
-        DefaultJacksonJavaTypeMapper typeMapper =
-            new DefaultJacksonJavaTypeMapper();
+        DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
 
-        typeMapper.setTypePrecedence(
-            JacksonJavaTypeMapper.TypePrecedence.INFERRED
-        );
+        typeMapper.setTypePrecedence(JacksonJavaTypeMapper.TypePrecedence.INFERRED);
 
         converter.setJavaTypeMapper(typeMapper);
 
@@ -44,15 +40,15 @@ public class RabbitConsumerConfig {
      */
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-        ConnectionFactory connectionFactory,
-        JacksonJsonMessageConverter converter
-    ) {
-
-        SimpleRabbitListenerContainerFactory factory =
-            new SimpleRabbitListenerContainerFactory();
+            ConnectionFactory connectionFactory, JacksonJsonMessageConverter converter) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(converter);
+
+        factory.setConcurrentConsumers(4);
+        factory.setMaxConcurrentConsumers(8);
+        factory.setPrefetchCount(25);
 
         return factory;
     }

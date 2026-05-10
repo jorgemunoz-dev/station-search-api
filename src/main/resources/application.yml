@@ -8,7 +8,10 @@ spring:
         retry:
           enabled: true
           max-attempts: 3
-
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
   jpa:
     hibernate:
       ddl-auto: validate

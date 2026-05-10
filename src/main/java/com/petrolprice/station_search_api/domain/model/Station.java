@@ -1,13 +1,12 @@
 package com.petrolprice.station_search_api.domain.model;
 
 import com.petrolprice.station_search_api.domain.type.Country;
+import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
-import java.util.UUID;
 
 @Getter
 @Builder

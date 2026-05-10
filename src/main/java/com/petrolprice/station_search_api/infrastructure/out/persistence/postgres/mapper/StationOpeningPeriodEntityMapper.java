@@ -3,10 +3,9 @@ package com.petrolprice.station_search_api.infrastructure.out.persistence.postgr
 import com.petrolprice.station_search_api.domain.model.OpeningPeriod;
 import com.petrolprice.station_search_api.domain.type.Day;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity.StationOpeningPeriodEntity;
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
-import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface StationOpeningPeriodEntityMapper {
@@ -15,10 +14,9 @@ public interface StationOpeningPeriodEntityMapper {
             return List.of();
         }
 
-        return openingPeriod.getDays()
-            .stream()
-            .map(day -> toEntity(openingPeriod, day))
-            .toList();
+        return openingPeriod.getDays().stream()
+                .map(day -> toEntity(openingPeriod, day))
+                .toList();
     }
 
     @Mapping(target = "id", ignore = true)

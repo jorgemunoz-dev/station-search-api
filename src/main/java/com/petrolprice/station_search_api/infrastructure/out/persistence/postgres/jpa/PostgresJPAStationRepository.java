@@ -2,10 +2,10 @@ package com.petrolprice.station_search_api.infrastructure.out.persistence.postgr
 
 import com.petrolprice.station_search_api.domain.type.Country;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity.StationEntity;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.UUID;
-
 public interface PostgresJPAStationRepository extends JpaRepository<StationEntity, UUID> {
-    boolean existsByExternalIdAndCountry(String externalId, Country country);
+    Optional<StationEntity> findByExternalIdAndCountry(String externalId, Country country);
 }
