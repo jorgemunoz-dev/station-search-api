@@ -1,6 +1,6 @@
 package com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity;
 
-import com.petrolprice.station_search_api.domain.type.StationProductType;
+import com.petrolprice.station_search_api.domain.type.ProductType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -9,7 +9,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "historical_fuel_price")
+@Table(name = "historical_product_price")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,8 +24,8 @@ public class HistoricalFuelPriceEntity {
     private UUID stationId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "station_product_type", nullable = false, length = 50)
-    private StationProductType stationProductType;
+    @Column(name = "product_type", nullable = false, length = 50)
+    private ProductType productType;
 
     @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal price;

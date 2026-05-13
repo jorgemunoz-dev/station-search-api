@@ -20,5 +20,5 @@ public class Station {
     private List<OpeningPeriod> openingPeriods;
     private Address address;
     private GeoLocation location;
-    private List<FuelPrice> fuelPrices;
+    private List<ProductPrice> productPrices;
 }

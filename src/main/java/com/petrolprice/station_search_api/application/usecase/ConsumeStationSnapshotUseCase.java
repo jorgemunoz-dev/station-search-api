@@ -1,7 +1,7 @@
 package com.petrolprice.station_search_api.application.usecase;
 
 import com.petrolprice.station_search_api.application.port.out.CurrentFuelPriceRepositoryPort;
-import com.petrolprice.station_search_api.application.port.out.HistoricalFuelPriceRepositoryPort;
+import com.petrolprice.station_search_api.application.port.out.HistoricalPriceRepositoryPort;
 import com.petrolprice.station_search_api.application.port.out.StationRepositoryPort;
 import com.petrolprice.station_search_api.domain.model.Station;
 import jakarta.transaction.Transactional;
@@ -16,12 +16,13 @@ public class ConsumeStationSnapshotUseCase {
 
     private final StationRepositoryPort stationRepositoryPort;
     private final CurrentFuelPriceRepositoryPort currentFuelPriceRepositoryPort;
-    private final HistoricalFuelPriceRepositoryPort historicalFuelPriceRepositoryPort;
+    private final HistoricalPriceRepositoryPort historicalPriceRepositoryPort;
 
     @Transactional
     public void consume(Station stationSnapshot) {
         Station persitedStation = stationRepositoryPort.upsertFromSnapshot(stationSnapshot);
-        currentFuelPriceRepositoryPort.replaceCurrentPrices(persitedStation.getId(), stationSnapshot.getFuelPrices());
-        historicalFuelPriceRepositoryPort.insertSnapshot(persitedStation.getId(), stationSnapshot.getFuelPrices());
+        currentFuelPriceRepositoryPort.replaceCurrentPrices(
+                persitedStation.getId(), stationSnapshot.getProductPrices());
+        historicalPriceRepositoryPort.insertSnapshot(persitedStation.getId(), stationSnapshot.getProductPrices());
     }
 }

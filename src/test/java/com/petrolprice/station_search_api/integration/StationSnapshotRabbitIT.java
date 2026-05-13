@@ -4,14 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.petrolprice.station_search_api.domain.type.Country;
-import com.petrolprice.station_search_api.domain.type.StationProductType;
+import com.petrolprice.station_search_api.domain.type.ProductType;
 import com.petrolprice.station_search_api.infrastructure.in.queue.rabbit.dto.StationSnapshotMessage;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity.CurrentFuelPriceEntity;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity.HistoricalFuelPriceEntity;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity.StationEntity;
-import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.PostgresHistoricalFuelPriceRepository;
-import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.PostgresJPACurrentPriceRepository;
-import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.PostgresJPAStationRepository;
+import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.JPACurrentPriceRepository;
+import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.JPAHistoricalFuelPriceRepository;
+import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.JPAStationRepository;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.List;
@@ -28,13 +28,13 @@ public class StationSnapshotRabbitIT extends IntegrationTestBase {
     private RabbitTemplate rabbitTemplate;
 
     @Autowired
-    private PostgresJPAStationRepository stationJpaRepository;
+    private JPAStationRepository stationJpaRepository;
 
     @Autowired
-    private PostgresJPACurrentPriceRepository currentPriceRepository;
+    private JPACurrentPriceRepository currentPriceRepository;
 
     @Autowired
-    private PostgresHistoricalFuelPriceRepository historicalFuelPriceRepository;
+    private JPAHistoricalFuelPriceRepository historicalFuelPriceRepository;
 
     @Autowired
     private TransactionTemplate transactionTemplate;
@@ -104,15 +104,15 @@ public class StationSnapshotRabbitIT extends IntegrationTestBase {
 
                     assertThat(currentPrices).hasSize(3);
 
-                    assertThat(getCurrentPriceByProductType(currentPrices, StationProductType.DIESEL_A)
+                    assertThat(getCurrentPriceByProductType(currentPrices, ProductType.DIESEL_A)
                                     .getPrice())
                             .isEqualByComparingTo("1.599");
 
-                    assertThat(getCurrentPriceByProductType(currentPrices, StationProductType.DIESEL_B)
+                    assertThat(getCurrentPriceByProductType(currentPrices, ProductType.DIESEL_B)
                                     .getPrice())
                             .isEqualByComparingTo("1.239");
 
-                    assertThat(getCurrentPriceByProductType(currentPrices, StationProductType.GASOLINE_95_E5)
+                    assertThat(getCurrentPriceByProductType(currentPrices, ProductType.GASOLINE_95_E5)
                                     .getPrice())
                             .isEqualByComparingTo("1.449");
 
@@ -227,11 +227,11 @@ public class StationSnapshotRabbitIT extends IntegrationTestBase {
 
                     assertThat(currentPrices).hasSize(2);
 
-                    assertThat(getCurrentPriceByProductType(currentPrices, StationProductType.DIESEL_A)
+                    assertThat(getCurrentPriceByProductType(currentPrices, ProductType.DIESEL_A)
                                     .getPrice())
                             .isEqualByComparingTo("1.799");
 
-                    assertThat(getCurrentPriceByProductType(currentPrices, StationProductType.GASOLINE_95_E5)
+                    assertThat(getCurrentPriceByProductType(currentPrices, ProductType.GASOLINE_95_E5)
                                     .getPrice())
                             .isEqualByComparingTo("1.234");
 
@@ -243,12 +243,12 @@ public class StationSnapshotRabbitIT extends IntegrationTestBase {
     }
 
     private CurrentFuelPriceEntity getCurrentPriceByProductType(
-            List<CurrentFuelPriceEntity> currentPrices, StationProductType stationProductType) {
+            List<CurrentFuelPriceEntity> currentPrices, ProductType productType) {
         return currentPrices.stream()
-                .filter(currentPrice -> currentPrice.getStationProductType().equals(stationProductType))
+                .filter(currentPrice -> currentPrice.getProductType().equals(productType))
                 .findFirst()
-                .orElseThrow(() ->
-                        new IllegalStateException(String.format("Product type %s was not found", stationProductType)));
+                .orElseThrow(
+                        () -> new IllegalStateException(String.format("Product type %s was not found", productType)));
     }
 
     private void sendSnapshot(String message) {

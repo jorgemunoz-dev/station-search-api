@@ -1,6 +1,6 @@
 package com.petrolprice.station_search_api.domain.model;
 
-import com.petrolprice.station_search_api.domain.type.StationProductType;
+import com.petrolprice.station_search_api.domain.type.ProductType;
 import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FuelPrice {
-    private StationProductType stationProductType;
+public class ProductPrice {
+    private ProductType productType;
     private BigDecimal price;
 }

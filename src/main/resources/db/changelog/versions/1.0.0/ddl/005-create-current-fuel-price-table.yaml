@@ -7,7 +7,7 @@ databaseChangeLog:
       changes:
 
         - createTable:
-            tableName: station_current_fuel_price
+            tableName: station_current_product_price
 
             columns:
 
@@ -25,7 +25,7 @@ databaseChangeLog:
                     nullable: false
 
               - column:
-                  name: station_product_type
+                  name: product_type
                   type: varchar(50)
                   constraints:
                     nullable: false
@@ -43,7 +43,7 @@ databaseChangeLog:
                     nullable: false
 
         - addForeignKeyConstraint:
-            baseTableName: station_current_fuel_price
+            baseTableName: station_current_product_price
             baseColumnNames: station_id
             referencedTableName: station
             referencedColumnNames: id
@@ -51,13 +51,13 @@ databaseChangeLog:
             onDelete: CASCADE
 
         - addUniqueConstraint:
-            tableName: station_current_fuel_price
-            columnNames: station_id, station_product_type
-            constraintName: uk_station_current_fuel_price
+            tableName: station_current_product_price
+            columnNames: station_id, product_type
+            constraintName: uk_station_current_product_price
 
         - createIndex:
-            tableName: station_current_fuel_price
-            indexName: idx_station_current_fuel_price_station
+            tableName: station_current_product_price
+            indexName: idx_station_current_product_price_station
             columns:
               - column:
                   name: station_id

@@ -5,6 +5,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface PostgresHistoricalFuelPriceRepository extends JpaRepository<HistoricalFuelPriceEntity, UUID> {
+public interface JPAHistoricalFuelPriceRepository extends JpaRepository<HistoricalFuelPriceEntity, UUID> {
     List<HistoricalFuelPriceEntity> findByStationId(UUID stationId);
 }

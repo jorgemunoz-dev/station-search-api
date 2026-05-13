@@ -1,6 +1,6 @@
 package com.petrolprice.station_search_api.domain.type;
 
-public enum StationProductType {
+public enum ProductType {
     DIESEL_A,
     DIESEL_B,
     DIESEL_PREMIUM,

@@ -6,6 +6,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface PostgresJPAStationRepository extends JpaRepository<StationEntity, UUID> {
+public interface JPAStationRepository extends JpaRepository<StationEntity, UUID> {
     Optional<StationEntity> findByExternalIdAndCountry(String externalId, Country country);
 }

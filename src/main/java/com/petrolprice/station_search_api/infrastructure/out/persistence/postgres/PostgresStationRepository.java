@@ -3,15 +3,15 @@ package com.petrolprice.station_search_api.infrastructure.out.persistence.postgr
 import com.petrolprice.station_search_api.application.port.out.StationRepositoryPort;
 import com.petrolprice.station_search_api.domain.model.Station;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity.StationEntity;
-import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.PostgresJPAStationRepository;
+import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.JPAStationRepository;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.mapper.StationEntityMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
-public class PostgresStationPersistenceAdapter implements StationRepositoryPort {
-    private final PostgresJPAStationRepository jpaStationRepository;
+public class PostgresStationRepository implements StationRepositoryPort {
+    private final JPAStationRepository jpaStationRepository;
     private final StationEntityMapper mapper;
 
     @Override
