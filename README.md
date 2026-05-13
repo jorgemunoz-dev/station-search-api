@@ -57,7 +57,7 @@ The main goal is to keep the domain isolated from technical concerns suhc as:
 
 ## Package Structure
 
-```text 
+```text
 com.petrolprice.station_search_api
 ├── StationSearchApiApplication.java
 ├── domain
@@ -102,7 +102,7 @@ To keep consistency across the code, the following naming conventions are used:
     - `ConsumeStationSnapshotUseCase`
 - Commands / Queries:
   - Suffinx: `Command`, `Query`
-  - Example: 
+  - Example:
     - `FindStationQery`
     - `CompareStationsQuery`
 - Mappers:
@@ -185,7 +185,7 @@ Typical contents:
 
 * models such as `Station`, `Money`, `Distance`, `SearchCriteria`
 * value objects such as `Coordinates`, `FuelType`, `Price`
-* domain events for business  rules such as  best option selection or savings calculation 
+* domain events for business  rules such as  best option selection or savings calculation
 * ports that represent what the domain/application needs from the outside world
 
 ### Application

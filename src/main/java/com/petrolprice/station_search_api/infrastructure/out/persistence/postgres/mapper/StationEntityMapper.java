@@ -35,7 +35,7 @@ public interface StationEntityMapper {
     @Mapping(target = "locality", source = "address.locality")
     @Mapping(target = "municipality", source = "address.municipality")
     @Mapping(target = "province", source = "address.province")
-    @Mapping(target = "openingPeriods",ignore = true)
+    @Mapping(target = "openingPeriods", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntityFromDomain(Station station, @MappingTarget StationEntity entity);

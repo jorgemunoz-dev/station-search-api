@@ -5,5 +5,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface CurrentFuelPriceRepositoryPort {
-    void upsertCurrentPrices(UUID stationId, List<FuelPrice> fuelPrices);
+    void replaceCurrentPrices(UUID stationId, List<FuelPrice> fuelPrices);
 }
