@@ -73,9 +73,9 @@ public class StationSnapshotRabbitIT extends IntegrationTestBase {
                     "longitude":-1.539167
                 },
                 "fuelPrices":[
-                    {"stationProductType":"DIESEL_A", "price":1.599},
-                    {"stationProductType":"DIESEL_B", "price":1.239},
-                    {"stationProductType":"GASOLINE_95_E5", "price":1.449}
+                    {"productType":"DIESEL_A", "price":1.599},
+                    {"productType":"DIESEL_B", "price":1.239},
+                    {"productType":"GASOLINE_95_E5", "price":1.449}
                 ]
             }
         """);
@@ -156,8 +156,8 @@ public class StationSnapshotRabbitIT extends IntegrationTestBase {
                     "longitude":-1.539167
                 },
                 "fuelPrices":[
-                    {"stationProductType":"DIESEL_A", "price":1.599},
-                    {"stationProductType":"DIESEL_B", "price":1.599}
+                    {"productType":"DIESEL_A", "price":1.599},
+                    {"productType":"DIESEL_B", "price":1.599}
                 ]
             }
         """);
@@ -195,8 +195,8 @@ public class StationSnapshotRabbitIT extends IntegrationTestBase {
                     "longitude":-1.539167
                 },
                 "fuelPrices":[
-                    {"stationProductType":"DIESEL_A", "price":1.799},
-                    {"stationProductType":"GASOLINE_95_E5", "price":1.234}
+                    {"productType":"DIESEL_A", "price":1.799},
+                    {"productType":"GASOLINE_95_E5", "price":1.234}
                 ]
             }
         """);

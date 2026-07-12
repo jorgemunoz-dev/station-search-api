@@ -1,0 +1,201 @@
+openapi: 3.0.3
+info:
+  title: Station Search API
+  version: 1.0.0
+
+paths:
+  /stations:
+    get:
+      tags:
+        - Stations
+      operationId: searchStations
+      summary: Search stations by radius and filters
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: -90
+            maximum: 90
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: -180
+            maximum: 180
+        - name: radiusMeters
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 50000
+        - name: productType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ProductType"
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/StationSearchSortBy"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 50
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Stations found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StationSearchResponse"
+
+components:
+  schemas:
+    ProductType:
+      type: string
+      enum:
+        - DIESEL_A
+        - DIESEL_B
+        - DIESEL_PREMIUM
+        - RENEWABLE_DIESEL
+
+        - GASOLINE_95_E5
+        - GASOLINE_95_E10
+        - GASOLINE_95_E25
+        - GASOLINE_95_E5_PREMIUM
+        - GASOLINE_95_E85
+        - GASOLINE_98_E5
+        - GASOLINE_98_E10
+        - RENEWABLE_GASOLINE
+
+        - BIODIESEL
+        - BIOETHANOL
+
+        - CNG
+        - LNG
+        - BIOMETHANE_CNG
+        - BIOMETHANE_LNG
+        - LPG
+        - HYDROGEN
+
+        - ADBLUE
+        - AMMONIA
+        - METHANOL
+
+    StationSearchSortBy:
+      type: string
+      enum:
+        - DISTANCE
+        - PRICE
+
+    StationSearchResponse:
+      type: object
+      required:
+        - stations
+      properties:
+        stations:
+          type: array
+          items:
+            $ref: "#/components/schemas/StationSearchItemResponse"
+
+    StationSearchItemResponse:
+      type: object
+      required:
+        - id
+        - brand
+        - latitude
+        - longitude
+        - distanceMeters
+        - productPrices
+      properties:
+        id:
+          type: string
+          format: uuid
+        brand:
+          type: string
+        address:
+          $ref: "#/components/schemas/AddressResponse"
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        distanceMeters:
+          type: number
+          format: double
+        openingPeriods:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpeningPeriodResponse"
+        productPrices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductPriceResponse"
+
+    OpeningPeriodResponse:
+      type: object
+      required:
+        - days
+        - open
+        - close
+      properties:
+        days:
+          type: array
+          items:
+            type: string
+            enum:
+              - MON
+              - TUE
+              - WED
+              - THU
+              - FRI
+              - SAT
+              - SUN
+        open:
+          type: string
+          format: time
+          example: "08:00:00"
+        close:
+          type: string
+          format: time
+          example: "22:00:00"
+
+    AddressResponse:
+      type: object
+      properties:
+        street:
+          type: string
+        postalCode:
+          type: string
+        locality:
+          type: string
+        municipality:
+          type: string
+        province:
+          type: string
+
+    ProductPriceResponse:
+      type: object
+      required:
+        - productType
+        - price
+      properties:
+        productType:
+          $ref: "#/components/schemas/ProductType"
+        price:
+          type: number
+          format: double
