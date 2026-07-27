@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class FindStationService implements FindStationsUseCase{
+public class FindStationService implements FindStationsUseCase {
 
     private final StationSearchRepositoryPort stationSearchRepositoryPort;
 

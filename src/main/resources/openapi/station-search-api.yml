@@ -12,17 +12,17 @@ paths:
       summary: Search stations by radius and filters
       description: |
         Searches stations using one of two mutually exclusive modes.
-        
+
         VIEWPORT mode:
         - Requires north, south, east and west.
         - Must not include lat, lng or radiusMeters.
         - DISTANCE sorting is not supported because there is no reference point.
-        
+
         RADIUS mode:
         - Requires lat, lng and radiusMeters.
         - Must not include north, south, east or west.
         - Supports PRICE and DISTANCE sorting.
-        
+
         Supplying incomplete parameters or mixing parameters from both modes
         returns HTTP 400.
 

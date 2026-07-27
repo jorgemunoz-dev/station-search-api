@@ -12,7 +12,6 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface StationMapper {
 
-
     @Mapping(target = "stations", source = "items")
     StationSearchResponse toResponse(FindStationsResult result);
 
@@ -21,25 +20,13 @@ public interface StationMapper {
     @Mapping(target = "latitude", source = "station.location.latitude")
     @Mapping(target = "longitude", source = "station.location.longitude")
     @Mapping(target = "address", source = "station.address")
-    @Mapping(
-        target = "productPrices",
-        source = "station.productPrices"
-    )
-    @Mapping(
-        target = "openingPeriods",
-        source = "station.openingPeriods"
-    )
-    StationSearchItemResponse toStationItemResponse(
-        FindStationsItem station
-    );
+    @Mapping(target = "productPrices", source = "station.productPrices")
+    @Mapping(target = "openingPeriods", source = "station.openingPeriods")
+    StationSearchItemResponse toStationItemResponse(FindStationsItem station);
 
     AddressResponse toAddressResponse(Address address);
 
-    ProductPriceResponse toProductPriceResponse(
-        ProductPrice productPrice
-    );
+    ProductPriceResponse toProductPriceResponse(ProductPrice productPrice);
 
-    OpeningPeriodResponse toOpeningPeriodResponse(
-        OpeningPeriod openingPeriod
-    );
+    OpeningPeriodResponse toOpeningPeriodResponse(OpeningPeriod openingPeriod);
 }
