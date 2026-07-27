@@ -2,7 +2,7 @@ package com.petrolprice.station_search_api.infrastructure.out.persistence.postgr
 
 import java.util.UUID;
 
-public record StationRankingProjection (
+public record StationRankingProjection(
     UUID id,
     String externalId,
     String country,
@@ -14,6 +14,6 @@ public record StationRankingProjection (
     String province,
     double latitude,
     double longitude,
-    double distanceMeters
+    Double distanceMeters
 ) {
 }

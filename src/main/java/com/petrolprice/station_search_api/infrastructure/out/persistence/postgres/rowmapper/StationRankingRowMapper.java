@@ -10,20 +10,26 @@ import java.util.UUID;
 public class StationRankingRowMapper implements RowMapper<StationRankingProjection> {
 
     @Override
-    public StationRankingProjection mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public StationRankingProjection mapRow(
+        ResultSet resultSet,
+        int rowNum
+    ) throws SQLException {
         return new StationRankingProjection(
-            UUID.fromString(rs.getString("id")),
-            rs.getString("external_id"),
-            rs.getString("country"),
-            rs.getString("brand"),
-            rs.getString("street"),
-            rs.getString("postal_code"),
-            rs.getString("locality"),
-            rs.getString("municipality"),
-            rs.getString("province"),
-            rs.getDouble("latitude"),
-            rs.getDouble("longitude"),
-            rs.getDouble("distance_meters")
+            resultSet.getObject("id", UUID.class),
+            resultSet.getString("external_id"),
+            resultSet.getString("country"),
+            resultSet.getString("brand"),
+            resultSet.getString("street"),
+            resultSet.getString("postal_code"),
+            resultSet.getString("locality"),
+            resultSet.getString("municipality"),
+            resultSet.getString("province"),
+            resultSet.getDouble("latitude"),
+            resultSet.getDouble("longitude"),
+            resultSet.getObject(
+                "distance_meters",
+                Double.class
+            )
         );
     }
 }

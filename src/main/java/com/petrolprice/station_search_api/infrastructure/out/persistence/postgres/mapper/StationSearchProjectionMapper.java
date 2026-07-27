@@ -1,6 +1,6 @@
 package com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.mapper;
 
-import com.petrolprice.station_search_api.application.usecase.findstations.FindStationsItem;
+import com.petrolprice.station_search_api.application.usecase.findstations.result.FindStationsItem;
 import com.petrolprice.station_search_api.domain.model.*;
 import com.petrolprice.station_search_api.domain.type.Country;
 import com.petrolprice.station_search_api.domain.type.Day;
@@ -8,7 +8,6 @@ import com.petrolprice.station_search_api.domain.type.ProductType;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.projection.OpeningPeriodProjection;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.projection.ProductPriceProjection;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.projection.StationRankingProjection;
-import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.projection.StationSearchProjection;
 import org.mapstruct.Mapper;
 
 import java.math.BigDecimal;
@@ -35,7 +34,7 @@ public interface StationSearchProjectionMapper {
 
         return new FindStationsItem(
             station,
-            BigDecimal.valueOf(projection.distanceMeters())
+            projection.distanceMeters() == null ? null : BigDecimal.valueOf(projection.distanceMeters()) //TODO: fix this
         );
     }
 

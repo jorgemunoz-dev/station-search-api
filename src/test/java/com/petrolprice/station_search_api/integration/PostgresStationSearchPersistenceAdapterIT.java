@@ -1,8 +1,11 @@
 package com.petrolprice.station_search_api.integration;
 
-import com.petrolprice.station_search_api.application.usecase.findstations.FindStationsQuery;
-import com.petrolprice.station_search_api.application.usecase.findstations.FindStationsResult;
-import com.petrolprice.station_search_api.application.usecase.findstations.FindStationsSort;
+import com.petrolprice.station_search_api.application.usecase.findstations.query.FindStationsPageRequest;
+import com.petrolprice.station_search_api.application.usecase.findstations.query.FindStationsQuery;
+import com.petrolprice.station_search_api.application.usecase.findstations.query.FindStationsSort;
+import com.petrolprice.station_search_api.application.usecase.findstations.result.FindStationsItem;
+import com.petrolprice.station_search_api.application.usecase.findstations.result.FindStationsResult;
+import com.petrolprice.station_search_api.application.usecase.findstations.searcharea.RadiusSearchArea;
 import com.petrolprice.station_search_api.domain.type.Day;
 import com.petrolprice.station_search_api.domain.type.ProductType;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.PostgresStationSearchPersistenceAdapter;
@@ -11,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.jdbc.Sql;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,18 +30,25 @@ public class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBa
 
     @Test
     void shouldFilterStationsByRadius() {
-        FindStationsQuery query = new FindStationsQuery(
+        RadiusSearchArea radiusSearchArea = new RadiusSearchArea(
             BigDecimal.valueOf(36.878694),
             BigDecimal.valueOf(-4.844639),
-            500,
-            null,
-            FindStationsSort.DISTANCE,
-            10
+            500
         );
+
+        FindStationsPageRequest pageRequest = FindStationsPageRequest.builder()
+            .size(10)
+            .build();
+
+        FindStationsQuery query = FindStationsQuery.builder()
+            .searchArea(radiusSearchArea)
+            .sortBy(FindStationsSort.DISTANCE)
+            .pageRequest(pageRequest)
+            .build();
 
         FindStationsResult result = adapter.search(query);
 
-        assertThat(result.stations())
+        assertThat(result.items())
             .extracting(item -> item.station().getId())
             .containsExactlyInAnyOrder(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
@@ -50,19 +61,27 @@ public class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBa
 
     @Test
     void shouldFilterStationsByProductType() {
+        RadiusSearchArea radiusSearchArea = new RadiusSearchArea(
+            BigDecimal.valueOf(36.878694),
+            BigDecimal.valueOf(-4.844639),
+            500
+        );
+
+        FindStationsPageRequest pageRequest = FindStationsPageRequest.builder()
+            .size(10)
+            .build();
+
         FindStationsQuery query = FindStationsQuery.builder()
-            .latitude(BigDecimal.valueOf(36.878694))
-            .longitude(BigDecimal.valueOf(-4.844639))
-            .radiusMeters(500)
+            .searchArea(radiusSearchArea)
             .productType(ProductType.DIESEL_A)
-            .sortBy(FindStationsSort.PRICE)
-            .limit(10)
+            .sortBy(FindStationsSort.DISTANCE)
+            .pageRequest(pageRequest)
             .build();
 
 
         FindStationsResult result = adapter.search(query);
 
-        assertThat(result.stations())
+        assertThat(result.items())
             .extracting(item -> item.station().getId())
             .containsExactlyInAnyOrder(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
@@ -73,18 +92,27 @@ public class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBa
 
     @Test
     void shouldSortStationsByPrice() {
+        RadiusSearchArea radiusSearchArea = new RadiusSearchArea(
+            BigDecimal.valueOf(36.878694),
+            BigDecimal.valueOf(-4.844639),
+            500
+        );
+
+        FindStationsPageRequest pageRequest = FindStationsPageRequest.builder()
+            .size(10)
+            .build();
+
         FindStationsQuery query = FindStationsQuery.builder()
-            .latitude(BigDecimal.valueOf(36.878694))
-            .longitude(BigDecimal.valueOf(-4.844639))
-            .radiusMeters(500)
+            .searchArea(radiusSearchArea)
             .productType(ProductType.DIESEL_A)
             .sortBy(FindStationsSort.PRICE)
-            .limit(10)
+            .pageRequest(pageRequest)
             .build();
+
 
         FindStationsResult result = adapter.search(query);
 
-        assertThat(result.stations())
+        assertThat(result.items())
             .extracting(item -> item.station().getId())
             .containsExactly(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
@@ -95,18 +123,26 @@ public class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBa
 
     @Test
     void shouldRespectLimitAfterFilteringAndSorting() {
+        RadiusSearchArea radiusSearchArea = new RadiusSearchArea(
+            BigDecimal.valueOf(36.878694),
+            BigDecimal.valueOf(-4.844639),
+            500
+        );
+
+        FindStationsPageRequest pageRequest = FindStationsPageRequest.builder()
+            .size(2)
+            .build();
+
         FindStationsQuery query = FindStationsQuery.builder()
-            .latitude(BigDecimal.valueOf(36.878694))
-            .longitude(BigDecimal.valueOf(-4.844639))
-            .radiusMeters(500)
+            .searchArea(radiusSearchArea)
             .productType(ProductType.DIESEL_A)
             .sortBy(FindStationsSort.PRICE)
-            .limit(2)
+            .pageRequest(pageRequest)
             .build();
 
         FindStationsResult result = adapter.search(query);
 
-        assertThat(result.stations())
+        assertThat(result.items())
             .extracting(item -> item.station().getId())
             .containsExactly(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
@@ -116,22 +152,30 @@ public class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBa
 
     @Test
     void shouldLoadStationDetailsWithoutDuplicates() {
+        RadiusSearchArea radiusSearchArea = new RadiusSearchArea(
+            BigDecimal.valueOf(36.878694),
+            BigDecimal.valueOf(-4.844639),
+            500
+        );
+
+        FindStationsPageRequest pageRequest = FindStationsPageRequest.builder()
+            .size(10)
+            .build();
+
         FindStationsQuery query = FindStationsQuery.builder()
-            .latitude(BigDecimal.valueOf(36.878694))
-            .longitude(BigDecimal.valueOf(-4.844639))
-            .radiusMeters(500)
+            .searchArea(radiusSearchArea)
             .productType(ProductType.DIESEL_A)
             .sortBy(FindStationsSort.PRICE)
-            .limit(10)
+            .pageRequest(pageRequest)
             .build();
 
         FindStationsResult result = adapter.search(query);
 
-        assertThat(result.stations())
+        assertThat(result.items())
             .extracting(item -> item.station().getId())
             .containsOnlyOnce(UUID.fromString("11111111-1111-1111-1111-111111111111"));
 
-        var s1 = result.stations()
+        FindStationsItem s1 = result.items()
             .stream()
             .filter(item -> item.station().getId().equals(UUID.fromString("11111111-1111-1111-1111-111111111111")))
             .findFirst()

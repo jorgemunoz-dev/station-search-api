@@ -31,6 +31,21 @@ public class GlobalExceptionHandler {
             .body(problem);
     }
 
+    @ExceptionHandler(InvalidStationSearchRequestException.class)
+    public ProblemDetail handleInvalidSearchRequest(
+        InvalidStationSearchRequestException exception
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_REQUEST,
+            exception.getMessage()
+        );
+
+        problem.setTitle("Invalid station search");
+        problem.setProperty("code", "INVALID_SEARCH_AREA");
+
+        return problem;
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleUnexpectedException(
         Exception ex

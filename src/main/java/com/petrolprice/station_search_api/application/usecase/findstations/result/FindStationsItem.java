@@ -1,4 +1,4 @@
-package com.petrolprice.station_search_api.application.usecase.findstations;
+package com.petrolprice.station_search_api.application.usecase.findstations.result;
 
 import com.petrolprice.station_search_api.domain.model.Station;
 
