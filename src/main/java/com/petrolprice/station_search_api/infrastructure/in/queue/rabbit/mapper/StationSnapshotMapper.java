@@ -14,7 +14,6 @@ public interface StationSnapshotMapper {
     @Mapping(target = "productPrices", source = "fuelPrices")
     Station toModel(StationSnapshotMessage message);
 
-    @Mapping(target = "productType", source = "stationProductType")
     ProductPrice toModel(FuelPriceMessage message);
 
     default ProductType map(String stationProductType) {

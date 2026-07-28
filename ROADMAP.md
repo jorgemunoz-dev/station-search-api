@@ -9,11 +9,12 @@
 - [X] STA-02 - Store historical prices
   - [X] Move current prices to historical prices
 
-- [ ] STA-03 - API Search stations by radius
-  - [ ] Filter by fuel type
-  - [ ] Sort by price
-  - [ ] Sort by distance
-  - [ ] Filter closest station
+- [X] STA-03 - API Search stations by radius
+  - [X] Filter by coordinates
+  - [X] Filter by fuel type
+  - [X] Sort by price
+  - [X] Sort by distance
+  - [X] Filter closest station
 - [ ] STA-04 - API Search stations by locality
   - [ ] Reuse filters
   - [ ] Create search_area table with country / locality name / zip / coordinates
