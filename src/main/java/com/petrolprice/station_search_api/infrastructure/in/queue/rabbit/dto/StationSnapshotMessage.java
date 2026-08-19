@@ -6,6 +6,7 @@ public record StationSnapshotMessage(
         String externalId,
         String country,
         String brand,
+        String normalizedBrand,
         List<OpeningPeriodMessage> openingPeriods,
         AddressMessage address,
         LocationMessage location,

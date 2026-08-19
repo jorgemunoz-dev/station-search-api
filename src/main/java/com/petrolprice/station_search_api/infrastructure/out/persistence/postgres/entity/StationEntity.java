@@ -31,6 +31,8 @@ public class StationEntity {
 
     private String brand;
 
+    private String normalizedBrand;
+
     private String street;
 
     @Column(name = "postal_code")

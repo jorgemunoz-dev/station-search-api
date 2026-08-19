@@ -13,6 +13,8 @@ import com.petrolprice.station_search_api.infrastructure.out.persistence.postgre
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,6 +29,9 @@ class PostgresStationRepositoryTest {
 
     @Mock
     private StationEntityMapper mapper;
+
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     PostgresStationRepository adapter;

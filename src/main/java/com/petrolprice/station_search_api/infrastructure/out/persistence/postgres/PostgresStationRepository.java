@@ -5,6 +5,7 @@ import com.petrolprice.station_search_api.domain.model.Station;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.entity.StationEntity;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.jpa.JPAStationRepository;
 import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.mapper.StationEntityMapper;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Repository;
 public class PostgresStationRepository implements StationRepositoryPort {
     private final JPAStationRepository jpaStationRepository;
     private final StationEntityMapper mapper;
+    private final EntityManager entityManager;
 
     @Override
     public Station save(Station station) {
@@ -30,10 +32,11 @@ public class PostgresStationRepository implements StationRepositoryPort {
     }
 
     /**
-     * Updates the persisted station using JPA  dirty checking.
+     * Updates the persisted station using JPA dirty checking
      *
-     * Opening periods are handled separetely because replacing the whole collection (as do mapstruct)
-     * would trigger unnecessary DELETE + INSERT operations.
+     * Opening periods are replaced only when they have changed.
+     * A flush is forced after removing the existing periods to ensure
+     * DELETE operaitons are executed before inserting the new ones
      */
     private Station update(StationEntity station, Station stationSnapshot) {
         boolean openingPeriodsChanged = !mapper.mapOpeningPeriodsToDomain(station.getOpeningPeriods())
@@ -43,6 +46,7 @@ public class PostgresStationRepository implements StationRepositoryPort {
 
         if (openingPeriodsChanged) {
             station.getOpeningPeriods().clear();
+            entityManager.flush();
             station.getOpeningPeriods().addAll(mapper.mapOpeningPeriods(stationSnapshot.getOpeningPeriods()));
         }
 

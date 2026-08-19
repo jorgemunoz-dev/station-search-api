@@ -126,6 +126,11 @@
 		<!--============= TEST =============-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-amqp-test</artifactId>
 			<scope>test</scope>
 		</dependency>
@@ -210,6 +215,7 @@
 								<useJakartaEe>true</useJakartaEe>
 								<dateLibrary>java8</dateLibrary>
 								<skipDefaultInterface>true</skipDefaultInterface>
+								<openApiNullable>false</openApiNullable>
 							</configOptions>
 						</configuration>
 					</execution>

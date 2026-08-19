@@ -35,6 +35,10 @@ databaseChangeLog:
                   type: varchar(255)
 
               - column:
+                  name: normalized_brand
+                  type: varchar(255)
+
+              - column:
                   name: street
                   type: varchar(255)
 

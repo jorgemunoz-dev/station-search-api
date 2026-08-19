@@ -59,5 +59,4 @@ public class StationController implements StationsApi {
 
         return ResponseEntity.ok(responseMapper.toResponse(result));
     }
-
 }

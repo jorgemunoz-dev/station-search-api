@@ -152,8 +152,115 @@ paths:
               schema:
                 $ref: "#/components/schemas/StationSearchResponse"
 
+  /locations/search:
+    get:
+      tags:
+        - Locations
+      summary: Search locations
+      description: >
+        Returns location suggestions matching a locality name or postal code.
+        The returned coordinates can be used to center the map.
+      operationId: searchLocations
+
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: Locality name or postal code to search.
+          schema:
+            type: string
+            minLength: 2
+          example: Malaga
+        - name: countryCode
+          in: query
+          required: false
+          description: ISO 3166-1 alpha-2 country code.
+          schema:
+            type: string
+            pattern: '^[A-Z]{2}$'
+            default: ES
+          example: ES
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of suggestions to return.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 20
+            default: 10
+          example: 10
+
+      responses:
+        '200':
+          description: Location suggestions found.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationSuggestion'
+
 components:
   schemas:
+    LocationSuggestion:
+      type: object
+      required:
+        - type
+        - primaryText
+        - secondaryText
+        - countryCode
+        - latitude
+        - longitude
+      properties:
+
+        type:
+          $ref: '#/components/schemas/LocationSuggestionType'
+
+        primaryText:
+          type: string
+          description: Main text displayed in the autocomplete result.
+          example: Málaga
+
+        secondaryText:
+          type: string
+          description: Administrative context displayed below the main text.
+          example: Málaga, Andalucía
+
+        countryCode:
+          type: string
+          description: ISO 3166-1 alpha-2 country code.
+          pattern: '^[A-Z]{2}$'
+          example: ES
+
+        postalCode:
+          type: string
+          nullable: true
+          description: Postal code when the suggestion represents a postal code.
+          example: '29001'
+
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: 36.7213
+
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: -4.4214
+
+    LocationSuggestionType:
+      type: string
+      description: Type of location suggestion.
+      enum:
+        - LOCALITY
+        - POSTAL_CODE
+
     StationSearchMode:
       type: string
       description: Geographical strategy used to search stations.

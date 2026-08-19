@@ -18,7 +18,6 @@ public class PostgresCurrentPriceRepository implements CurrentFuelPriceRepositor
     private final CurrentPriceEntityMapper mapper;
 
     @Override
-    @Transactional
     public void replaceCurrentPrices(UUID stationId, List<ProductPrice> productPrices) {
         currentPriceRepository.deleteByStationId(stationId);
         currentPriceRepository.flush();

@@ -1,14 +1,19 @@
 package com.petrolprice.station_search_api.infrastructure.in.queue.rabbit.config;
 
+import com.petrolprice.station_search_api.infrastructure.in.queue.rabbit.RabbitMessageRecoverer;
+import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.support.converter.DefaultJacksonJavaTypeMapper;
 import org.springframework.amqp.support.converter.JacksonJavaTypeMapper;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.boot.amqp.autoconfigure.SimpleRabbitListenerContainerFactoryConfigurer;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@EnableConfigurationProperties(RabbitRetryProperties.class)
 public class RabbitConsumerConfig {
 
     /**
@@ -40,15 +45,26 @@ public class RabbitConsumerConfig {
      */
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-            ConnectionFactory connectionFactory, JacksonJsonMessageConverter converter) {
-        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        SimpleRabbitListenerContainerFactoryConfigurer configurer,
+        ConnectionFactory connectionFactory,
+        JacksonJsonMessageConverter converter,
+        RabbitMessageRecoverer recoverer,
+        RabbitRetryProperties retryProperties
+    ) {
+        SimpleRabbitListenerContainerFactory factory =
+            new SimpleRabbitListenerContainerFactory();
 
-        factory.setConnectionFactory(connectionFactory);
+        // Apply spring.rabbitmq.listener.simple.*
+        configurer.configure(factory, connectionFactory);
+
         factory.setMessageConverter(converter);
 
-        factory.setConcurrentConsumers(4);
-        factory.setMaxConcurrentConsumers(8);
-        factory.setPrefetchCount(25);
+        factory.setAdviceChain(
+            RetryInterceptorBuilder.stateless()
+                .maxRetries(retryProperties.maxRetries())
+                .recoverer(recoverer)
+                .build()
+        );
 
         return factory;
     }

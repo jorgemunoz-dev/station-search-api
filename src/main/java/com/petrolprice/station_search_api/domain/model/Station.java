@@ -17,6 +17,7 @@ public class Station {
     private String externalId;
     private Country country;
     private String brand;
+    private String normalizedBrand;
     private List<OpeningPeriod> openingPeriods;
     private Address address;
     private GeoLocation location;
