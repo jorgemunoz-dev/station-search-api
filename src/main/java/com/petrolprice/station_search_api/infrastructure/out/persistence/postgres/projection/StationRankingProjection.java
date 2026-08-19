@@ -7,6 +7,7 @@ public record StationRankingProjection(
         String externalId,
         String country,
         String brand,
+        String normalizedBrand,
         String street,
         String postalCode,
         String locality,

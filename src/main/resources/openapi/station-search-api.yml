@@ -360,6 +360,8 @@ components:
           format: uuid
         brand:
           type: string
+        normalizedBrand:
+          type: string
         address:
           $ref: "#/components/schemas/AddressResponse"
         latitude:

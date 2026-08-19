@@ -22,6 +22,7 @@ public interface StationSearchProjectionMapper {
                 .externalId(projection.externalId())
                 .country(toCountry(projection.country()))
                 .brand(projection.brand())
+                .normalizedBrand(projection.normalizedBrand())
                 .address(toAddress(projection))
                 .location(toGeoLocation(projection))
                 .productPrices(productPrices)

@@ -17,6 +17,7 @@ public interface StationMapper {
 
     @Mapping(target = "id", source = "station.id")
     @Mapping(target = "brand", source = "station.brand")
+    @Mapping(target = "normalizedBrand", source = "station.normalizedBrand")
     @Mapping(target = "latitude", source = "station.location.latitude")
     @Mapping(target = "longitude", source = "station.location.longitude")
     @Mapping(target = "address", source = "station.address")

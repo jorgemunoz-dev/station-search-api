@@ -15,6 +15,7 @@ public class StationRankingRowMapper implements RowMapper<StationRankingProjecti
                 resultSet.getString("external_id"),
                 resultSet.getString("country"),
                 resultSet.getString("brand"),
+                resultSet.getString("normalized_brand"),
                 resultSet.getString("street"),
                 resultSet.getString("postal_code"),
                 resultSet.getString("locality"),

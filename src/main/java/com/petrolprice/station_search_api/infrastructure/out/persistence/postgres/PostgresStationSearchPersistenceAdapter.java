@@ -97,6 +97,7 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 s.external_id,
                 s.country,
                 s.brand,
+                s.normalized_brand,
                 s.street,
                 s.postal_code,
                 s.locality,
@@ -146,6 +147,7 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 s.external_id,
                 s.country,
                 s.brand,
+                s.normalized_brand,
                 s.street,
                 s.postal_code,
                 s.locality,
@@ -233,6 +235,7 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 cs.external_id,
                 cs.country,
                 cs.brand,
+                cs.normalized_brand,
                 cs.street,
                 cs.postal_code,
                 cs.locality,
@@ -249,6 +252,7 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 cs.external_id,
                 cs.country,
                 cs.brand,
+                cs.normalized_brand,
                 cs.street,
                 cs.postal_code,
                 cs.locality,
@@ -265,6 +269,7 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
             external_id,
             country,
             brand,
+            normalized_brand,
             street,
             postal_code,
             locality,
@@ -282,8 +287,6 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                                 priceJoinType(query),
                                 orderBy,
                                 orderBy);
-
-        System.out.println(sql);
 
         return jdbcTemplate.query(sql, parameters, new StationRankingRowMapper());
     }

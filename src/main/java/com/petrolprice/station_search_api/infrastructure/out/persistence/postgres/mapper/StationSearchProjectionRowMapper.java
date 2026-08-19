@@ -15,6 +15,7 @@ public class StationSearchProjectionRowMapper implements RowMapper<StationSearch
                 rs.getString("external_id"),
                 rs.getString("country"),
                 rs.getString("brand"),
+                rs.getString("normalized_brand"),
                 rs.getString("street"),
                 rs.getString("postal_code"),
                 rs.getString("locality"),
