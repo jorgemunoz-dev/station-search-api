@@ -15,10 +15,12 @@
   - [X] Sort by price
   - [X] Sort by distance
   - [X] Filter closest station
-- [ ] STA-04 - API Search stations by locality
-  - [ ] Reuse filters
-  - [ ] Create search_area table with country / locality name / zip / coordinates
-- [ ] STA-05 - API Search stations by coordinates
+- [X] STA-04 - API Search stations by locality
+  - [X] Reuse filters
+  - [X] Create search_area table with country / locality name / zip / coordinates
+- [ ] STA-05 - Add to domain station brand normalized
+  - I need read from SDI (Station data ingestion) the new field normalizedBrand, save it in DB and expose throw our API
+
 - [ ] STA-06 - Implement best option scoring
 - [ ] STA-07 - Calculate estimated savings
 
