@@ -18,11 +18,12 @@
 - [X] STA-04 - API Search stations by locality
   - [X] Reuse filters
   - [X] Create search_area table with country / locality name / zip / coordinates
-- [ ] STA-05 - Add to domain station brand normalized
+- [X] STA-05 - Add to domain station brand normalized
   - I need read from SDI (Station data ingestion) the new field normalizedBrand, save it in DB and expose throw our API
+- [] STA-06 - Improve observability
 
-- [ ] STA-06 - Implement best option scoring
-- [ ] STA-07 - Calculate estimated savings
+- [ ] STA-07 - Implement best option scoring
+- [ ] STA-08 - Calculate estimated savings
 
 ### Post-MVP
 
