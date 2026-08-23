@@ -41,6 +41,10 @@ management:
     health:
       show-details: always
 
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
   tracing:
     sampling:
       probability: 1.0
@@ -63,6 +67,11 @@ logging:
       console: logstash
 
 app:
+  observability:
+    search:
+      paths:
+        - /stations
+        - /locations
   messaging:
     rabbit:
       retry:
