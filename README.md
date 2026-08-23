@@ -214,3 +214,40 @@ This is the only place where providers and frameworks code should live.
 ## Roadmap
 
 See [ROADMAP.md](./ROADMAP.md)
+
+
+---
+
+## Search observability
+
+The service exposes Prometheus metrics at `GET /actuator/prometheus`:
+
+- `station_search_queries_total`: total API queries by bounded endpoint pattern and outcome.
+- `station_search_duration_seconds`: API query latency by endpoint pattern and outcome.
+- `station_search_filter_usage_total`: number of queries using each supported filter.
+
+Outcomes are classified as `SUCCESS`, `CLIENT_ERROR`, or `SERVER_ERROR`. Timer
+histograms are enabled so Prometheus can calculate latency percentiles.
+
+Every `GET /api/**` response includes an `X-Request-Id`. A syntactically safe incoming
+identifier is preserved; otherwise, the service generates a UUID. The identifier is
+placed in the logging MDC as `requestId` for correlation across request logs.
+
+Completed queries produce a structured JSON log containing the route pattern, HTTP
+status, outcome, duration, and names of the filters used. Filter values are never
+included in metrics or logs.
+
+The observed path and allow-listed filter names are configurable:
+
+```yaml
+app:
+  observability:
+    search:
+      path-pattern: /api/**
+      tracked-filters: searchMode,page,size,lat,lng,radiusMeters,north,south,east,west,productType,sortBy,query,countryCode,limit
+```
+
+Only allow-listed names become metric labels. Add new API filters to
+`tracked-filters` when they are introduced; unknown query parameters are ignored to
+keep metric cardinality bounded. Protect the Prometheus endpoint at the infrastructure
+or security layer before exposing it outside the private network.
