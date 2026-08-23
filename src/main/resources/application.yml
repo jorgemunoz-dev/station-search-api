@@ -1,7 +1,13 @@
 spring:
   application:
     name: station-search-api
+
   rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
     listener:
       simple:
         default-requeue-rejected: false
@@ -10,15 +16,51 @@ spring:
         prefetch: 25
 
   datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:station_search}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
+
   jpa:
     hibernate:
       ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+  endpoint:
+    health:
+      show-details: always
+
+  tracing:
+    sampling:
+      probability: 1.0
+
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://tempo:4318/v1/traces
+
+  otlp:
+    metrics:
+      export:
+        enabled: false
+
+logging:
+  include-application-name: false
+  structured:
+    format:
+      console: logstash
 
 app:
   messaging:

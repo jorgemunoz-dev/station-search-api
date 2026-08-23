@@ -6,8 +6,5 @@ import java.time.Duration;
 
 @ConfigurationProperties(prefix = "app.messaging.rabbit.retry")
 public record RabbitRetryProperties(
-    int maxRetries,
-    Duration initialInterval,
-    double multiplier,
-    Duration maxInterval
+    int maxRetries
 ) {}
