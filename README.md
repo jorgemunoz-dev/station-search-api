@@ -55,9 +55,9 @@ The main goal is to keep the domain isolated from technical concerns suhc as:
 
 ---
 
-## Package Structure Proposed
+## Package Structure
 
-```text 
+```text
 com.petrolprice.station_search_api
 ├── StationSearchApiApplication.java
 ├── domain
@@ -81,6 +81,100 @@ com.petrolprice.station_search_api
 
 ---
 
+## Naming convention
+
+To keep consistency across the code, the following naming conventions are used:
+
+### Domain
+- Entities and value objects
+  - `Station`, `FuelPrice`, `Money`
+- Aggregation / input models:
+  - `StationUpdate`
+- Domain services:
+  - `BestOptionSelector`, `SavingsCalculator`, `StationScoringPolicy`
+
+### Application
+- Use cases:
+  - Suffix: `UseCase`
+  - Examples:
+    - `FindStationUseCase`
+    - `FindBestOptionUseCase`
+    - `ConsumeStationSnapshotUseCase`
+- Commands / Queries:
+  - Suffinx: `Command`, `Query`
+  - Example:
+    - `FindStationQery`
+    - `CompareStationsQuery`
+- Mappers:
+  - Suffix: `Mapper`
+  - Example:
+    - `StationQueryMapper`
+- Ports:
+  - Output ports:
+    - Suffix: `{technology}Port`
+    - Example:
+      - `StationRepositoryPort`
+      - `HistoricalFuelPriceRepositoryPort`
+
+### Infrastructure
+#### REST
+
+- Controllers:
+   - Suffix: `Controller`
+   - Example:
+      - `StationController`
+
+- Request / Response DTOs:
+   - Suffix: `Request`, `Response`
+   - Examples:
+      - `FindStationsRequest`
+      - `StationResponse`
+
+---
+
+#### Messaging (RabbitMQ)
+
+- Message DTOs:
+   - Suffix: `Message`
+   - Example:
+      - `StationSnapshotMessage`
+
+- Listeners:
+   - Suffix: `Listener`
+   - Example:
+      - `StationSnapshotRabbitListener`
+
+- Message mappers:
+   - Suffix: `MessageMapper`
+   - Example:
+      - `StationSnapshotMessageMapper`
+
+---
+
+#### Persistence
+
+- JPA entities:
+   - Suffix: `Entity`
+   - Example:
+      - `StationEntity`
+      - `CurrentFuelPriceEntity`
+
+- Spring Data repositories:
+   - Suffix: `JpaRepository`
+   - Example:
+      - `StationJpaRepository`
+
+- Persistence adapters:
+   - Suffix: `PersistenceAdapter`
+   - Example:
+      - `PostgresStationPersistenceAdapter`
+
+- Entity mappers:
+   - Suffix: `EntityMapper`
+   - Example:
+      - `StationEntityMapper`
+---
+
 ## Layer Responsibilities
 
 ### Domain
@@ -91,7 +185,7 @@ Typical contents:
 
 * models such as `Station`, `Money`, `Distance`, `SearchCriteria`
 * value objects such as `Coordinates`, `FuelType`, `Price`
-* domain events for business  rules such as  best option selection or savings calculation 
+* domain events for business  rules such as  best option selection or savings calculation
 * ports that represent what the domain/application needs from the outside world
 
 ### Application
@@ -116,3 +210,7 @@ The infrastructure layer contains technical adapters.
 * Spring configurations
 
 This is the only place where providers and frameworks code should live.
+
+## Roadmap
+
+See [ROADMAP.md](./ROADMAP.md)

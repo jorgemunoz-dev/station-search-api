@@ -1,0 +1,139 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 009-create-search-location
+      author: jorge
+
+      changes:
+
+        - createTable:
+            tableName: search_location
+
+            columns:
+
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column:
+                  name: country_code
+                  type: varchar(2)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: postal_code
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: normalized_postal_code
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: locality_name
+                  type: varchar(150)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: normalized_locality_name
+                  type: varchar(150)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: admin_area_1_name
+                  type: varchar(150)
+
+              - column:
+                  name: admin_area_1_code
+                  type: varchar(50)
+
+              - column:
+                  name: admin_area_2_name
+                  type: varchar(150)
+
+              - column:
+                  name: admin_area_2_code
+                  type: varchar(50)
+
+              - column:
+                  name: admin_area_3_name
+                  type: varchar(150)
+
+              - column:
+                  name: admin_area_3_code
+                  type: varchar(50)
+
+              - column:
+                  name: location
+                  type: geography(Point,4326)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: accuracy
+                  type: smallint
+
+              - column:
+                  name: source
+                  type: varchar(30)
+                  defaultValue: GEONAMES
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: search_location
+            columnNames: country_code, normalized_postal_code, normalized_locality_name
+            constraintName: uk_search_location
+
+        - createIndex:
+            tableName: search_location
+            indexName: idx_search_location_country_postal_code
+            columns:
+              - column:
+                  name: country_code
+              - column:
+                  name: normalized_postal_code
+
+        - createIndex:
+            tableName: search_location
+            indexName: idx_search_location_country_locality
+            columns:
+              - column:
+                  name: country_code
+              - column:
+                  name: normalized_locality_name
+
+        - sql:
+            sql: >
+              CREATE INDEX idx_search_location_locality_trgm
+              ON search_location
+              USING GIN (normalized_locality_name gin_trgm_ops);
+
+        - sql:
+            sql: >
+              CREATE INDEX idx_search_location_location
+              ON search_location
+              USING GIST (location);

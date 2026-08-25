@@ -1,0 +1,82 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 003-create-station-table
+      author: jorge
+
+      changes:
+
+        - createTable:
+            tableName: station
+
+            columns:
+
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column:
+                  name: external_id
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: country
+                  type: varchar(2)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: brand
+                  type: varchar(255)
+
+              - column:
+                  name: normalized_brand
+                  type: varchar(255)
+
+              - column:
+                  name: street
+                  type: varchar(255)
+
+              - column:
+                  name: postal_code
+                  type: varchar(20)
+
+              - column:
+                  name: locality
+                  type: varchar(100)
+
+              - column:
+                  name: municipality
+                  type: varchar(100)
+
+              - column:
+                  name: province
+                  type: varchar(100)
+
+              - column:
+                  name: location
+                  type: geography(Point,4326)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: station
+            columnNames: country, external_id
+            constraintName: uk_station_external

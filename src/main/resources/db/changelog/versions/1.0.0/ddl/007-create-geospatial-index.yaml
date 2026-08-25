@@ -1,0 +1,13 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 007-create-geospatial-index
+      author: jorge
+
+      changes:
+
+        - sql:
+            sql: |
+              CREATE INDEX idx_station_location
+              ON station
+              USING GIST (location);
