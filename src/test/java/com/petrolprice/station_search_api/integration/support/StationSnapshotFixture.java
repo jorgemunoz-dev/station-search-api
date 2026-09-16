@@ -22,16 +22,20 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /** Test-data builder for the station import workflow. Defaults are valid and every fixture is isolated. */
 public final class StationSnapshotFixture {
     private UUID snapshotId = UUID.randomUUID();
     private UUID eventId = UUID.randomUUID();
     private String externalId = "station-" + UUID.randomUUID();
-    private String brand = "REPSOL";
-    private BigDecimal latitude = new BigDecimal("40.4168");
-    private BigDecimal longitude = new BigDecimal("-3.7038");
+    private String brand = "BRAND-" + UUID.randomUUID().toString().substring(0, 8);
+    private BigDecimal latitude = randomCoordinate(37, 42);
+    private BigDecimal longitude = randomCoordinate(-7, 2);
+    private final Address address = randomAddress();
     private List<ProductPrice> prices = List.of(price(ProductType.DIESEL_A, "1.599"));
+    private List<OpeningPeriod> openingPeriods = List.of(openingPeriod(
+            List.of(Day.MON, Day.TUE, Day.WED), LocalTime.of(7, 0), LocalTime.of(22, 0)));
 
     private StationSnapshotFixture() {}
 
@@ -65,6 +69,17 @@ public final class StationSnapshotFixture {
         return this;
     }
 
+    public StationSnapshotFixture withLocation(BigDecimal latitude, BigDecimal longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        return this;
+    }
+
+    public StationSnapshotFixture withOpeningPeriods(OpeningPeriod... openingPeriods) {
+        this.openingPeriods = List.of(openingPeriods);
+        return this;
+    }
+
     public StationSnapshotFixture withPrices(ProductPrice... prices) {
         this.prices = List.of(prices);
         return this;
@@ -80,6 +95,14 @@ public final class StationSnapshotFixture {
 
     public String externalId() {
         return externalId;
+    }
+
+    public BigDecimal latitude() {
+        return latitude;
+    }
+
+    public BigDecimal longitude() {
+        return longitude;
     }
 
     public ProcessStationSnapshotCommand processCommand() {
@@ -102,9 +125,18 @@ public final class StationSnapshotFixture {
                         "ES",
                         brand,
                         brand,
-                        List.of(new OpeningPeriodMessage(
-                                "07:00:00", "22:00:00", List.of("MON", "TUE", "WED"))),
-                        new AddressMessage("Test street", "28001", "Madrid", "Madrid", "Madrid"),
+                        openingPeriods.stream()
+                                .map(period -> new OpeningPeriodMessage(
+                                        period.getOpen().toString(),
+                                        period.getClose().toString(),
+                                        period.getDays().stream().map(Enum::name).toList()))
+                                .toList(),
+                        new AddressMessage(
+                                address.getStreet(),
+                                address.getPostalCode(),
+                                address.getLocality(),
+                                address.getMunicipality(),
+                                address.getProvince()),
                         new LocationMessage(latitude.doubleValue(), longitude.doubleValue()),
                         prices.stream()
                                 .map(price -> new FuelPriceMessage(
@@ -121,29 +153,38 @@ public final class StationSnapshotFixture {
         return ProductPrice.builder().productType(type).price(new BigDecimal(value)).build();
     }
 
+    public static OpeningPeriod openingPeriod(List<Day> days, LocalTime open, LocalTime close) {
+        return OpeningPeriod.builder().days(days).open(open).close(close).build();
+    }
+
     private Station station() {
         return Station.builder()
                 .externalId(externalId)
                 .country(Country.ES)
                 .brand(brand)
                 .normalizedBrand(brand)
-                .openingPeriods(List.of(OpeningPeriod.builder()
-                        .days(List.of(Day.MON, Day.TUE, Day.WED))
-                        .open(LocalTime.of(7, 0))
-                        .close(LocalTime.of(22, 0))
-                        .build()))
-                .address(Address.builder()
-                        .street("Test street")
-                        .postalCode("28001")
-                        .locality("Madrid")
-                        .municipality("Madrid")
-                        .province("Madrid")
-                        .build())
+                .openingPeriods(openingPeriods)
+                .address(address)
                 .location(GeoLocation.builder()
                         .latitude(latitude)
                         .longitude(longitude)
                         .build())
                 .productPrices(prices)
                 .build();
+    }
+
+    private static Address randomAddress() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return Address.builder()
+                .street("Street " + suffix)
+                .postalCode("%05d".formatted(ThreadLocalRandom.current().nextInt(100_000)))
+                .locality("Locality " + suffix)
+                .municipality("Municipality " + suffix)
+                .province("Province " + suffix)
+                .build();
+    }
+
+    private static BigDecimal randomCoordinate(double minimum, double maximum) {
+        return BigDecimal.valueOf(ThreadLocalRandom.current().nextDouble(minimum, maximum));
     }
 }

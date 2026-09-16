@@ -10,7 +10,7 @@ The integration suite is split into three layers so adding a case does not requi
    - `StationBatchSearchE2EIT` is the acceptance test joining both sides of the application: a complete Rabbit batch is persisted, completed and then filtered through the HTTP API.
    - Adapter-specific tests should exercise PostgreSQL behavior directly when no service orchestration is involved.
 
-All fixtures use generated snapshot, event and external IDs. This prevents cases from depending on execution order and avoids maintaining a large shared dataset. Fixed SQL datasets remain useful for search/ranking tests, where a carefully controlled spatial distribution is the behavior under test.
+All station fixtures generate snapshot, event and external IDs, brands, addresses and a valid location. Tests only fix values that are relevant to their assertion. Geospatial scenarios generate a random origin and describe the controlled relative offsets around it, so they remain deterministic without being tied to Madrid—or to any other real city. This prevents cases from depending on execution order and removes the shared station SQL dataset.
 
 ## Adding a workflow case
 

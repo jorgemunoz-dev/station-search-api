@@ -46,21 +46,25 @@ class StationBatchSearchE2EIT extends IntegrationTestBase {
     @Test
     void shouldImportACompleteBatchAndExposeOnlyStationsMatchingTheSearch() throws Exception {
         UUID batchId = UUID.randomUUID();
+        StationSnapshotFixture origin = aStationSnapshot();
         List<StationSnapshotFixture> batch = List.of(
-                aStationSnapshot()
+                origin
                         .withSnapshotId(batchId)
                         .withBrand("CHEAP_DIESEL")
-                        .withLocation("40.4168", "-3.7038")
                         .withPrices(price(DIESEL_A, "1.399"), price(GASOLINE_95_E5, "1.599")),
                 aStationSnapshot()
                         .withSnapshotId(batchId)
                         .withBrand("EXPENSIVE_DIESEL")
-                        .withLocation("40.4175", "-3.7045")
+                        .withLocation(
+                                origin.latitude().add(new java.math.BigDecimal("0.0007")),
+                                origin.longitude().subtract(new java.math.BigDecimal("0.0007")))
                         .withPrices(price(DIESEL_A, "1.699")),
                 aStationSnapshot()
                         .withSnapshotId(batchId)
                         .withBrand("GASOLINE_ONLY")
-                        .withLocation("40.4180", "-3.7050")
+                        .withLocation(
+                                origin.latitude().add(new java.math.BigDecimal("0.0012")),
+                                origin.longitude().subtract(new java.math.BigDecimal("0.0012")))
                         .withPrices(price(GASOLINE_95_E5, "1.499")));
 
         batch.forEach(snapshot -> send("energy.snapshot.fuel.es.created", snapshot.message()));
@@ -77,8 +81,8 @@ class StationBatchSearchE2EIT extends IntegrationTestBase {
 
         mockMvc.perform(get("/stations")
                         .queryParam("searchMode", "RADIUS")
-                        .queryParam("lat", "40.4168")
-                        .queryParam("lng", "-3.7038")
+                        .queryParam("lat", origin.latitude().toPlainString())
+                        .queryParam("lng", origin.longitude().toPlainString())
                         .queryParam("radiusMeters", "1000")
                         .queryParam("productType", "DIESEL_A")
                         .queryParam("sortBy", "PRICE")
