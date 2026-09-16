@@ -8,9 +8,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.petrolprice.station_search_api.integration.support.StationImportProbe;
 import com.petrolprice.station_search_api.integration.support.StationSnapshotFixture;
 import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
+import com.petrolprice.station_search_api.station.ingestion.application.CompleteStationPublishingService;
 import com.petrolprice.station_search_api.statistics.application.port.out.CurrentPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.GeospatialPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.HistoricalPriceStatisticsRepository;
+import com.petrolprice.station_search_api.statistics.application.port.out.StatisticsCalculationRepository;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.GeographicScope;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
@@ -32,6 +34,9 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     private ProcessStationSnapshotService snapshotService;
 
     @Autowired
+    private CompleteStationPublishingService completionService;
+
+    @Autowired
     private CurrentPriceStatisticsRepository currentStatistics;
 
     @Autowired
@@ -39,6 +44,9 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
 
     @Autowired
     private GeospatialPriceStatisticsRepository geospatialStatistics;
+
+    @Autowired
+    private StatisticsCalculationRepository calculationRepository;
 
     @Autowired
     private StationImportProbe probe;
@@ -52,12 +60,20 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     @BeforeEach
     void setUp() {
         probe.clean();
-        cheap = aStationSnapshot().withLocation("40.0000", "-3.0000").withPrices(price(DIESEL_A, "1.400"));
-        expensive = aStationSnapshot().withLocation("40.0100", "-3.0100").withPrices(price(DIESEL_A, "1.800"));
+        UUID snapshotId = UUID.randomUUID();
+        cheap = aStationSnapshot()
+                .withSnapshotId(snapshotId)
+                .withLocation("40.0000", "-3.0000")
+                .withPrices(price(DIESEL_A, "1.400"));
+        expensive = aStationSnapshot()
+                .withSnapshotId(snapshotId)
+                .withLocation("40.0100", "-3.0100")
+                .withPrices(price(DIESEL_A, "1.800"));
         snapshotService.consume(cheap.processCommand());
         snapshotService.consume(expensive.processCommand());
         classify(cheap, "North", "Alpha");
         classify(expensive, "South", "Beta");
+        completionService.complete(cheap.completionCommand(2));
     }
 
     @Test
@@ -98,12 +114,11 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
-    void shouldUseOneHistoricalObservationPerStationAndDayAndCalculateExactVariations() {
+    void shouldReadHistoricalStatisticsCalculatedForCompletedSnapshots() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         UUID stationId = stationId(cheap.externalId());
-        insertHistory(stationId, "1.500", today.minusDays(8).atTime(8, 0).toInstant(ZoneOffset.UTC));
-        insertHistory(stationId, "1.600", today.minusDays(8).atTime(18, 0).toInstant(ZoneOffset.UTC));
-        insertHistory(stationId, "1.700", today.minusDays(1).atTime(8, 0).toInstant(ZoneOffset.UTC));
+        createCalculatedSnapshot(stationId, "1.600", today.minusDays(8).atTime(18, 0).toInstant(ZoneOffset.UTC));
+        createCalculatedSnapshot(stationId, "1.700", today.minusDays(1).atTime(8, 0).toInstant(ZoneOffset.UTC));
 
         var history = historicalStatistics.history(new HistoricalStatisticsQuery(
                 "ES", ProductType.DIESEL_A, GeographicScope.national(), today.minusDays(8), today.minusDays(1)));
@@ -126,15 +141,34 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         return jdbcTemplate.queryForObject("SELECT id FROM station WHERE external_id = ?", UUID.class, externalId);
     }
 
-    private void insertHistory(UUID stationId, String value, Instant observedAt) {
+    private void createCalculatedSnapshot(UUID stationId, String value, Instant observedAt) {
+        UUID snapshotId = UUID.randomUUID();
         jdbcTemplate.update(
                 """
-                INSERT INTO historical_product_price (id, station_id, product_type, price, observed_at)
-                VALUES (?, ?, 'DIESEL_A', ?, ?)
+                INSERT INTO station_import (
+                    snapshot_id, country, status, published_stations, processed_stations,
+                    publishing_completed, created_at, updated_at, completed_at
+                ) VALUES (?, 'ES', 'COMPLETED', 1, 1, TRUE, ?, ?, ?)
+                """,
+                snapshotId,
+                Timestamp.from(observedAt),
+                Timestamp.from(observedAt),
+                Timestamp.from(observedAt));
+        jdbcTemplate.update(
+                """
+                INSERT INTO historical_product_price (
+                    id, snapshot_id, station_id, product_type, price, observed_at
+                ) VALUES (?, ?, ?, 'DIESEL_A', ?, ?)
                 """,
                 UUID.randomUUID(),
+                snapshotId,
                 stationId,
                 new BigDecimal(value),
                 Timestamp.from(observedAt));
+        calculationRepository.replaceForSnapshot(snapshotId);
+        jdbcTemplate.update(
+                "UPDATE fuel_price_statistics SET calculated_at = ? WHERE snapshot_id = ?",
+                Timestamp.from(observedAt),
+                snapshotId);
     }
 }

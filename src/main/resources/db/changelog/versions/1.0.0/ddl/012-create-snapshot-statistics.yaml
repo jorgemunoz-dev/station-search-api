@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-create-snapshot-statistics
+      author: codex
+      changes:
+        - addColumn:
+            tableName: station_import
+            columns:
+              - column:
+                  name: country
+                  type: varchar(2)
+        - addColumn:
+            tableName: historical_product_price
+            columns:
+              - column:
+                  name: snapshot_id
+                  type: uuid
+        - addForeignKeyConstraint:
+            baseTableName: historical_product_price
+            baseColumnNames: snapshot_id
+            referencedTableName: station_import
+            referencedColumnNames: snapshot_id
+            constraintName: fk_historical_price_snapshot
+            onDelete: CASCADE
+        - createIndex:
+            tableName: historical_product_price
+            indexName: idx_historical_price_snapshot_product
+            columns:
+              - column: {name: snapshot_id}
+              - column: {name: product_type}
+              - column: {name: station_id}
+        - createTable:
+            tableName: fuel_price_statistics
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: snapshot_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: country, type: varchar(2), constraints: {nullable: false}}
+              - column: {name: product_type, type: varchar(50), constraints: {nullable: false}}
+              - column: {name: geographic_level, type: varchar(20), constraints: {nullable: false}}
+              - column: {name: scope_key, type: varchar(500), constraints: {nullable: false}}
+              - column: {name: area_name, type: varchar(255)}
+              - column: {name: province, type: varchar(255)}
+              - column: {name: average_price, type: numeric(12,6), constraints: {nullable: false}}
+              - column: {name: minimum_price, type: numeric(10,3), constraints: {nullable: false}}
+              - column: {name: maximum_price, type: numeric(10,3), constraints: {nullable: false}}
+              - column: {name: station_count, type: bigint, constraints: {nullable: false}}
+              - column: {name: cheapest_station_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: most_expensive_station_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: calculated_at, type: timestamptz, constraints: {nullable: false}}
+        - addForeignKeyConstraint:
+            baseTableName: fuel_price_statistics
+            baseColumnNames: snapshot_id
+            referencedTableName: station_import
+            referencedColumnNames: snapshot_id
+            constraintName: fk_statistics_snapshot
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: fuel_price_statistics
+            columnNames: snapshot_id, country, product_type, geographic_level, scope_key
+            constraintName: uk_statistics_snapshot_scope
+        - createIndex:
+            tableName: fuel_price_statistics
+            indexName: idx_statistics_current_lookup
+            columns:
+              - column: {name: country}
+              - column: {name: product_type}
+              - column: {name: geographic_level}
+              - column: {name: scope_key}
+              - column: {name: calculated_at, descending: true}

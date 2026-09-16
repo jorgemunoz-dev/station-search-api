@@ -17,10 +17,11 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     @Override
-    public void ensureExists(UUID snapshotId) {
+    public void ensureExists(UUID snapshotId, String countryCode) {
         String sql = """
             INSERT INTO station_import (
                 snapshot_id,
+                country,
                 status,
                 processed_stations,
                 publishing_completed,
@@ -28,17 +29,19 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
             )
             VALUES (
                 :snapshotId,
+                :country,
                 'PROCESSING',
                 0,
                 FALSE,
                 NOW()
             )
-            ON CONFLICT (snapshot_id) DO NOTHING
+            ON CONFLICT (snapshot_id) DO UPDATE
+            SET country = COALESCE(station_import.country, EXCLUDED.country)
             """;
 
         jdbcTemplate.update(
             sql,
-            new MapSqlParameterSource("snapshotId", snapshotId)
+            new MapSqlParameterSource("snapshotId", snapshotId).addValue("country", countryCode)
         );
     }
 

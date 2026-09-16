@@ -17,15 +17,17 @@ public class PostgresHistoricalPriceRepository implements HistoricalPriceReposit
     private final HistoricalFuelPriceEntityMapper mapper;
 
     @Override
-    public void insertSnapshot(UUID stationId, List<ProductPrice> productPrices) {
+    public void insertSnapshot(UUID snapshotId, UUID stationId, List<ProductPrice> productPrices) {
         if (productPrices == null || productPrices.isEmpty()) {
             return;
         }
 
         List<HistoricalFuelPriceEntity> historicalPrices = productPrices.stream()
-                .map(fuelPrice -> mapper.toEntity(stationId, fuelPrice))
+                .map(fuelPrice -> mapper.toEntity(snapshotId, stationId, fuelPrice))
                 .toList();
 
-        jpaRepository.saveAll(historicalPrices);
+        // The final station event can trigger JDBC aggregation in the same transaction.
+        // Flush here so the snapshot rows are visible to that calculation.
+        jpaRepository.saveAllAndFlush(historicalPrices);
     }
 }

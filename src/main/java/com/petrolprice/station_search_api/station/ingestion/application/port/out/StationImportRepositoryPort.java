@@ -8,7 +8,7 @@ public interface StationImportRepositoryPort {
     /**
      * Creates the import if it does not already exist.
      */
-    void ensureExists(UUID snapshotId);
+    void ensureExists(UUID snapshotId, String countryCode);
 
     /**
      * Atomically registers an event.

@@ -74,7 +74,7 @@ class ProcessStationSnapshotServiceTest {
             );
 
             inOrder.verify(stationImportRepositoryPort)
-                .ensureExists(command.snapshotId());
+                .ensureExists(command.snapshotId(), command.station().getCountry().name());
 
             inOrder.verify(stationImportRepositoryPort)
                 .claimEvent(command.snapshotId(), command.eventId());
@@ -90,6 +90,7 @@ class ProcessStationSnapshotServiceTest {
 
             inOrder.verify(historicalPriceRepositoryPort)
                 .insertSnapshot(
+                    command.snapshotId(),
                     persistedStation.getId(),
                     stationSnapshot.getProductPrices()
                 );
@@ -177,6 +178,7 @@ class ProcessStationSnapshotServiceTest {
             doThrow(new RuntimeException("Historical price persistence failed"))
                 .when(historicalPriceRepositoryPort)
                 .insertSnapshot(
+                    command.snapshotId(),
                     persistedStation.getId(),
                     stationSnapshot.getProductPrices()
                 );
@@ -233,7 +235,7 @@ class ProcessStationSnapshotServiceTest {
             service.consume(command);
 
             verify(stationImportRepositoryPort)
-                .ensureExists(command.snapshotId());
+                .ensureExists(command.snapshotId(), command.station().getCountry().name());
 
             verify(stationImportRepositoryPort)
                 .claimEvent(command.snapshotId(), command.eventId());

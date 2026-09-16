@@ -1,59 +1,64 @@
-# Statistics supported by the current data model
+# Snapshot-based fuel-price statistics
 
-## Available now
+## Calculation lifecycle
 
-The current-price table contains one row per station and product, so it can provide unbiased current
-aggregates for country, province, municipality/locality and geographic radius. The statistics module
-implements average, minimum, maximum, station count, cheapest/most expensive station, national and
-provincial differences where applicable, province rankings, and nearest/cheapest stations inside
-5/10/20/50 km radii.
+Statistics are not calculated from `station_current_product_price` when an HTTP request arrives.
+Every historical price row records the `snapshot_id` that produced it. Once every event from a
+snapshot has been processed, `StationImportFinalizer` atomically claims the import, invokes
+`CalculateFuelPriceStatisticsUseCase`, and marks the import `COMPLETED` only after calculation
+succeeds.
 
-Theoretical savings are derivable from a station price and a supplied reference price. The
-`FuelSavingCalculator` returns both per-litre and per-tank savings and uses 55 litres when tank size
-is omitted. A negative result is deliberately retained: it means the selected station is more
-expensive than the reference.
+The calculator scans the historical prices belonging to that snapshot and materializes national,
+province, and municipality aggregates in `fuel_price_statistics`. A failure rolls back both the
+statistics and the import state, allowing Rabbit retry to run the whole operation again. Replacing
+rows by snapshot makes calculation idempotent.
 
-Historical calculations use `historical_product_price`. To prevent stations updated many times in one
-day from receiving extra weight, queries select the last observation per station/product/day before
-calculating the daily aggregate. Variations compare with an exact observation date 1, 7, or 30 days
-before; the value is `null` when that date has no data rather than inventing or interpolating a price.
+HTTP queries read the latest materialized snapshot instead of repeatedly aggregating the operational
+current-price table. Historical endpoints read the materialized snapshots over time. Radius queries
+cannot be precomputed for arbitrary coordinates, so they use the price rows from the latest
+calculated snapshot and PostGIS; they never use `station_current_product_price`.
 
-Municipality statistics require their province, use `municipality`, and fall back to `locality` only
-when municipality is null. Names are compared case-insensitively. This works with current data but canonical administrative IDs
-would be safer than names.
+## Available statistics
+
+For each product, current snapshot aggregates provide average, minimum, maximum, station count,
+cheapest/most-expensive station, national and provincial differences where applicable, and province
+rankings. Municipality statistics require their province, use `municipality`, and fall back to
+`locality` when municipality is null.
+
+Historical results expose the calculated aggregates for each completed snapshot/day, period
+average/minimum/maximum, and exact 1/7/30-day absolute and percentage variations. Missing reference
+dates return `null`; prices are not interpolated.
+
+Radius statistics support 5/10/20/50 km and return station count, average, minimum, maximum, price
+spread, cheapest station, and nearest station from the latest calculated snapshot.
+
+Theoretical savings use the station price from the latest calculated snapshot and a supplied
+reference price. They return per-litre and per-tank savings and default to 55 litres.
 
 ## Not derivable reliably
 
-- **Autonomous communities:** `station` has province but no autonomous-community field or stable
-  province code. A hardcoded province mapping would be reference data not present in the current
-  model. Add `autonomous_community_code` and `autonomous_community_name` (ideally populated by the
-  ingestion service) before exposing these statistics.
-- **Canonical municipality comparisons:** free-text municipality/locality values can contain aliases,
-  spelling or casing differences. Add INE municipality/province codes to make grouping exact.
-- **Continuous daily history:** missing dates cannot be reconstructed from observations. Exact
-  1/7/30-day variations remain null when there was no snapshot that day.
-- **Sales-weighted prices:** no litres sold or transaction volume exists, so all averages are
-  station-weighted.
-- **Realized consumer savings:** only theoretical savings can be calculated because there is no
-  purchase, route, vehicle consumption or tank-fill data.
+- **Autonomous communities:** the station table has no autonomous-community field or stable province
+  code. Add community and province codes in ingestion before grouping by community.
+- **Canonical administrative comparisons:** province and municipality are free text. INE codes are
+  needed to eliminate aliases and spelling differences.
+- **Continuous daily history:** a missing snapshot date cannot be reconstructed.
+- **Sales-weighted prices:** there is no sales volume, so averages are station-weighted.
+- **Realized consumer savings:** there is no purchase, route, vehicle-consumption, or fill data.
 
-## API/query model
+## API
 
-- `GET /statistics/fuel-prices/current`: `NATIONAL`, `PROVINCE`, or `MUNICIPALITY` current aggregate.
-- `GET /statistics/fuel-prices/history`: daily time series for the same levels and a date range.
-- `GET /statistics/fuel-prices/around`: aggregate for an allowed radius and coordinates.
-- `GET /statistics/fuel-prices/provinces`: all province aggregates with cheapest and most-expensive
-  ranks, suitable for province comparisons.
-- `GET /statistics/fuel-prices/savings`: theoretical saving for a station/product against a supplied
-  reference price, with an optional tank size.
-- The existing `/statistics/fuel-prices/summary` endpoint now uses the national aggregate and history.
+- `GET /statistics/fuel-prices/current`
+- `GET /statistics/fuel-prices/history`
+- `GET /statistics/fuel-prices/around`
+- `GET /statistics/fuel-prices/provinces`
+- `GET /statistics/fuel-prices/savings`
+- `GET /statistics/fuel-prices/summary`
 
-Database access is split into `CurrentPriceStatisticsRepository`, `HistoricalPriceStatisticsRepository`, and `GeospatialPriceStatisticsRepository`; station search persistence remains
-separate. Queries aggregate in PostgreSQL/PostGIS and fetch extrema in the same statement, avoiding
-N+1 access.
+Current, historical, calculation, and geospatial access use statistics-owned ports. No statistics
+query depends on `StationSearchRepositoryPort`, and all aggregation is set-based to avoid N+1 access.
 
 ## Indexes
 
-Changelog `011-create-statistics-indexes.yaml` adds product-first covering indexes for current and
-historical prices and functional country/area indexes for case-insensitive province and municipality
-filters. Radius queries reuse the existing GiST index on `station.location`.
+The changelogs add a snapshot/product/station index for imported historical prices, a lookup index on
+materialized statistics, area indexes, and product-first covering indexes. Radius queries reuse the
+GiST index on `station.location`.

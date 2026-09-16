@@ -26,7 +26,8 @@ public class ProcessStationSnapshotService {
     public void consume(ProcessStationSnapshotCommand command) {
 
         stationImportRepositoryPort.ensureExists(
-            command.snapshotId()
+            command.snapshotId(),
+            command.station().getCountry().name()
         );
 
         boolean claimed = stationImportRepositoryPort.claimEvent(
@@ -41,7 +42,8 @@ public class ProcessStationSnapshotService {
         Station persitedStation = stationRepositoryPort.upsertFromSnapshot(command.station());
         currentFuelPriceRepositoryPort.replaceCurrentPrices(
                 persitedStation.getId(), command.station().getProductPrices());
-        historicalPriceRepositoryPort.insertSnapshot(persitedStation.getId(), command.station().getProductPrices());
+        historicalPriceRepositoryPort.insertSnapshot(
+                command.snapshotId(), persitedStation.getId(), command.station().getProductPrices());
         stationImportRepositoryPort.incrementProcessedStations(command.snapshotId());
         stationImportFinalizer.tryFinalize(command.snapshotId());
     }

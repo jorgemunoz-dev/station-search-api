@@ -23,6 +23,9 @@ public class HistoricalFuelPriceEntity {
     @Column(name = "station_id", nullable = false)
     private UUID stationId;
 
+    @Column(name = "snapshot_id")
+    private UUID snapshotId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "product_type", nullable = false, length = 50)
     private ProductType productType;

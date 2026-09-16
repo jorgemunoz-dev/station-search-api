@@ -11,5 +11,9 @@ public interface HistoricalFuelPriceEntityMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "observedAt", ignore = true)
-    HistoricalFuelPriceEntity toEntity(UUID stationId, ProductPrice productPrice);
+    @Mapping(target = "snapshotId", source = "snapshotId")
+    @Mapping(target = "stationId", source = "stationId")
+    @Mapping(target = "productType", source = "productPrice.productType")
+    @Mapping(target = "price", source = "productPrice.price")
+    HistoricalFuelPriceEntity toEntity(UUID snapshotId, UUID stationId, ProductPrice productPrice);
 }

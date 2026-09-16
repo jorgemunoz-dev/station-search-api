@@ -3,6 +3,7 @@ package com.petrolprice.station_search_api.statistics.infrastructure.postgres;
 import com.petrolprice.station_search_api.statistics.application.port.out.CurrentPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.GeospatialPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.HistoricalPriceStatisticsRepository;
+import com.petrolprice.station_search_api.statistics.application.port.out.StatisticsCalculationRepository;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.GeographicScope;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
@@ -12,7 +13,6 @@ import com.petrolprice.station_search_api.statistics.application.result.Historic
 import com.petrolprice.station_search_api.statistics.application.result.RadiusPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.RankedAreaStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.StationPricePoint;
-import com.petrolprice.station_search_api.statistics.domain.GeographicLevel;
 import com.petrolprice.station_search_api.statistics.domain.ProductType;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -30,49 +30,49 @@ import org.springframework.stereotype.Repository;
 public class PostgresFuelPriceStatisticsRepository
         implements CurrentPriceStatisticsRepository,
                 HistoricalPriceStatisticsRepository,
-                GeospatialPriceStatisticsRepository {
+                GeospatialPriceStatisticsRepository,
+                StatisticsCalculationRepository {
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     @Override
     public Optional<CurrentPriceStatistics> current(CurrentStatisticsQuery query) {
         MapSqlParameterSource parameters = baseParameters(query.countryCode(), query.productType());
-        String scopePredicate = scopePredicate(query.scope(), parameters, "s");
-        String provincialAverage = query.scope().level() == GeographicLevel.MUNICIPALITY
-                ? """(SELECT AVG(cp.price) FROM station_current_product_price cp JOIN station ps ON ps.id = cp.station_id
-                       WHERE ps.country = :country AND cp.product_type = :productType AND cp.price > 0
-                         AND LOWER(ps.province) = LOWER(:scopeProvince))"""
-                : "NULL::numeric";
+        parameters.addValue("level", query.scope().level().name());
+        parameters.addValue("scopeKey", scopeKey(query.scope()));
 
         String sql = """
-            WITH scoped AS (
-                SELECT s.id, s.external_id, s.brand, s.province, cp.price,
-                       ST_Y(s.location::geometry) latitude,
-                       ST_X(s.location::geometry) longitude,
-                       cp.updated_at,
-                       ROW_NUMBER() OVER (ORDER BY cp.price, s.id) cheapest_rank,
-                       ROW_NUMBER() OVER (ORDER BY cp.price DESC, s.id) expensive_rank
-                FROM station s
-                JOIN station_current_product_price cp ON cp.station_id = s.id
-                WHERE s.country = :country AND cp.product_type = :productType AND cp.price > 0 AND %s
-            ), totals AS (
-                SELECT AVG(price) average_price, MIN(price) minimum_price, MAX(price) maximum_price,
-                       COUNT(*) station_count, MAX(updated_at) updated_at
-                FROM scoped
+            WITH selected AS (
+                SELECT * FROM fuel_price_statistics
+                WHERE country = :country AND product_type = :productType
+                  AND geographic_level = :level AND scope_key = :scopeKey
+                ORDER BY calculated_at DESC LIMIT 1
             ), national AS (
-                SELECT AVG(cp.price) average_price
-                FROM station_current_product_price cp JOIN station s ON s.id = cp.station_id
-                WHERE s.country = :country AND cp.product_type = :productType AND cp.price > 0
+                SELECT average_price FROM fuel_price_statistics f
+                WHERE f.snapshot_id = (SELECT snapshot_id FROM selected)
+                  AND f.country = :country AND f.product_type = :productType
+                  AND f.geographic_level = 'NATIONAL'
+            ), provincial AS (
+                SELECT average_price FROM fuel_price_statistics f
+                WHERE f.snapshot_id = (SELECT snapshot_id FROM selected)
+                  AND f.country = :country AND f.product_type = :productType
+                  AND f.geographic_level = 'PROVINCE'
+                  AND LOWER(f.area_name) = LOWER((SELECT province FROM selected))
             )
-            SELECT totals.*, national.average_price national_average, %s provincial_average,
-                   cheap.id cheap_id, cheap.external_id cheap_external_id, cheap.brand cheap_brand,
-                   cheap.price cheap_price, cheap.latitude cheap_latitude, cheap.longitude cheap_longitude,
-                   expensive.id expensive_id, expensive.external_id expensive_external_id,
-                   expensive.brand expensive_brand, expensive.price expensive_price,
-                   expensive.latitude expensive_latitude, expensive.longitude expensive_longitude
-            FROM totals CROSS JOIN national
-            LEFT JOIN scoped cheap ON cheap.cheapest_rank = 1
-            LEFT JOIN scoped expensive ON expensive.expensive_rank = 1
-            """.formatted(scopePredicate, provincialAverage);
+            SELECT selected.*, national.average_price national_average,
+                   provincial.average_price provincial_average,
+                   selected.cheapest_station_id cheap_id, selected.minimum_price cheap_price,
+                   cheap.external_id cheap_external_id, cheap.brand cheap_brand,
+                   ST_Y(cheap.location::geometry) cheap_latitude,
+                   ST_X(cheap.location::geometry) cheap_longitude,
+                   selected.most_expensive_station_id expensive_id,
+                   selected.maximum_price expensive_price,
+                   expensive.external_id expensive_external_id, expensive.brand expensive_brand,
+                   ST_Y(expensive.location::geometry) expensive_latitude,
+                   ST_X(expensive.location::geometry) expensive_longitude
+            FROM selected CROSS JOIN national LEFT JOIN provincial ON TRUE
+            JOIN station cheap ON cheap.id = selected.cheapest_station_id
+            JOIN station expensive ON expensive.id = selected.most_expensive_station_id
+            """;
 
         return jdbcTemplate.query(sql, parameters, rs -> {
             if (!rs.next() || rs.getLong("station_count") == 0) {
@@ -91,7 +91,7 @@ public class PostgresFuelPriceStatisticsRepository
                     station(rs, "expensive", null),
                     difference(average, rs.getBigDecimal("national_average")),
                     difference(average, rs.getBigDecimal("provincial_average")),
-                    rs.getTimestamp("updated_at").toInstant()));
+                    rs.getTimestamp("calculated_at").toInstant()));
         });
     }
 
@@ -100,23 +100,20 @@ public class PostgresFuelPriceStatisticsRepository
         MapSqlParameterSource parameters = baseParameters(query.countryCode(), query.productType())
                 .addValue("historyFrom", query.from().minusDays(30))
                 .addValue("from", query.from())
-                .addValue("to", query.to());
-        String scopePredicate = scopePredicate(query.scope(), parameters, "s");
+                .addValue("to", query.to())
+                .addValue("level", query.scope().level().name())
+                .addValue("scopeKey", scopeKey(query.scope()));
         String sql = """
-            WITH station_daily AS (
-                SELECT DISTINCT ON (hp.station_id, hp.observed_at::date)
-                       hp.station_id, hp.observed_at::date observed_date, hp.price
-                FROM historical_product_price hp
-                JOIN station s ON s.id = hp.station_id
-                WHERE s.country = :country AND hp.product_type = :productType AND hp.price > 0
-                  AND hp.observed_at >= CAST(:historyFrom AS date)
-                  AND hp.observed_at < (CAST(:to AS date) + INTERVAL '1 day')
-                  AND %s
-                ORDER BY hp.station_id, hp.observed_at::date, hp.observed_at DESC
-            ), daily AS (
-                SELECT observed_date, AVG(price) average_price, MIN(price) minimum_price,
-                       MAX(price) maximum_price, COUNT(*) station_count
-                FROM station_daily GROUP BY observed_date
+            WITH daily AS (
+                SELECT DISTINCT ON (calculated_at::date)
+                       calculated_at::date observed_date, average_price, minimum_price,
+                       maximum_price, station_count
+                FROM fuel_price_statistics
+                WHERE country = :country AND product_type = :productType
+                  AND geographic_level = :level AND scope_key = :scopeKey
+                  AND calculated_at >= CAST(:historyFrom AS date)
+                  AND calculated_at < (CAST(:to AS date) + INTERVAL '1 day')
+                ORDER BY calculated_at::date, calculated_at DESC
             )
             SELECT d.*,
                    AVG(d.average_price) OVER () period_average_price,
@@ -134,7 +131,7 @@ public class PostgresFuelPriceStatisticsRepository
             LEFT JOIN daily d30 ON d30.observed_date = d.observed_date - 30
             WHERE d.observed_date BETWEEN CAST(:from AS date) AND CAST(:to AS date)
             ORDER BY d.observed_date
-            """.formatted(scopePredicate);
+            """;
         return jdbcTemplate.query(sql, parameters, (rs, rowNum) -> new HistoricalPricePoint(
                 rs.getDate("observed_date").toLocalDate(),
                 rs.getBigDecimal("average_price"),
@@ -159,15 +156,21 @@ public class PostgresFuelPriceStatisticsRepository
                 .addValue("longitude", query.longitude())
                 .addValue("radius", query.radiusMeters());
         String sql = """
-            WITH nearby AS (
-                SELECT s.id, s.external_id, s.brand, cp.price,
+            WITH latest_snapshot AS (
+                SELECT snapshot_id FROM fuel_price_statistics
+                WHERE country = :country AND product_type = :productType
+                  AND geographic_level = 'NATIONAL'
+                ORDER BY calculated_at DESC LIMIT 1
+            ), nearby AS (
+                SELECT s.id, s.external_id, s.brand, hp.price,
                        ST_Y(s.location::geometry) latitude, ST_X(s.location::geometry) longitude,
                        ST_Distance(s.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography) distance_meters,
-                       ROW_NUMBER() OVER (ORDER BY cp.price, s.id) cheapest_rank,
+                       ROW_NUMBER() OVER (ORDER BY hp.price, s.id) cheapest_rank,
                        ROW_NUMBER() OVER (ORDER BY ST_Distance(s.location,
                            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography), s.id) nearest_rank
-                FROM station s JOIN station_current_product_price cp ON cp.station_id = s.id
-                WHERE s.country = :country AND cp.product_type = :productType AND cp.price > 0
+                FROM station s JOIN historical_product_price hp ON hp.station_id = s.id
+                WHERE hp.snapshot_id = (SELECT snapshot_id FROM latest_snapshot)
+                  AND s.country = :country AND hp.product_type = :productType AND hp.price > 0
                   AND ST_DWithin(s.location,
                       ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography, :radius)
             ), totals AS (
@@ -202,40 +205,33 @@ public class PostgresFuelPriceStatisticsRepository
     public List<RankedAreaStatistics> provinces(String countryCode, ProductType productType) {
         MapSqlParameterSource parameters = baseParameters(countryCode.toUpperCase(), productType);
         String sql = """
-            WITH source AS (
-                SELECT s.province, s.id, s.external_id, s.brand, cp.price,
-                       ST_Y(s.location::geometry) latitude, ST_X(s.location::geometry) longitude
-                FROM station s JOIN station_current_product_price cp ON cp.station_id = s.id
-                WHERE s.country = :country AND cp.product_type = :productType AND cp.price > 0
-                  AND s.province IS NOT NULL AND BTRIM(s.province) <> ''
-            ), aggregate AS (
-                SELECT province, AVG(price) average_price, MIN(price) minimum_price,
-                       MAX(price) maximum_price, COUNT(*) station_count
-                FROM source GROUP BY province
-            ), cheapest AS (
-                SELECT DISTINCT ON (province) province, id, external_id, brand, price, latitude, longitude
-                FROM source ORDER BY province, price, id
-            ), national AS (
-                SELECT AVG(cp.price) average_price
-                FROM station_current_product_price cp JOIN station s ON s.id = cp.station_id
-                WHERE s.country = :country AND cp.product_type = :productType AND cp.price > 0
+            WITH latest_snapshot AS (
+                SELECT snapshot_id, average_price national_average
+                FROM fuel_price_statistics
+                WHERE country = :country AND product_type = :productType
+                  AND geographic_level = 'NATIONAL'
+                ORDER BY calculated_at DESC LIMIT 1
             ), ranked AS (
-                SELECT aggregate.*,
+                SELECT f.*,
                        RANK() OVER (ORDER BY average_price, province) cheapest_rank,
                        RANK() OVER (ORDER BY average_price DESC, province) expensive_rank
-                FROM aggregate
+                FROM fuel_price_statistics f
+                WHERE f.snapshot_id = (SELECT snapshot_id FROM latest_snapshot)
+                  AND f.product_type = :productType AND f.geographic_level = 'PROVINCE'
             )
-            SELECT ranked.*, national.average_price national_average,
-                   cheapest.id cheap_id, cheapest.external_id cheap_external_id,
-                   cheapest.brand cheap_brand, cheapest.price cheap_price,
-                   cheapest.latitude cheap_latitude, cheapest.longitude cheap_longitude
-            FROM ranked JOIN cheapest USING (province) CROSS JOIN national
+            SELECT ranked.*, latest_snapshot.national_average,
+                   cheap.id cheap_id, cheap.external_id cheap_external_id,
+                   cheap.brand cheap_brand, ranked.minimum_price cheap_price,
+                   ST_Y(cheap.location::geometry) cheap_latitude,
+                   ST_X(cheap.location::geometry) cheap_longitude
+            FROM ranked CROSS JOIN latest_snapshot
+            JOIN station cheap ON cheap.id = ranked.cheapest_station_id
             ORDER BY cheapest_rank
             """;
         return jdbcTemplate.query(sql, parameters, (rs, rowNum) -> {
             BigDecimal average = rs.getBigDecimal("average_price");
             return new RankedAreaStatistics(
-                    rs.getString("province"), average, rs.getBigDecimal("minimum_price"),
+                    rs.getString("area_name"), average, rs.getBigDecimal("minimum_price"),
                     rs.getBigDecimal("maximum_price"), rs.getLong("station_count"),
                     station(rs, "cheap", null), difference(average, rs.getBigDecimal("national_average")),
                     rs.getInt("cheapest_rank"), rs.getInt("expensive_rank"));
@@ -245,8 +241,11 @@ public class PostgresFuelPriceStatisticsRepository
     @Override
     public Optional<BigDecimal> stationPrice(UUID stationId, ProductType productType) {
         String sql = """
-            SELECT price FROM station_current_product_price
-            WHERE station_id = :stationId AND product_type = :productType AND price > 0
+            SELECT hp.price FROM historical_product_price hp
+            JOIN fuel_price_statistics f ON f.snapshot_id = hp.snapshot_id
+              AND f.product_type = hp.product_type AND f.geographic_level = 'NATIONAL'
+            WHERE hp.station_id = :stationId AND hp.product_type = :productType AND hp.price > 0
+            ORDER BY f.calculated_at DESC LIMIT 1
             """;
         List<BigDecimal> prices = jdbcTemplate.query(
                 sql,
@@ -257,24 +256,60 @@ public class PostgresFuelPriceStatisticsRepository
         return prices.stream().findFirst();
     }
 
+    @Override
+    public void replaceForSnapshot(UUID snapshotId) {
+        jdbcTemplate.update(
+                "DELETE FROM fuel_price_statistics WHERE snapshot_id = :snapshotId",
+                new MapSqlParameterSource("snapshotId", snapshotId));
+
+        String sql = """
+            WITH source AS (
+                SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
+                       s.province, COALESCE(s.municipality, s.locality) municipality
+                FROM historical_product_price hp
+                JOIN station s ON s.id = hp.station_id
+                WHERE hp.snapshot_id = :snapshotId AND hp.price > 0
+            ), scopes AS (
+                SELECT snapshot_id, country, product_type, 'NATIONAL' geographic_level,
+                       'NATIONAL' scope_key, NULL::varchar area_name, NULL::varchar province,
+                       station_id, price FROM source
+                UNION ALL
+                SELECT snapshot_id, country, product_type, 'PROVINCE',
+                       'PROVINCE:' || LOWER(province), province, province, station_id, price
+                FROM source WHERE province IS NOT NULL AND BTRIM(province) <> ''
+                UNION ALL
+                SELECT snapshot_id, country, product_type, 'MUNICIPALITY',
+                       'MUNICIPALITY:' || LOWER(province) || ':' || LOWER(municipality),
+                       municipality, province, station_id, price
+                FROM source
+                WHERE province IS NOT NULL AND BTRIM(province) <> ''
+                  AND municipality IS NOT NULL AND BTRIM(municipality) <> ''
+            )
+            INSERT INTO fuel_price_statistics (
+                id, snapshot_id, country, product_type, geographic_level, scope_key,
+                area_name, province, average_price, minimum_price, maximum_price,
+                station_count, cheapest_station_id, most_expensive_station_id, calculated_at
+            )
+            SELECT gen_random_uuid(), snapshot_id, country, product_type, geographic_level, scope_key,
+                   MAX(area_name), MAX(province), AVG(price), MIN(price), MAX(price), COUNT(*),
+                   (ARRAY_AGG(station_id ORDER BY price, station_id))[1],
+                   (ARRAY_AGG(station_id ORDER BY price DESC, station_id))[1], NOW()
+            FROM scopes
+            GROUP BY snapshot_id, country, product_type, geographic_level, scope_key
+            """;
+        jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
+    }
+
     private MapSqlParameterSource baseParameters(String countryCode, ProductType productType) {
         return new MapSqlParameterSource().addValue("country", countryCode).addValue("productType", productType.name());
     }
 
-    private String scopePredicate(GeographicScope scope, MapSqlParameterSource parameters, String stationAlias) {
+    private String scopeKey(GeographicScope scope) {
         return switch (scope.level()) {
-            case NATIONAL -> "TRUE";
-            case PROVINCE -> {
-                parameters.addValue("scopeName", scope.name());
-                yield "LOWER(" + stationAlias + ".province) = LOWER(:scopeName)";
-            }
-            case MUNICIPALITY -> {
-                parameters.addValue("scopeName", scope.name());
-                parameters.addValue("scopeProvince", scope.province());
-                yield "LOWER(COALESCE(" + stationAlias + ".municipality, " + stationAlias
-                        + ".locality)) = LOWER(:scopeName) AND LOWER(" + stationAlias
-                        + ".province) = LOWER(:scopeProvince)";
-            }
+            case NATIONAL -> "NATIONAL";
+            case PROVINCE -> "PROVINCE:" + scope.name().toLowerCase(java.util.Locale.ROOT);
+            case MUNICIPALITY -> "MUNICIPALITY:" + scope.province().toLowerCase(java.util.Locale.ROOT)
+                    + ":" + scope.name().toLowerCase(java.util.Locale.ROOT);
         };
     }
 

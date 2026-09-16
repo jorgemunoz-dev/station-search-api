@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
+import com.petrolprice.station_search_api.statistics.application.CalculateFuelPriceStatisticsUseCase;
+import com.petrolprice.station_search_api.statistics.application.command.CalculateFuelPriceStatisticsCommand;
 import java.util.UUID;
 
 import com.petrolprice.station_search_api.station.ingestion.application.StationImportFinalizer;
@@ -20,6 +22,9 @@ class StationImportFinalizerTest {
     @Mock
     StationImportRepositoryPort stationImportRepositoryPort;
 
+    @Mock
+    CalculateFuelPriceStatisticsUseCase statisticsCalculator;
+
     @InjectMocks
     StationImportFinalizer finalizer;
 
@@ -32,10 +37,13 @@ class StationImportFinalizerTest {
 
         finalizer.tryFinalize(snapshotId);
 
-        InOrder inOrder = inOrder(stationImportRepositoryPort);
+        InOrder inOrder = inOrder(stationImportRepositoryPort, statisticsCalculator);
 
         inOrder.verify(stationImportRepositoryPort)
             .claimForStatisticsIfReady(snapshotId);
+
+        inOrder.verify(statisticsCalculator)
+            .calculate(new CalculateFuelPriceStatisticsCommand(snapshotId));
 
         inOrder.verify(stationImportRepositoryPort)
             .markCompleted(snapshotId);
@@ -58,6 +66,8 @@ class StationImportFinalizerTest {
         verify(stationImportRepositoryPort, never())
             .markCompleted(any());
 
+        verifyNoInteractions(statisticsCalculator);
+
         verifyNoMoreInteractions(stationImportRepositoryPort);
     }
 
@@ -79,7 +89,24 @@ class StationImportFinalizerTest {
         verify(stationImportRepositoryPort)
             .claimForStatisticsIfReady(snapshotId);
 
+        verify(statisticsCalculator)
+            .calculate(new CalculateFuelPriceStatisticsCommand(snapshotId));
+
         verify(stationImportRepositoryPort)
             .markCompleted(snapshotId);
+    }
+
+    @Test
+    void shouldNotCompleteWhenStatisticsCalculationFails() {
+        UUID snapshotId = UUID.randomUUID();
+        CalculateFuelPriceStatisticsCommand command = new CalculateFuelPriceStatisticsCommand(snapshotId);
+        when(stationImportRepositoryPort.claimForStatisticsIfReady(snapshotId)).thenReturn(true);
+        doThrow(new RuntimeException("Statistics failed")).when(statisticsCalculator).calculate(command);
+
+        assertThatThrownBy(() -> finalizer.tryFinalize(snapshotId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Statistics failed");
+
+        verify(stationImportRepositoryPort, never()).markCompleted(snapshotId);
     }
 }

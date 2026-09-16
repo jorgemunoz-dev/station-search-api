@@ -116,10 +116,8 @@ The migration does not change API contracts, queue names, database tables, or ap
 
 ## Station ingestion to statistics collaboration
 
-`StationImportFinalizer` currently only performs the atomic readiness claim and marks the import as
-completed; statistics calculation is still a placeholder. When calculation is implemented, the
-first version will use a **synchronous application API**, not an infrastructure dependency and not
-an in-memory Spring event:
+`StationImportFinalizer` uses a **synchronous application API** after the atomic readiness claim.
+It does not depend on statistics infrastructure and does not publish an in-memory Spring event:
 
 ```text
 station.ingestion.application.StationImportFinalizer
@@ -127,7 +125,7 @@ station.ingestion.application.StationImportFinalizer
     -> statistics infrastructure through statistics-owned output ports
 ```
 
-The statistics module owns the input port and command, for example:
+The statistics module owns the input port and command:
 
 ```java
 public interface CalculateFuelPriceStatistics {

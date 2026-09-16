@@ -5,5 +5,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface HistoricalPriceRepositoryPort {
-    void insertSnapshot(UUID stationId, List<ProductPrice> productPrices);
+    void insertSnapshot(UUID snapshotId, UUID stationId, List<ProductPrice> productPrices);
 }

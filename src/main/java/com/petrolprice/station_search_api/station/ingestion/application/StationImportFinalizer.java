@@ -1,6 +1,8 @@
 package com.petrolprice.station_search_api.station.ingestion.application;
 
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
+import com.petrolprice.station_search_api.statistics.application.CalculateFuelPriceStatisticsUseCase;
+import com.petrolprice.station_search_api.statistics.application.command.CalculateFuelPriceStatisticsCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +14,7 @@ import java.util.UUID;
 public class StationImportFinalizer {
 
     private final StationImportRepositoryPort stationImportRepositoryPort;
-//    private final DailyFuelPriceStatisticsCalculator statisticsCalculator;
+    private final CalculateFuelPriceStatisticsUseCase statisticsCalculator;
 
     @Transactional
     public void tryFinalize(UUID snapshotId) {
@@ -24,7 +26,7 @@ public class StationImportFinalizer {
             return;
         }
 
-//        statisticsCalculator.calculate(snapshotId);
+        statisticsCalculator.calculate(new CalculateFuelPriceStatisticsCommand(snapshotId));
 
         stationImportRepositoryPort.markCompleted(snapshotId);
     }
