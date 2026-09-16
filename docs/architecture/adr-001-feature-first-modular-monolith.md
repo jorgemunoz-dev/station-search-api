@@ -114,6 +114,48 @@ The package migration was completed as behavior-preserving vertical slices:
 
 The migration does not change API contracts, queue names, database tables, or application behavior.
 
+## Station ingestion to statistics collaboration
+
+`StationImportFinalizer` currently only performs the atomic readiness claim and marks the import as
+completed; statistics calculation is still a placeholder. When calculation is implemented, the
+first version will use a **synchronous application API**, not an infrastructure dependency and not
+an in-memory Spring event:
+
+```text
+station.ingestion.application.StationImportFinalizer
+    -> statistics.application.CalculateFuelPriceStatistics
+    -> statistics infrastructure through statistics-owned output ports
+```
+
+The statistics module owns the input port and command, for example:
+
+```java
+public interface CalculateFuelPriceStatistics {
+    void calculate(CalculateFuelPriceStatisticsCommand command);
+}
+```
+
+The finalization transaction follows this order:
+
+1. Atomically change `PROCESSING` to `CALCULATING_STATISTICS` only when publishing has completed and
+   `processedStations == publishedStations`.
+2. If the claim returns `false`, finish without doing any work.
+3. Call the statistics application API with the snapshot identifier.
+4. Mark the import `COMPLETED` only after calculation succeeds.
+
+Because both modules run in the same process and use the same database, the synchronous call joins
+the existing transaction. If calculation fails, the claim and completion transition roll back and
+the Rabbit delivery can be retried. The atomic status transition ensures that concurrent finalizers
+cannot calculate the same snapshot twice.
+
+An asynchronous event is not justified yet. Publishing an ordinary Spring event after the claim
+would risk losing work if the process stops, while publishing RabbitMQ directly inside the database
+transaction would create a dual-write problem. If statistics later needs independent workers or a
+separate deployment, replace the direct application call with a **transactional outbox**: persist a
+`StationImportReadyForStatistics` event in the same transaction as the claim, relay it to RabbitMQ,
+make the statistics consumer idempotent by `snapshotId`, and mark the import completed only after a
+successful calculation.
+
 ## Testing layout
 
 Tests mirror their production module. Cross-module acceptance journeys remain under `integration`:
