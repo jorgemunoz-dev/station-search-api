@@ -1,6 +1,6 @@
 # ADR-001: Feature-first modular monolith
 
-- Status: Accepted
+- Status: Implemented
 - Date: 2026-09-16
 
 ## Context
@@ -39,15 +39,15 @@ com.petrolprice.station_search_api
 │   │   │   ├── CompleteStationPublishing.java
 │   │   │   └── port
 │   │   └── infrastructure
-│   │       ├── rabbit
-│   │       └── postgres
-│   └── search
+│   │       └── rabbit
+│   ├── search
 │       ├── application
 │       │   ├── FindStations.java
 │       │   └── port
 │       └── infrastructure
-│           ├── rest
-│           └── postgres
+│           └── rest
+│   └── infrastructure
+│       └── postgres
 ├── location
 │   ├── application
 │   ├── domain
@@ -60,13 +60,21 @@ com.petrolprice.station_search_api
 │   └── infrastructure
 │       ├── rest
 │       └── postgres
+├── contract
+│   └── rest (OpenAPI-generated API and models)
 └── platform
     ├── configuration
-    └── observability
+    ├── observability
+    └── rest (cross-cutting error handling)
 ```
 
 Package names describe business ownership first. `application`, `domain`, and `infrastructure`
 remain useful, but only inside the module they protect.
+
+Station PostgreSQL persistence sits at `station.infrastructure.postgres` because ingestion writes
+the same catalogue model that search reads. Rabbit and REST adapters remain inside their respective
+capabilities. This makes the shared read model explicit without allowing one capability to depend on
+the other's adapter.
 
 ### Dependency rules
 
@@ -92,22 +100,19 @@ Packages already supply context, so class names should express intent without re
 `UseCase` and `Port` suffixes are allowed during migration, but new code should prefer the shorter
 names above.
 
-## Migration plan
+## Migration record
 
-The move should be incremental and behavior-preserving, not a single repository-wide rename:
+The package migration was completed as behavior-preserving vertical slices:
 
-1. **Statistics first.** It is mostly a skeleton today, so create new statistics code directly in
-   `statistics` and prevent application code from depending on generated REST DTOs.
-2. **Location search.** Move its application API, port, REST adapter, and PostgreSQL adapter as one
-   vertical slice. Its limited dependencies make this a low-risk validation of the structure.
-3. **Station catalogue.** Move the shared station domain, then ingestion and search application
-   APIs, followed by their adapters. Keep ingestion and search as subpackages of `station`.
-4. **Platform.** Move only truly cross-cutting Spring configuration and observability code.
-5. Add automated package dependency tests after the packages exist; do not introduce rules that
-   merely encode the old layout.
+1. **Statistics** now owns its application API, REST adapter, and product dimension; application code
+   no longer depends on generated REST DTOs.
+2. **Location search** owns its application API, output port, REST adapter, and PostgreSQL adapter.
+3. **Station catalogue** owns the shared station domain, ingestion and search application APIs,
+   Rabbit adapter, REST adapter, and shared PostgreSQL read/write model.
+4. **Platform** owns cross-cutting Spring configuration, REST error handling, and observability.
+5. Unit tests mirror their production modules; only cross-module journeys remain in `integration`.
 
-Each migration step must keep tests green and should not change API contracts, queue names, database
-tables, or behavior in the same commit.
+The migration does not change API contracts, queue names, database tables, or application behavior.
 
 ## Testing layout
 

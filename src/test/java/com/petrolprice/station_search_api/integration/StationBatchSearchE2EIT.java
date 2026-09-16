@@ -1,7 +1,7 @@
 package com.petrolprice.station_search_api.integration;
 
-import static com.petrolprice.station_search_api.domain.type.ProductType.DIESEL_A;
-import static com.petrolprice.station_search_api.domain.type.ProductType.GASOLINE_95_E5;
+import static com.petrolprice.station_search_api.station.domain.type.ProductType.DIESEL_A;
+import static com.petrolprice.station_search_api.station.domain.type.ProductType.GASOLINE_95_E5;
 import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.aStationSnapshot;
 import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.price;
 import static org.assertj.core.api.Assertions.assertThat;
