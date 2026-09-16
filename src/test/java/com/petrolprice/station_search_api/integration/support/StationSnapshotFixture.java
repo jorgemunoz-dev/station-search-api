@@ -29,6 +29,8 @@ public final class StationSnapshotFixture {
     private UUID eventId = UUID.randomUUID();
     private String externalId = "station-" + UUID.randomUUID();
     private String brand = "REPSOL";
+    private BigDecimal latitude = new BigDecimal("40.4168");
+    private BigDecimal longitude = new BigDecimal("-3.7038");
     private List<ProductPrice> prices = List.of(price(ProductType.DIESEL_A, "1.599"));
 
     private StationSnapshotFixture() {}
@@ -54,6 +56,12 @@ public final class StationSnapshotFixture {
 
     public StationSnapshotFixture withBrand(String brand) {
         this.brand = brand;
+        return this;
+    }
+
+    public StationSnapshotFixture withLocation(String latitude, String longitude) {
+        this.latitude = new BigDecimal(latitude);
+        this.longitude = new BigDecimal(longitude);
         return this;
     }
 
@@ -97,7 +105,7 @@ public final class StationSnapshotFixture {
                         List.of(new OpeningPeriodMessage(
                                 "07:00:00", "22:00:00", List.of("MON", "TUE", "WED"))),
                         new AddressMessage("Test street", "28001", "Madrid", "Madrid", "Madrid"),
-                        new LocationMessage(40.4168, -3.7038),
+                        new LocationMessage(latitude.doubleValue(), longitude.doubleValue()),
                         prices.stream()
                                 .map(price -> new FuelPriceMessage(
                                         price.getProductType().name(), price.getPrice().doubleValue()))
@@ -132,8 +140,8 @@ public final class StationSnapshotFixture {
                         .province("Madrid")
                         .build())
                 .location(GeoLocation.builder()
-                        .latitude(new BigDecimal("40.4168"))
-                        .longitude(new BigDecimal("-3.7038"))
+                        .latitude(latitude)
+                        .longitude(longitude)
                         .build())
                 .productPrices(prices)
                 .build();

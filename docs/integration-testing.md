@@ -7,6 +7,7 @@ The integration suite is split into three layers so adding a case does not requi
 3. **Scenario tests** invoke the nearest useful boundary:
    - `StationImportWorkflowIT` uses Spring services plus real PostgreSQL for fast ordering, idempotency and concurrency permutations.
    - `StationSnapshotRabbitIT` keeps only a small number of end-to-end messaging contract checks.
+   - `StationBatchSearchE2EIT` is the acceptance test joining both sides of the application: a complete Rabbit batch is persisted, completed and then filtered through the HTTP API.
    - Adapter-specific tests should exercise PostgreSQL behavior directly when no service orchestration is involved.
 
 All fixtures use generated snapshot, event and external IDs. This prevents cases from depending on execution order and avoids maintaining a large shared dataset. Fixed SQL datasets remain useful for search/ranking tests, where a carefully controlled spatial distribution is the behavior under test.
@@ -26,3 +27,16 @@ assertThat(probe.importState(snapshot.snapshotId()).status())
 ```
 
 Use `runConcurrently` for race scenarios and Awaitility only across asynchronous boundaries such as RabbitMQ. Synchronous service tests should assert immediately, which makes failures faster and easier to diagnose.
+
+## Current end-to-end coverage
+
+| Application capability | Boundary covered | Test |
+| --- | --- | --- |
+| Process snapshot and complete import | Spring services -> PostgreSQL | `StationImportWorkflowIT` |
+| Duplicate-event and finalization races | Concurrent service transactions -> PostgreSQL constraints/atomic updates | `StationImportWorkflowIT` |
+| Snapshot and completion message contracts | RabbitMQ -> listeners -> workflow -> PostgreSQL | `StationSnapshotRabbitIT` |
+| Complete batch and searchable result | RabbitMQ -> listeners -> PostgreSQL -> `GET /stations` | `StationBatchSearchE2EIT` |
+| Location search | `GET /locations/search` -> PostgreSQL | `SearchLocationEndpointIT` |
+| Station geospatial ranking details | Search adapter -> PostGIS | `PostgresStationSearchPersistenceAdapterIT` |
+
+`GetFuelPriceSummaryService` and `FuelPriceStatisticsController` currently return `null`; they do not yet implement a behavior that an end-to-end test can assert. Their acceptance path should be added when statistics calculation and retrieval are implemented. Until then, the batch acceptance test verifies the available finalization behavior: the import reaches `COMPLETED` after all published stations are processed.
