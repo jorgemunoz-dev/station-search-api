@@ -93,3 +93,7 @@ app:
           dlq: station.snapshot.ingestion.dlq
           bindings:
             - energy.snapshot.fuel.*.created
+        - name: station.snapshot.completed.queue
+          dlq: station.snapshot.completed.dlq
+          bindings:
+            - energy.snapshot.completed

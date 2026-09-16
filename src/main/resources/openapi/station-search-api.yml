@@ -202,8 +202,119 @@ paths:
                 items:
                   $ref: '#/components/schemas/LocationSuggestion'
 
+  /statistics/fuel-prices/summary:
+    get:
+      tags:
+        - Fuel Price Statistics
+      operationId: getFuelPriceSummary
+      summary: Get fuel price summary
+      description: >
+        Returns aggregated fuel price statistics for a country and product,
+        including average price, variation, minimum and maximum prices and number of stations analysed.
+
+      parameters:
+        - name: countryCode
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: ES
+        - name: productType
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ProductType'
+        - name: days
+          in: query
+          required: false
+          description: Number of previous days used to calculate the statistics.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 7
+          example: 7
+      responses:
+        '200':
+          description: Fuel price summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FuelPriceSummaryResponse'
+
+
+
 components:
+
   schemas:
+    FuelPriceSummaryResponse:
+      type: object
+      required:
+        - countryCode
+        - productType
+        - averagePrice
+        - stationsAnalyzed
+        - updatedAt
+      properties:
+        countryCode:
+          type: string
+          example: ES
+        productType:
+          $ref: '#/components/schemas/ProductType'
+        averagePrice:
+          type: number
+          format: double
+          example: 1.389
+        previousAveragePrice:
+          type: number
+          format: double
+          example: 1.409
+        variation:
+          type: number
+          format: double
+          description: Difference against the beginning of the selected period.
+          example: -0.020
+        variationPercentage:
+          type: number
+          format: double
+          example: -1.42
+        minimumPrice:
+          type: number
+          format: double
+          example: 1.358
+        maximumPrice:
+          type: number
+          format: double
+          example: 1.439
+        stationsAnalyzed:
+          type: integer
+          format: int64
+          example: 12458
+        estimatedSaving:
+          $ref: '#/components/schemas/EstimatedSaving'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-08-31T12:30:00Z'
+
+    EstimatedSaving:
+      type: object
+      properties:
+        pricePerLiter:
+          type: number
+          format: double
+          example: 0.136
+        tankSizeLiters:
+          type: number
+          format: double
+          example: 55
+        amount:
+          type: number
+          format: double
+          example: 7.48
+
     LocationSuggestion:
       type: object
       required:
