@@ -57,27 +57,13 @@ The main goal is to keep the domain isolated from technical concerns suhc as:
 
 ## Package Structure
 
-```text
-com.petrolprice.station_search_api
-├── StationSearchApiApplication.java
-├── domain
-│   ├── model
-│   ├── service
-│   └── port
-│       ├── in
-│       └── out
-├── application
-│   ├── usecase
-│   ├── command
-│   └── mapper
-└── infrastructure
-    ├── in
-    │   ├── rest
-    │   └── messaging
-    ├── out
-    │   └── persistence
-    └── config
-```
+The project is evolving from global technical layers to a feature-first modular monolith. The
+target modules are `station` (with `ingestion` and `search` capabilities), `location`, `statistics`,
+and technical `platform` configuration. Each business module keeps its own domain, application
+ports, and infrastructure adapters.
+
+The rationale, dependency rules, target tree, and incremental migration sequence are documented in
+[ADR-001: Feature-first modular monolith](docs/architecture/adr-001-feature-first-modular-monolith.md).
 
 ---
 
