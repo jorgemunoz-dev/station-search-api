@@ -246,9 +246,191 @@ paths:
 
 
 
+  /statistics/fuel-prices/current:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getCurrentFuelPriceStatistics
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
+        - {name: area, in: query, required: false, schema: {type: string}}
+        - {name: province, in: query, required: false, description: Required for municipality scope, schema: {type: string}}
+      responses:
+        '200':
+          description: Current aggregate
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentPriceStatisticsResponse'}
+
+  /statistics/fuel-prices/history:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getHistoricalFuelPriceStatistics
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
+        - {name: area, in: query, required: false, schema: {type: string}}
+        - {name: province, in: query, required: false, schema: {type: string}}
+        - {name: from, in: query, required: true, schema: {type: string, format: date}}
+        - {name: to, in: query, required: true, schema: {type: string, format: date}}
+      responses:
+        '200':
+          description: Daily historical aggregates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/HistoricalPricePointResponse'}
+
+  /statistics/fuel-prices/around:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getRadiusFuelPriceStatistics
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: latitude, in: query, required: true, schema: {type: number, format: double}}
+        - {name: longitude, in: query, required: true, schema: {type: number, format: double}}
+        - {name: radiusMeters, in: query, required: true, schema: {type: integer, enum: [5000, 10000, 20000, 50000]}}
+      responses:
+        '200':
+          description: Radius aggregate
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RadiusPriceStatisticsResponse'}
+
+  /statistics/fuel-prices/provinces:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getProvinceFuelPriceStatistics
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+      responses:
+        '200':
+          description: Ranked province aggregates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/RankedAreaStatisticsResponse'}
+
+
+
+  /statistics/fuel-prices/savings:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getFuelSaving
+      parameters:
+        - {name: stationId, in: query, required: true, schema: {type: string, format: uuid}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: referencePrice, in: query, required: true, schema: {type: number}}
+        - {name: tankLiters, in: query, required: false, schema: {type: number, default: 55}}
+      responses:
+        '200':
+          description: Theoretical saving against the reference price
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FuelSavingResponse'}
+
 components:
 
   schemas:
+    FuelSavingResponse:
+      type: object
+      properties:
+        stationPrice: {type: number}
+        referencePrice: {type: number}
+        savingPerLiter: {type: number}
+        tankLiters: {type: number, default: 55}
+        savingPerTank: {type: number}
+
+    GeographicLevel:
+      type: string
+      enum: [NATIONAL, PROVINCE, MUNICIPALITY]
+
+    GeographicScopeResponse:
+      type: object
+      properties:
+        level: {$ref: '#/components/schemas/GeographicLevel'}
+        name: {type: string, nullable: true}
+        province: {type: string, nullable: true}
+
+    StationPricePointResponse:
+      type: object
+      properties:
+        stationId: {type: string, format: uuid}
+        externalId: {type: string}
+        brand: {type: string}
+        price: {type: number}
+        latitude: {type: number}
+        longitude: {type: number}
+        distanceMeters: {type: number, nullable: true}
+
+    CurrentPriceStatisticsResponse:
+      type: object
+      properties:
+        countryCode: {type: string}
+        productType: {$ref: '#/components/schemas/ProductType'}
+        scope: {$ref: '#/components/schemas/GeographicScopeResponse'}
+        averagePrice: {type: number}
+        minimumPrice: {type: number}
+        maximumPrice: {type: number}
+        stationCount: {type: integer, format: int64}
+        cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
+        mostExpensiveStation: {$ref: '#/components/schemas/StationPricePointResponse'}
+        nationalAverageDifference: {type: number, nullable: true}
+        provincialAverageDifference: {type: number, nullable: true}
+        updatedAt: {type: string, format: date-time}
+
+    HistoricalPricePointResponse:
+      type: object
+      properties:
+        date: {type: string, format: date}
+        averagePrice: {type: number}
+        minimumPrice: {type: number}
+        maximumPrice: {type: number}
+        stationCount: {type: integer, format: int64}
+        periodAveragePrice: {type: number}
+        periodMinimumPrice: {type: number}
+        periodMaximumPrice: {type: number}
+        changeFromPreviousDay: {type: number, nullable: true}
+        changeFromSevenDaysAgo: {type: number, nullable: true}
+        changeFromThirtyDaysAgo: {type: number, nullable: true}
+        percentageFromPreviousDay: {type: number, nullable: true}
+        percentageFromSevenDaysAgo: {type: number, nullable: true}
+        percentageFromThirtyDaysAgo: {type: number, nullable: true}
+
+    RadiusPriceStatisticsResponse:
+      type: object
+      properties:
+        countryCode: {type: string}
+        productType: {$ref: '#/components/schemas/ProductType'}
+        latitude: {type: number}
+        longitude: {type: number}
+        radiusMeters: {type: integer}
+        stationCount: {type: integer, format: int64}
+        averagePrice: {type: number}
+        minimumPrice: {type: number}
+        maximumPrice: {type: number}
+        priceSpread: {type: number}
+        cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
+        nearestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
+
+    RankedAreaStatisticsResponse:
+      type: object
+      properties:
+        area: {type: string}
+        averagePrice: {type: number}
+        minimumPrice: {type: number}
+        maximumPrice: {type: number}
+        stationCount: {type: integer, format: int64}
+        cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
+        nationalAverageDifference: {type: number}
+        cheapestRank: {type: integer}
+        mostExpensiveRank: {type: integer}
     FuelPriceSummaryResponse:
       type: object
       required:

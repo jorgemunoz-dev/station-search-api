@@ -1,0 +1,21 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 011-create-statistics-indexes
+      author: codex
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX idx_current_price_product_station
+              ON station_current_product_price (product_type, station_id)
+              INCLUDE (price, updated_at);
+
+              CREATE INDEX idx_historical_price_product_observed_station
+              ON historical_product_price (product_type, observed_at, station_id)
+              INCLUDE (price);
+
+              CREATE INDEX idx_station_country_province_normalized
+              ON station (country, LOWER(province));
+
+              CREATE INDEX idx_station_country_municipality_normalized
+              ON station (country, LOWER(COALESCE(municipality, locality)));
