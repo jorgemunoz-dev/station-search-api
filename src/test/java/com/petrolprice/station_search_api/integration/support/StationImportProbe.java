@@ -13,7 +13,8 @@ public class StationImportProbe {
 
     public ImportState importState(UUID snapshotId) {
         return jdbcClient
-                .sql("""
+                .sql(
+                        """
                     SELECT status, processed_stations, published_stations, publishing_completed
                     FROM station_import
                     WHERE snapshot_id = :snapshotId
@@ -37,7 +38,8 @@ public class StationImportProbe {
 
     public int historicalPrices(String externalId) {
         return jdbcClient
-                .sql("""
+                .sql(
+                        """
                     SELECT COUNT(*)
                     FROM historical_product_price price
                     JOIN station ON station.id = price.station_id
@@ -49,16 +51,20 @@ public class StationImportProbe {
     }
 
     public void clean() {
-        jdbcClient.sql("""
+        jdbcClient
+                .sql(
+                        """
                 TRUNCATE TABLE station_import, historical_product_price,
                     station_current_product_price, station_opening_period, station
                 CASCADE
-                """).update();
+                """)
+                .update();
     }
 
     private int count(String sql, Object id) {
         return jdbcClient.sql(sql).param("id", id).query(Integer.class).single();
     }
 
-    public record ImportState(String status, int processedStations, Integer publishedStations, boolean publishingCompleted) {}
+    public record ImportState(
+            String status, int processedStations, Integer publishedStations, boolean publishingCompleted) {}
 }

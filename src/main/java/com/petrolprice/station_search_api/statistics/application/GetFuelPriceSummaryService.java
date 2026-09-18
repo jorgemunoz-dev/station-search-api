@@ -14,7 +14,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 @Service
 @RequiredArgsConstructor
 public class GetFuelPriceSummaryService implements GetFuelPriceSummaryUseCase {
@@ -29,24 +28,24 @@ public class GetFuelPriceSummaryService implements GetFuelPriceSummaryUseCase {
             throw new IllegalArgumentException("days must be between 1 and 365");
         }
         CurrentPriceStatistics current = statistics.current(
-                new CurrentStatisticsQuery(countryCode, productType, GeographicScope.national()));
+            new CurrentStatisticsQuery(countryCode, productType, GeographicScope.national()));
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         List<HistoricalPricePoint> history = statistics.history(new HistoricalStatisticsQuery(
-                countryCode, productType, GeographicScope.national(), today.minusDays(periodDays), today));
+            countryCode, productType, GeographicScope.national(), today.minusDays(periodDays), today));
         BigDecimal previous = history.isEmpty() ? null : history.getFirst().averagePrice();
         BigDecimal variation = previous == null ? null : current.averagePrice().subtract(previous);
         Double percentage = previous == null || previous.signum() == 0
-                ? null
-                : variation.multiply(BigDecimal.valueOf(100)).divide(previous, 4, java.math.RoundingMode.HALF_UP).doubleValue();
+            ? null
+            : variation.multiply(BigDecimal.valueOf(100)).divide(previous, 4, java.math.RoundingMode.HALF_UP).doubleValue();
         BigDecimal savingPerLiter = current.maximumPrice().subtract(current.minimumPrice());
 
         return new FuelPriceSummaryResult(
-                countryCode.toUpperCase(), productType, current.averagePrice().doubleValue(),
-                value(previous), value(variation), percentage, current.minimumPrice().doubleValue(),
-                current.maximumPrice().doubleValue(), current.stationCount(),
-                new EstimatedSaving(savingPerLiter.doubleValue(), DEFAULT_TANK_LITERS,
-                        savingPerLiter.multiply(BigDecimal.valueOf(DEFAULT_TANK_LITERS)).doubleValue()),
-                current.updatedAt());
+            countryCode.toUpperCase(), productType, current.averagePrice().doubleValue(),
+            value(previous), value(variation), percentage, current.minimumPrice().doubleValue(),
+            current.maximumPrice().doubleValue(), current.stationCount(),
+            new EstimatedSaving(savingPerLiter.doubleValue(), DEFAULT_TANK_LITERS,
+                savingPerLiter.multiply(BigDecimal.valueOf(DEFAULT_TANK_LITERS)).doubleValue()),
+            current.updatedAt());
     }
 
     private Double value(BigDecimal value) {

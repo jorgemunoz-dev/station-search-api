@@ -1,19 +1,16 @@
 package com.petrolprice.station_search_api.statistics.application;
 
 import com.petrolprice.station_search_api.statistics.application.port.out.CurrentPriceStatisticsRepository;
-import com.petrolprice.station_search_api.statistics.application.port.out.GeospatialPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.HistoricalPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
-import com.petrolprice.station_search_api.statistics.application.query.RadiusStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
-import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
 import com.petrolprice.station_search_api.statistics.application.result.FuelSaving;
-import com.petrolprice.station_search_api.statistics.application.result.RadiusPriceStatistics;
+import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
 import com.petrolprice.station_search_api.statistics.application.result.RankedAreaStatistics;
 import com.petrolprice.station_search_api.statistics.domain.ProductType;
-import java.util.List;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,7 +20,6 @@ import org.springframework.stereotype.Service;
 public class FuelPriceStatisticsService implements FuelPriceStatisticsUseCase {
     private final CurrentPriceStatisticsRepository currentRepository;
     private final HistoricalPriceStatisticsRepository historicalRepository;
-    private final GeospatialPriceStatisticsRepository geospatialRepository;
     private final FuelSavingCalculator savingCalculator;
 
     @Override
@@ -36,13 +32,6 @@ public class FuelPriceStatisticsService implements FuelPriceStatisticsUseCase {
     @Override
     public List<HistoricalPricePoint> history(HistoricalStatisticsQuery query) {
         return historicalRepository.history(query);
-    }
-
-    @Override
-    public RadiusPriceStatistics around(RadiusStatisticsQuery query) {
-        return geospatialRepository
-                .around(query)
-                .orElseThrow(() -> new StatisticsNotFoundException("No stations match the radius"));
     }
 
     @Override

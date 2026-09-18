@@ -1,13 +1,13 @@
 package com.petrolprice.station_search_api.station.search.infrastructure.rest.factory;
 
+import com.petrolprice.station_search_api.contract.rest.model.StationSearchSortBy;
+import com.petrolprice.station_search_api.platform.rest.exception.InvalidStationSearchRequestException;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsPageRequest;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsQuery;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsSort;
 import com.petrolprice.station_search_api.station.search.application.searcharea.RadiusSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.StationSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.ViewportSearchArea;
-import com.petrolprice.station_search_api.contract.rest.model.StationSearchSortBy;
-import com.petrolprice.station_search_api.platform.rest.exception.InvalidStationSearchRequestException;
 import com.petrolprice.station_search_api.station.search.infrastructure.rest.request.StationSearchParameters;
 import java.util.Objects;
 import org.springframework.stereotype.Component;

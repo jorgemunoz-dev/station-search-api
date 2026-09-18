@@ -1,7 +1,7 @@
 package com.petrolprice.station_search_api.location.infrastructure.rest.mapper;
 
-import com.petrolprice.station_search_api.location.application.result.SearchLocationResult;
 import com.petrolprice.station_search_api.contract.rest.model.LocationSuggestion;
+import com.petrolprice.station_search_api.location.application.result.SearchLocationResult;
 import org.mapstruct.Mapper;
 import org.openapitools.jackson.nullable.JsonNullable;
 

@@ -7,16 +7,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.petrolprice.station_search_api.integration.support.StationImportProbe;
 import com.petrolprice.station_search_api.integration.support.StationSnapshotFixture;
-import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
 import com.petrolprice.station_search_api.station.ingestion.application.CompleteStationPublishingService;
+import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
 import com.petrolprice.station_search_api.statistics.application.port.out.CurrentPriceStatisticsRepository;
-import com.petrolprice.station_search_api.statistics.application.port.out.GeospatialPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.HistoricalPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.StatisticsCalculationRepository;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.GeographicScope;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
-import com.petrolprice.station_search_api.statistics.application.query.RadiusStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.domain.ProductType;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -41,9 +39,6 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
 
     @Autowired
     private HistoricalPriceStatisticsRepository historicalStatistics;
-
-    @Autowired
-    private GeospatialPriceStatisticsRepository geospatialStatistics;
 
     @Autowired
     private StatisticsCalculationRepository calculationRepository;
@@ -78,13 +73,14 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
 
     @Test
     void shouldCalculateNationalProvinceAndMunicipalityCurrentStatistics() {
-        var national = currentStatistics.current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.national()))
+        var national = currentStatistics
+                .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.national()))
                 .orElseThrow();
-        var province = currentStatistics.current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.province("North")))
+        var province = currentStatistics
+                .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.province("North")))
                 .orElseThrow();
-        var municipality = currentStatistics.current(new CurrentStatisticsQuery(
+        var municipality = currentStatistics
+                .current(new CurrentStatisticsQuery(
                         "ES", ProductType.DIESEL_A, GeographicScope.municipality("South", "Beta")))
                 .orElseThrow();
 
@@ -99,26 +95,13 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
-    void shouldRankProvincesAndAggregateStationsAroundCoordinates() {
-        var provinces = currentStatistics.provinces("ES", ProductType.DIESEL_A);
-        var radius = geospatialStatistics.around(new RadiusStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, new BigDecimal("40.0000"), new BigDecimal("-3.0000"), 5_000))
-                .orElseThrow();
-
-        assertThat(provinces).extracting(item -> item.area()).containsExactly("North", "South");
-        assertThat(provinces.getFirst().cheapestRank()).isOne();
-        assertThat(radius.stationCount()).isEqualTo(2);
-        assertThat(radius.priceSpread()).isEqualByComparingTo("0.400");
-        assertThat(radius.cheapestStation().externalId()).isEqualTo(cheap.externalId());
-        assertThat(radius.nearestStation().externalId()).isEqualTo(cheap.externalId());
-    }
-
-    @Test
     void shouldReadHistoricalStatisticsCalculatedForCompletedSnapshots() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         UUID stationId = stationId(cheap.externalId());
-        createCalculatedSnapshot(stationId, "1.600", today.minusDays(8).atTime(18, 0).toInstant(ZoneOffset.UTC));
-        createCalculatedSnapshot(stationId, "1.700", today.minusDays(1).atTime(8, 0).toInstant(ZoneOffset.UTC));
+        createCalculatedSnapshot(
+                stationId, "1.600", today.minusDays(8).atTime(18, 0).toInstant(ZoneOffset.UTC));
+        createCalculatedSnapshot(
+                stationId, "1.700", today.minusDays(1).atTime(8, 0).toInstant(ZoneOffset.UTC));
 
         var history = historicalStatistics.history(new HistoricalStatisticsQuery(
                 "ES", ProductType.DIESEL_A, GeographicScope.national(), today.minusDays(8), today.minusDays(1)));

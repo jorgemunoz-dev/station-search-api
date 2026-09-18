@@ -1,10 +1,10 @@
 package com.petrolprice.station_search_api.station.infrastructure.postgres;
 
-import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationRepositoryPort;
 import com.petrolprice.station_search_api.station.domain.model.Station;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.entity.StationEntity;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.jpa.JPAStationRepository;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.mapper.StationEntityMapper;
+import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationRepositoryPort;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

@@ -1,16 +1,13 @@
 package com.petrolprice.station_search_api.statistics.infrastructure.postgres;
 
 import com.petrolprice.station_search_api.statistics.application.port.out.CurrentPriceStatisticsRepository;
-import com.petrolprice.station_search_api.statistics.application.port.out.GeospatialPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.HistoricalPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.port.out.StatisticsCalculationRepository;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.GeographicScope;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
-import com.petrolprice.station_search_api.statistics.application.query.RadiusStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
-import com.petrolprice.station_search_api.statistics.application.result.RadiusPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.RankedAreaStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.StationPricePoint;
 import com.petrolprice.station_search_api.statistics.domain.ProductType;
@@ -30,7 +27,6 @@ import org.springframework.stereotype.Repository;
 public class PostgresFuelPriceStatisticsRepository
         implements CurrentPriceStatisticsRepository,
                 HistoricalPriceStatisticsRepository,
-                GeospatialPriceStatisticsRepository,
                 StatisticsCalculationRepository {
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -40,7 +36,8 @@ public class PostgresFuelPriceStatisticsRepository
         parameters.addValue("level", query.scope().level().name());
         parameters.addValue("scopeKey", scopeKey(query.scope()));
 
-        String sql = """
+        String sql =
+                """
             WITH selected AS (
                 SELECT * FROM fuel_price_statistics
                 WHERE country = :country AND product_type = :productType
@@ -103,7 +100,8 @@ public class PostgresFuelPriceStatisticsRepository
                 .addValue("to", query.to())
                 .addValue("level", query.scope().level().name())
                 .addValue("scopeKey", scopeKey(query.scope()));
-        String sql = """
+        String sql =
+                """
             WITH daily AS (
                 SELECT DISTINCT ON (calculated_at::date)
                        calculated_at::date observed_date, average_price, minimum_price,
@@ -132,79 +130,31 @@ public class PostgresFuelPriceStatisticsRepository
             WHERE d.observed_date BETWEEN CAST(:from AS date) AND CAST(:to AS date)
             ORDER BY d.observed_date
             """;
-        return jdbcTemplate.query(sql, parameters, (rs, rowNum) -> new HistoricalPricePoint(
-                rs.getDate("observed_date").toLocalDate(),
-                rs.getBigDecimal("average_price"),
-                rs.getBigDecimal("minimum_price"),
-                rs.getBigDecimal("maximum_price"),
-                rs.getLong("station_count"),
-                rs.getBigDecimal("period_average_price"),
-                rs.getBigDecimal("period_minimum_price"),
-                rs.getBigDecimal("period_maximum_price"),
-                rs.getBigDecimal("change_1d"),
-                rs.getBigDecimal("change_7d"),
-                rs.getBigDecimal("change_30d"),
-                rs.getBigDecimal("percentage_1d"),
-                rs.getBigDecimal("percentage_7d"),
-                rs.getBigDecimal("percentage_30d")));
-    }
-
-    @Override
-    public Optional<RadiusPriceStatistics> around(RadiusStatisticsQuery query) {
-        MapSqlParameterSource parameters = baseParameters(query.countryCode(), query.productType())
-                .addValue("latitude", query.latitude())
-                .addValue("longitude", query.longitude())
-                .addValue("radius", query.radiusMeters());
-        String sql = """
-            WITH latest_snapshot AS (
-                SELECT snapshot_id FROM fuel_price_statistics
-                WHERE country = :country AND product_type = :productType
-                  AND geographic_level = 'NATIONAL'
-                ORDER BY calculated_at DESC LIMIT 1
-            ), nearby AS (
-                SELECT s.id, s.external_id, s.brand, hp.price,
-                       ST_Y(s.location::geometry) latitude, ST_X(s.location::geometry) longitude,
-                       ST_Distance(s.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography) distance_meters,
-                       ROW_NUMBER() OVER (ORDER BY hp.price, s.id) cheapest_rank,
-                       ROW_NUMBER() OVER (ORDER BY ST_Distance(s.location,
-                           ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography), s.id) nearest_rank
-                FROM station s JOIN historical_product_price hp ON hp.station_id = s.id
-                WHERE hp.snapshot_id = (SELECT snapshot_id FROM latest_snapshot)
-                  AND s.country = :country AND hp.product_type = :productType AND hp.price > 0
-                  AND ST_DWithin(s.location,
-                      ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography, :radius)
-            ), totals AS (
-                SELECT COUNT(*) station_count, AVG(price) average_price,
-                       MIN(price) minimum_price, MAX(price) maximum_price FROM nearby
-            )
-            SELECT totals.*, cheap.id cheap_id, cheap.external_id cheap_external_id,
-                   cheap.brand cheap_brand, cheap.price cheap_price, cheap.latitude cheap_latitude,
-                   cheap.longitude cheap_longitude, cheap.distance_meters cheap_distance,
-                   nearest.id nearest_id, nearest.external_id nearest_external_id,
-                   nearest.brand nearest_brand, nearest.price nearest_price, nearest.latitude nearest_latitude,
-                   nearest.longitude nearest_longitude, nearest.distance_meters nearest_distance
-            FROM totals
-            LEFT JOIN nearby cheap ON cheap.cheapest_rank = 1
-            LEFT JOIN nearby nearest ON nearest.nearest_rank = 1
-            """;
-        return jdbcTemplate.query(sql, parameters, rs -> {
-            if (!rs.next() || rs.getLong("station_count") == 0) {
-                return Optional.empty();
-            }
-            BigDecimal minimum = rs.getBigDecimal("minimum_price");
-            BigDecimal maximum = rs.getBigDecimal("maximum_price");
-            return Optional.of(new RadiusPriceStatistics(
-                    query.countryCode(), query.productType(), query.latitude(), query.longitude(), query.radiusMeters(),
-                    rs.getLong("station_count"), rs.getBigDecimal("average_price"), minimum, maximum,
-                    maximum.subtract(minimum), station(rs, "cheap", rs.getDouble("cheap_distance")),
-                    station(rs, "nearest", rs.getDouble("nearest_distance"))));
-        });
+        return jdbcTemplate.query(
+                sql,
+                parameters,
+                (rs, rowNum) -> new HistoricalPricePoint(
+                        rs.getDate("observed_date").toLocalDate(),
+                        rs.getBigDecimal("average_price"),
+                        rs.getBigDecimal("minimum_price"),
+                        rs.getBigDecimal("maximum_price"),
+                        rs.getLong("station_count"),
+                        rs.getBigDecimal("period_average_price"),
+                        rs.getBigDecimal("period_minimum_price"),
+                        rs.getBigDecimal("period_maximum_price"),
+                        rs.getBigDecimal("change_1d"),
+                        rs.getBigDecimal("change_7d"),
+                        rs.getBigDecimal("change_30d"),
+                        rs.getBigDecimal("percentage_1d"),
+                        rs.getBigDecimal("percentage_7d"),
+                        rs.getBigDecimal("percentage_30d")));
     }
 
     @Override
     public List<RankedAreaStatistics> provinces(String countryCode, ProductType productType) {
         MapSqlParameterSource parameters = baseParameters(countryCode.toUpperCase(), productType);
-        String sql = """
+        String sql =
+                """
             WITH latest_snapshot AS (
                 SELECT snapshot_id, average_price national_average
                 FROM fuel_price_statistics
@@ -231,16 +181,22 @@ public class PostgresFuelPriceStatisticsRepository
         return jdbcTemplate.query(sql, parameters, (rs, rowNum) -> {
             BigDecimal average = rs.getBigDecimal("average_price");
             return new RankedAreaStatistics(
-                    rs.getString("area_name"), average, rs.getBigDecimal("minimum_price"),
-                    rs.getBigDecimal("maximum_price"), rs.getLong("station_count"),
-                    station(rs, "cheap", null), difference(average, rs.getBigDecimal("national_average")),
-                    rs.getInt("cheapest_rank"), rs.getInt("expensive_rank"));
+                    rs.getString("area_name"),
+                    average,
+                    rs.getBigDecimal("minimum_price"),
+                    rs.getBigDecimal("maximum_price"),
+                    rs.getLong("station_count"),
+                    station(rs, "cheap", null),
+                    difference(average, rs.getBigDecimal("national_average")),
+                    rs.getInt("cheapest_rank"),
+                    rs.getInt("expensive_rank"));
         });
     }
 
     @Override
     public Optional<BigDecimal> stationPrice(UUID stationId, ProductType productType) {
-        String sql = """
+        String sql =
+                """
             SELECT hp.price FROM historical_product_price hp
             JOIN fuel_price_statistics f ON f.snapshot_id = hp.snapshot_id
               AND f.product_type = hp.product_type AND f.geographic_level = 'NATIONAL'
@@ -262,7 +218,8 @@ public class PostgresFuelPriceStatisticsRepository
                 "DELETE FROM fuel_price_statistics WHERE snapshot_id = :snapshotId",
                 new MapSqlParameterSource("snapshotId", snapshotId));
 
-        String sql = """
+        String sql =
+                """
             WITH source AS (
                 SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
                        s.province, COALESCE(s.municipality, s.locality) municipality
@@ -308,17 +265,23 @@ public class PostgresFuelPriceStatisticsRepository
         return switch (scope.level()) {
             case NATIONAL -> "NATIONAL";
             case PROVINCE -> "PROVINCE:" + scope.name().toLowerCase(java.util.Locale.ROOT);
-            case MUNICIPALITY -> "MUNICIPALITY:" + scope.province().toLowerCase(java.util.Locale.ROOT)
-                    + ":" + scope.name().toLowerCase(java.util.Locale.ROOT);
+            case MUNICIPALITY -> "MUNICIPALITY:" + scope.province().toLowerCase(java.util.Locale.ROOT) + ":"
+                    + scope.name().toLowerCase(java.util.Locale.ROOT);
         };
     }
 
     private StationPricePoint station(ResultSet rs, String prefix, Double distance) throws SQLException {
         UUID id = rs.getObject(prefix + "_id", UUID.class);
-        return id == null ? null : new StationPricePoint(
-                id, rs.getString(prefix + "_external_id"), rs.getString(prefix + "_brand"),
-                rs.getBigDecimal(prefix + "_price"), rs.getBigDecimal(prefix + "_latitude"),
-                rs.getBigDecimal(prefix + "_longitude"), distance);
+        return id == null
+                ? null
+                : new StationPricePoint(
+                        id,
+                        rs.getString(prefix + "_external_id"),
+                        rs.getString(prefix + "_brand"),
+                        rs.getBigDecimal(prefix + "_price"),
+                        rs.getBigDecimal(prefix + "_latitude"),
+                        rs.getBigDecimal(prefix + "_longitude"),
+                        distance);
     }
 
     private BigDecimal difference(BigDecimal value, BigDecimal reference) {

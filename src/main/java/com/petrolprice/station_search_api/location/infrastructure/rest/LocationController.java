@@ -1,9 +1,9 @@
 package com.petrolprice.station_search_api.location.infrastructure.rest;
 
-import com.petrolprice.station_search_api.location.application.SearchLocationsUseCase;
-import com.petrolprice.station_search_api.location.application.query.SearchLocationQuery;
 import com.petrolprice.station_search_api.contract.rest.api.LocationsApi;
 import com.petrolprice.station_search_api.contract.rest.model.LocationSuggestion;
+import com.petrolprice.station_search_api.location.application.SearchLocationsUseCase;
+import com.petrolprice.station_search_api.location.application.query.SearchLocationQuery;
 import com.petrolprice.station_search_api.location.infrastructure.rest.mapper.LocationMapper;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

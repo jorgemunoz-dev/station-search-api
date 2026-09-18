@@ -32,21 +32,92 @@ databaseChangeLog:
         - createTable:
             tableName: fuel_price_statistics
             columns:
-              - column: {name: id, type: uuid, constraints: {primaryKey: true, nullable: false}}
-              - column: {name: snapshot_id, type: uuid, constraints: {nullable: false}}
-              - column: {name: country, type: varchar(2), constraints: {nullable: false}}
-              - column: {name: product_type, type: varchar(50), constraints: {nullable: false}}
-              - column: {name: geographic_level, type: varchar(20), constraints: {nullable: false}}
-              - column: {name: scope_key, type: varchar(500), constraints: {nullable: false}}
-              - column: {name: area_name, type: varchar(255)}
-              - column: {name: province, type: varchar(255)}
-              - column: {name: average_price, type: numeric(12,6), constraints: {nullable: false}}
-              - column: {name: minimum_price, type: numeric(10,3), constraints: {nullable: false}}
-              - column: {name: maximum_price, type: numeric(10,3), constraints: {nullable: false}}
-              - column: {name: station_count, type: bigint, constraints: {nullable: false}}
-              - column: {name: cheapest_station_id, type: uuid, constraints: {nullable: false}}
-              - column: {name: most_expensive_station_id, type: uuid, constraints: {nullable: false}}
-              - column: {name: calculated_at, type: timestamptz, constraints: {nullable: false}}
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column:
+                  name: snapshot_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: country
+                  type: varchar(2)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: product_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: geographic_level
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: scope_key
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: area_name
+                  type: varchar(255)
+
+              - column:
+                  name: province
+                  type: varchar(255)
+
+              - column:
+                  name: average_price
+                  type: "numeric(12,6)"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: minimum_price
+                  type: "numeric(10,3)"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: maximum_price
+                  type: "numeric(10,3)"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: station_count
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: cheapest_station_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: most_expensive_station_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: calculated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
         - addForeignKeyConstraint:
             baseTableName: fuel_price_statistics
             baseColumnNames: snapshot_id

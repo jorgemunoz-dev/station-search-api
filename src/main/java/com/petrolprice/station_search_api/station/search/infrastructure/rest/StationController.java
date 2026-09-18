@@ -1,13 +1,13 @@
 package com.petrolprice.station_search_api.station.search.infrastructure.rest;
 
-import com.petrolprice.station_search_api.station.search.application.FindStationsUseCase;
-import com.petrolprice.station_search_api.station.search.application.query.FindStationsQuery;
-import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
 import com.petrolprice.station_search_api.contract.rest.api.StationsApi;
 import com.petrolprice.station_search_api.contract.rest.model.ProductType;
 import com.petrolprice.station_search_api.contract.rest.model.StationSearchMode;
 import com.petrolprice.station_search_api.contract.rest.model.StationSearchResponse;
 import com.petrolprice.station_search_api.contract.rest.model.StationSearchSortBy;
+import com.petrolprice.station_search_api.station.search.application.FindStationsUseCase;
+import com.petrolprice.station_search_api.station.search.application.query.FindStationsQuery;
+import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
 import com.petrolprice.station_search_api.station.search.infrastructure.rest.factory.FindStationsQueryFactory;
 import com.petrolprice.station_search_api.station.search.infrastructure.rest.mapper.StationMapper;
 import com.petrolprice.station_search_api.station.search.infrastructure.rest.request.StationSearchParameters;

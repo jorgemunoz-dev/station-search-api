@@ -31,18 +31,14 @@ public class SearchObservabilityFilter extends OncePerRequestFilter {
 
     private final MeterRegistry meterRegistry;
 
-    public SearchObservabilityFilter(
-        SearchObservabilityProperties properties,
-        MeterRegistry meterRegistry
-    ) {
+    public SearchObservabilityFilter(SearchObservabilityProperties properties, MeterRegistry meterRegistry) {
         this.properties = properties;
         this.meterRegistry = meterRegistry;
     }
 
     @Override
-    protected void doFilterInternal(
-        HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-        throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
         String requestId = requestId(request);
         response.setHeader(REQUEST_ID_HEADER, requestId);
 
@@ -67,62 +63,52 @@ public class SearchObservabilityFilter extends OncePerRequestFilter {
 
     private boolean isObservedQuery(HttpServletRequest request) {
         return "GET".equals(request.getMethod())
-            && properties.paths().stream()
-            .anyMatch(path -> PATH_MATCHER.match(path, request.getRequestURI()));
+                && properties.paths().stream().anyMatch(path -> PATH_MATCHER.match(path, request.getRequestURI()));
     }
 
-    private void record(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        long startedAt,
-        Throwable failure) {
+    private void record(HttpServletRequest request, HttpServletResponse response, long startedAt, Throwable failure) {
         long durationNanos = System.nanoTime() - startedAt;
         String endpoint = endpoint(request);
         String outcome = outcome(response.getStatus(), failure);
-        var filterNames = Collections.list(request.getParameterNames())
-            .stream()
-            .sorted()
-            .toList();
+        var filterNames =
+                Collections.list(request.getParameterNames()).stream().sorted().toList();
 
         Counter.builder("station.search.queries")
-            .description("Number of station API queries")
-            .tag("endpoint", endpoint)
-            .tag("outcome", outcome)
-            .register(meterRegistry)
-            .increment();
+                .description("Number of station API queries")
+                .tag("endpoint", endpoint)
+                .tag("outcome", outcome)
+                .register(meterRegistry)
+                .increment();
 
         Timer.builder("station.search.duration")
-            .description("Station API query duration")
-            .tag("endpoint", endpoint)
-            .tag("outcome", outcome)
-            .publishPercentileHistogram()
-            .register(meterRegistry)
-            .record(durationNanos, TimeUnit.NANOSECONDS);
+                .description("Station API query duration")
+                .tag("endpoint", endpoint)
+                .tag("outcome", outcome)
+                .publishPercentileHistogram()
+                .register(meterRegistry)
+                .record(durationNanos, TimeUnit.NANOSECONDS);
 
         filterNames.forEach(filter -> Counter.builder("station.search.filter.usage")
-            .description("Number of API queries using a supported filter")
-            .tag("filter", filter)
-            .register(meterRegistry)
-            .increment());
+                .description("Number of API queries using a supported filter")
+                .tag("filter", filter)
+                .register(meterRegistry)
+                .increment());
 
         log.atInfo()
-            .addKeyValue("event", "station_search_completed")
-            .addKeyValue("method", request.getMethod())
-            .addKeyValue("endpoint", endpoint)
-            .addKeyValue("status", response.getStatus())
-            .addKeyValue("outcome", outcome)
-            .addKeyValue("durationMs", TimeUnit.NANOSECONDS.toMillis(durationNanos))
-            .addKeyValue("filters", filterNames)
-            .log("Station API query completed");
+                .addKeyValue("event", "station_search_completed")
+                .addKeyValue("method", request.getMethod())
+                .addKeyValue("endpoint", endpoint)
+                .addKeyValue("status", response.getStatus())
+                .addKeyValue("outcome", outcome)
+                .addKeyValue("durationMs", TimeUnit.NANOSECONDS.toMillis(durationNanos))
+                .addKeyValue("filters", filterNames)
+                .log("Station API query completed");
     }
 
     private String endpoint(HttpServletRequest request) {
-        Object pattern =
-            request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
 
-        return pattern == null
-            ? request.getRequestURI()
-            : pattern.toString();
+        return pattern == null ? request.getRequestURI() : pattern.toString();
     }
 
     private static String outcome(int status, Throwable failure) {

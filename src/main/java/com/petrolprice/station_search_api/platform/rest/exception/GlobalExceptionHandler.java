@@ -2,6 +2,7 @@ package com.petrolprice.station_search_api.platform.rest.exception;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
@@ -12,20 +13,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.util.List;
-
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ProblemDetail> handleConstraintViolationException(
-        ConstraintViolationException exception
-    ) {
-        List<ValidationError> errors = exception.getConstraintViolations()
-            .stream()
-            .map(this::toValidationError)
-            .toList();
+    public ResponseEntity<ProblemDetail> handleConstraintViolationException(ConstraintViolationException exception) {
+        List<ValidationError> errors = exception.getConstraintViolations().stream()
+                .map(this::toValidationError)
+                .toList();
 
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
         problem.setTitle("Validation error");
@@ -87,31 +83,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
     }
 
-    private ValidationError toValidationError(
-        ConstraintViolation<?> violation
-    ) {
+    private ValidationError toValidationError(ConstraintViolation<?> violation) {
         return new ValidationError(
-            extractParameterName(violation),
-            violation.getInvalidValue(),
-            violation.getMessage()
-        );
+                extractParameterName(violation), violation.getInvalidValue(), violation.getMessage());
     }
 
-    private String extractParameterName(
-        ConstraintViolation<?> violation
-    ) {
+    private String extractParameterName(ConstraintViolation<?> violation) {
         String propertyPath = violation.getPropertyPath().toString();
 
         int lastDotIndex = propertyPath.lastIndexOf('.');
 
-        return lastDotIndex >= 0
-            ? propertyPath.substring(lastDotIndex + 1)
-            : propertyPath;
+        return lastDotIndex >= 0 ? propertyPath.substring(lastDotIndex + 1) : propertyPath;
     }
 
-    private record ValidationError(
-        String parameter,
-        Object rejectedValue,
-        String message
-    ) {}
+    private record ValidationError(String parameter, Object rejectedValue, String message) {}
 }

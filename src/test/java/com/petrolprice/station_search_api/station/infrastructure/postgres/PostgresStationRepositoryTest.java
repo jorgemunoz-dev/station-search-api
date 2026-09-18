@@ -10,11 +10,10 @@ import com.petrolprice.station_search_api.station.infrastructure.postgres.entity
 import com.petrolprice.station_search_api.station.infrastructure.postgres.entity.StationOpeningPeriodEntity;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.jpa.JPAStationRepository;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.mapper.StationEntityMapper;
+import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

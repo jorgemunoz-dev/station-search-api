@@ -1,7 +1,7 @@
 package com.petrolprice.station_search_api.station.ingestion.application;
 
-import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
 import com.petrolprice.station_search_api.station.ingestion.application.command.CompleteStationPublishingCommand;
+import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +16,8 @@ public class CompleteStationPublishingService implements CompleteStationPublishi
     @Override
     @Transactional
     public void complete(CompleteStationPublishingCommand command) {
-        stationImportRepositoryPort.markPublishingCompleted(command.snapshotId(), command.publishedStations(), command.completedAt());
+        stationImportRepositoryPort.markPublishingCompleted(
+                command.snapshotId(), command.publishedStations(), command.completedAt());
         stationImportFinalizer.tryFinalize(command.snapshotId());
     }
 }

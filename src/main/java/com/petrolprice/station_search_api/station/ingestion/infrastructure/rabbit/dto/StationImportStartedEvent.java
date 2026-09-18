@@ -3,9 +3,4 @@ package com.petrolprice.station_search_api.station.ingestion.infrastructure.rabb
 import java.time.Instant;
 import java.util.UUID;
 
-public record StationImportStartedEvent(
-    UUID snapshotId,
-    String countryCode,
-    Instant startedAt
-) {
-}
+public record StationImportStartedEvent(UUID snapshotId, String countryCode, Instant startedAt) {}

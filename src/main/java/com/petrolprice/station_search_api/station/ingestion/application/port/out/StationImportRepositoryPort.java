@@ -19,11 +19,7 @@ public interface StationImportRepositoryPort {
 
     void incrementProcessedStations(UUID snapshotId);
 
-    void markPublishingCompleted(
-        UUID snapshotId,
-        int publishedStations,
-        Instant completedAt
-    );
+    void markPublishingCompleted(UUID snapshotId, int publishedStations, Instant completedAt);
 
     /**
      * Atomically changes PROCESSING -> CALCULATING_STATISTICS
@@ -33,5 +29,4 @@ public interface StationImportRepositoryPort {
     boolean claimForStatisticsIfReady(UUID snapshotId);
 
     void markCompleted(UUID snapshotId);
-
 }

@@ -3,10 +3,10 @@ package com.petrolprice.station_search_api.integration;
 import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.aStationSnapshot;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.petrolprice.station_search_api.station.ingestion.application.CompleteStationPublishingService;
-import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
 import com.petrolprice.station_search_api.integration.support.StationImportProbe;
 import com.petrolprice.station_search_api.integration.support.StationSnapshotFixture;
+import com.petrolprice.station_search_api.station.ingestion.application.CompleteStationPublishingService;
+import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

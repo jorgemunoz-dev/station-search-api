@@ -1,10 +1,10 @@
 package com.petrolprice.station_search_api.station.infrastructure.postgres;
 
-import com.petrolprice.station_search_api.station.ingestion.application.port.out.HistoricalPriceRepositoryPort;
 import com.petrolprice.station_search_api.station.domain.model.ProductPrice;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.entity.HistoricalFuelPriceEntity;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.jpa.JPAHistoricalFuelPriceRepository;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.mapper.HistoricalFuelPriceEntityMapper;
+import com.petrolprice.station_search_api.station.ingestion.application.port.out.HistoricalPriceRepositoryPort;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

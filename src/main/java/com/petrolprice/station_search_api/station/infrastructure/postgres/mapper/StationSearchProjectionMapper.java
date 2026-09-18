@@ -1,6 +1,5 @@
 package com.petrolprice.station_search_api.station.infrastructure.postgres.mapper;
 
-import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
 import com.petrolprice.station_search_api.station.domain.model.*;
 import com.petrolprice.station_search_api.station.domain.type.Country;
 import com.petrolprice.station_search_api.station.domain.type.Day;
@@ -8,6 +7,7 @@ import com.petrolprice.station_search_api.station.domain.type.ProductType;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.projection.OpeningPeriodProjection;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.projection.ProductPriceProjection;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.projection.StationRankingProjection;
+import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
 import java.math.BigDecimal;
 import java.util.List;
 import org.mapstruct.Mapper;

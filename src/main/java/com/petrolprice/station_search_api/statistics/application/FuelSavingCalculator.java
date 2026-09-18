@@ -9,7 +9,10 @@ public class FuelSavingCalculator {
     public static final BigDecimal DEFAULT_TANK_LITERS = BigDecimal.valueOf(55);
 
     public FuelSaving calculate(BigDecimal stationPrice, BigDecimal referencePrice, BigDecimal tankLiters) {
-        if (stationPrice == null || referencePrice == null || stationPrice.signum() < 0 || referencePrice.signum() < 0) {
+        if (stationPrice == null
+                || referencePrice == null
+                || stationPrice.signum() < 0
+                || referencePrice.signum() < 0) {
             throw new IllegalArgumentException("Valid station and reference prices are required");
         }
         BigDecimal effectiveTank = tankLiters == null ? DEFAULT_TANK_LITERS : tankLiters;

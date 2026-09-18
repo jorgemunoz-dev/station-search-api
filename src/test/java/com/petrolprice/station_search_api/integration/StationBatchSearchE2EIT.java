@@ -1,9 +1,9 @@
 package com.petrolprice.station_search_api.integration;
 
-import static com.petrolprice.station_search_api.station.domain.type.ProductType.DIESEL_A;
-import static com.petrolprice.station_search_api.station.domain.type.ProductType.GASOLINE_95_E5;
 import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.aStationSnapshot;
 import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.price;
+import static com.petrolprice.station_search_api.station.domain.type.ProductType.DIESEL_A;
+import static com.petrolprice.station_search_api.station.domain.type.ProductType.GASOLINE_95_E5;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.hasSize;
@@ -48,8 +48,7 @@ class StationBatchSearchE2EIT extends IntegrationTestBase {
         UUID batchId = UUID.randomUUID();
         StationSnapshotFixture origin = aStationSnapshot();
         List<StationSnapshotFixture> batch = List.of(
-                origin
-                        .withSnapshotId(batchId)
+                origin.withSnapshotId(batchId)
                         .withBrand("CHEAP_DIESEL")
                         .withPrices(price(DIESEL_A, "1.399"), price(GASOLINE_95_E5, "1.599")),
                 aStationSnapshot()
@@ -76,7 +75,8 @@ class StationBatchSearchE2EIT extends IntegrationTestBase {
             assertThat(state.processedStations()).isEqualTo(batch.size());
             assertThat(state.publishedStations()).isEqualTo(batch.size());
             assertThat(probe.claimedEvents(batchId)).isEqualTo(batch.size());
-            assertThat(batch).allSatisfy(snapshot -> assertThat(probe.stations(snapshot.externalId())).isOne());
+            assertThat(batch).allSatisfy(snapshot -> assertThat(probe.stations(snapshot.externalId()))
+                    .isOne());
         });
 
         mockMvc.perform(get("/stations")

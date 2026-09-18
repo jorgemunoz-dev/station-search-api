@@ -1,11 +1,11 @@
 package com.petrolprice.station_search_api.station.ingestion.application;
 
+import com.petrolprice.station_search_api.station.domain.model.Station;
+import com.petrolprice.station_search_api.station.ingestion.application.command.ProcessStationSnapshotCommand;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.CurrentFuelPriceRepositoryPort;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.HistoricalPriceRepositoryPort;
-import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationRepositoryPort;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
-import com.petrolprice.station_search_api.station.ingestion.application.command.ProcessStationSnapshotCommand;
-import com.petrolprice.station_search_api.station.domain.model.Station;
+import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationRepositoryPort;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,14 +26,9 @@ public class ProcessStationSnapshotService {
     public void consume(ProcessStationSnapshotCommand command) {
 
         stationImportRepositoryPort.ensureExists(
-            command.snapshotId(),
-            command.station().getCountry().name()
-        );
+                command.snapshotId(), command.station().getCountry().name());
 
-        boolean claimed = stationImportRepositoryPort.claimEvent(
-            command.snapshotId(),
-            command.eventId()
-        );
+        boolean claimed = stationImportRepositoryPort.claimEvent(command.snapshotId(), command.eventId());
 
         if (!claimed) {
             return;

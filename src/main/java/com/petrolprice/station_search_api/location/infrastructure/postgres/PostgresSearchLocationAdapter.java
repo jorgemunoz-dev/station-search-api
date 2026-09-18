@@ -1,10 +1,10 @@
 package com.petrolprice.station_search_api.location.infrastructure.postgres;
 
-import com.petrolprice.station_search_api.location.application.port.out.SearchLocationPort;
 import com.petrolprice.station_search_api.location.application.SearchLocationNormalizer;
-import com.petrolprice.station_search_api.location.domain.SearchLocationType;
+import com.petrolprice.station_search_api.location.application.port.out.SearchLocationPort;
 import com.petrolprice.station_search_api.location.application.query.SearchLocationQuery;
 import com.petrolprice.station_search_api.location.application.result.SearchLocationResult;
+import com.petrolprice.station_search_api.location.domain.SearchLocationType;
 import com.petrolprice.station_search_api.location.infrastructure.postgres.projection.SearchLocationProjection;
 import com.petrolprice.station_search_api.location.infrastructure.postgres.rowmapper.SearchLocationRowMapper;
 import com.petrolprice.station_search_api.location.infrastructure.postgres.sql.SearchLocationSql;

@@ -1,21 +1,16 @@
 package com.petrolprice.station_search_api.statistics.infrastructure.rest;
 
-import com.petrolprice.station_search_api.contract.rest.model.CurrentPriceStatisticsResponse;
-import com.petrolprice.station_search_api.contract.rest.model.FuelPriceSummaryResponse;
-import com.petrolprice.station_search_api.contract.rest.model.FuelSavingResponse;
-import com.petrolprice.station_search_api.contract.rest.model.GeographicLevel;
-import com.petrolprice.station_search_api.contract.rest.model.HistoricalPricePointResponse;
-import com.petrolprice.station_search_api.contract.rest.model.ProductType;
-import com.petrolprice.station_search_api.contract.rest.model.RadiusPriceStatisticsResponse;
-import com.petrolprice.station_search_api.contract.rest.model.RankedAreaStatisticsResponse;
+import com.petrolprice.station_search_api.contract.rest.api.StatisticsApi;
+import com.petrolprice.station_search_api.contract.rest.model.*;
 import com.petrolprice.station_search_api.statistics.application.FuelPriceStatisticsUseCase;
 import com.petrolprice.station_search_api.statistics.application.GetFuelPriceSummaryUseCase;
 import com.petrolprice.station_search_api.statistics.application.StatisticsNotFoundException;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.GeographicScope;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
-import com.petrolprice.station_search_api.statistics.application.query.RadiusStatisticsQuery;
+import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.FuelPriceSummaryResult;
+import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,84 +20,55 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/statistics/fuel-prices")
 @RequiredArgsConstructor
-public class FuelPriceStatisticsController {
+public class FuelPriceStatisticsController implements StatisticsApi {
     private final GetFuelPriceSummaryUseCase summaryUseCase;
     private final FuelPriceStatisticsUseCase statistics;
     private final StatisticsRestMapper mapper;
 
-    @GetMapping("/summary")
-    public ResponseEntity<FuelPriceSummaryResponse> getFuelPriceSummary(
-            @RequestParam String countryCode,
-            @RequestParam ProductType productType,
-            @RequestParam(defaultValue = "7") Integer days) {
-        FuelPriceSummaryResult result = summaryUseCase.getFuelPriceSummary(countryCode, product(productType), days);
-        return ResponseEntity.ok(mapper.toResponse(result));
-    }
-
-    @GetMapping("/current")
+    @Override
     public ResponseEntity<CurrentPriceStatisticsResponse> getCurrentFuelPriceStatistics(
-            @RequestParam String countryCode,
-            @RequestParam ProductType productType,
-            @RequestParam(defaultValue = "NATIONAL") GeographicLevel level,
-            @RequestParam(required = false) String area,
-            @RequestParam(required = false) String province) {
-        var result = statistics.current(
+            String countryCode, ProductType productType, GeographicLevel level, String area, String province) {
+        CurrentPriceStatistics result = statistics.current(
                 new CurrentStatisticsQuery(countryCode, product(productType), scope(level, area, province)));
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
-    @GetMapping("/history")
+    @Override
+    public ResponseEntity<FuelPriceSummaryResponse> getFuelPriceSummary(String countryCode, ProductType productType, Integer days) {
+        FuelPriceSummaryResult result = summaryUseCase.getFuelPriceSummary(countryCode, product(productType), days);
+        return ResponseEntity.ok(mapper.toResponse(result));
+    }
+
+    @Override
+    public ResponseEntity<FuelSavingResponse> getFuelSaving(
+            UUID stationId, ProductType productType, BigDecimal referencePrice, BigDecimal tankLiters) {
+        return ResponseEntity.ok(
+                mapper.toResponse(statistics.saving(stationId, product(productType), referencePrice, tankLiters)));
+    }
+
+    @Override
     public ResponseEntity<List<HistoricalPricePointResponse>> getHistoricalFuelPriceStatistics(
-            @RequestParam String countryCode,
-            @RequestParam ProductType productType,
-            @RequestParam(defaultValue = "NATIONAL") GeographicLevel level,
-            @RequestParam(required = false) String area,
-            @RequestParam(required = false) String province,
-            @RequestParam LocalDate from,
-            @RequestParam LocalDate to) {
-        var result = statistics.history(new HistoricalStatisticsQuery(
+            String countryCode,
+            ProductType productType,
+            LocalDate from,
+            LocalDate to,
+            GeographicLevel level,
+            String area,
+            String province) {
+        List<HistoricalPricePoint> result = statistics.history(new HistoricalStatisticsQuery(
                 countryCode, product(productType), scope(level, area, province), from, to));
         return ResponseEntity.ok(mapper.toHistoryResponse(result));
     }
 
-    @GetMapping("/around")
-    public ResponseEntity<RadiusPriceStatisticsResponse> getRadiusFuelPriceStatistics(
-            @RequestParam String countryCode,
-            @RequestParam ProductType productType,
-            @RequestParam Double latitude,
-            @RequestParam Double longitude,
-            @RequestParam Integer radiusMeters) {
-        var result = statistics.around(new RadiusStatisticsQuery(
-                countryCode,
-                product(productType),
-                BigDecimal.valueOf(latitude),
-                BigDecimal.valueOf(longitude),
-                radiusMeters));
-        return ResponseEntity.ok(mapper.toResponse(result));
-    }
-
-    @GetMapping("/provinces")
+    @Override
     public ResponseEntity<List<RankedAreaStatisticsResponse>> getProvinceFuelPriceStatistics(
-            @RequestParam String countryCode, @RequestParam ProductType productType) {
-        return ResponseEntity.ok(mapper.toRankingResponse(statistics.provinceRanking(countryCode, product(productType))));
-    }
-
-    @GetMapping("/savings")
-    public ResponseEntity<FuelSavingResponse> getFuelSaving(
-            @RequestParam UUID stationId,
-            @RequestParam ProductType productType,
-            @RequestParam BigDecimal referencePrice,
-            @RequestParam(required = false) BigDecimal tankLiters) {
-        return ResponseEntity.ok(mapper.toResponse(
-                statistics.saving(stationId, product(productType), referencePrice, tankLiters)));
+            String countryCode, ProductType productType) {
+        return ResponseEntity.ok(
+                mapper.toRankingResponse(statistics.provinceRanking(countryCode, product(productType))));
     }
 
     @ExceptionHandler(StatisticsNotFoundException.class)
@@ -129,7 +95,7 @@ public class FuelPriceStatisticsController {
         GeographicLevel effectiveLevel = level == null ? GeographicLevel.NATIONAL : level;
         return switch (effectiveLevel) {
             case NATIONAL -> GeographicScope.national();
-            case PROVINCE -> GeographicScope.province(area);
+            case PROVINCE -> GeographicScope.province(province);
             case MUNICIPALITY -> GeographicScope.municipality(province, area);
         };
     }

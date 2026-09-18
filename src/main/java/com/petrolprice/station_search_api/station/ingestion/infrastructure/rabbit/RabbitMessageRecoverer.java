@@ -15,20 +15,14 @@ public class RabbitMessageRecoverer implements MessageRecoverer {
         Throwable rootCause = getRootCause(cause);
 
         log.error(
-            "Rabbit message processing failed after retries. queue={}, messageId={}, error={} - {}",
-            message.getMessageProperties().getConsumerQueue(),
-            message.getMessageProperties().getMessageId(),
-            rootCause.getClass().getSimpleName(),
-            rootCause.getMessage()
-        );
+                "Rabbit message processing failed after retries. queue={}, messageId={}, error={} - {}",
+                message.getMessageProperties().getConsumerQueue(),
+                message.getMessageProperties().getMessageId(),
+                rootCause.getClass().getSimpleName(),
+                rootCause.getMessage());
 
-        throw new AmqpRejectAndDontRequeueException(
-            "Retries exhausted",
-            cause
-        );
+        throw new AmqpRejectAndDontRequeueException("Retries exhausted", cause);
     }
-
-
 
     private Throwable getRootCause(Throwable throwable) {
         Throwable result = throwable;

@@ -45,26 +45,22 @@ public class RabbitConsumerConfig {
      */
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-        SimpleRabbitListenerContainerFactoryConfigurer configurer,
-        ConnectionFactory connectionFactory,
-        JacksonJsonMessageConverter converter,
-        RabbitMessageRecoverer recoverer,
-        RabbitRetryProperties retryProperties
-    ) {
-        SimpleRabbitListenerContainerFactory factory =
-            new SimpleRabbitListenerContainerFactory();
+            SimpleRabbitListenerContainerFactoryConfigurer configurer,
+            ConnectionFactory connectionFactory,
+            JacksonJsonMessageConverter converter,
+            RabbitMessageRecoverer recoverer,
+            RabbitRetryProperties retryProperties) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 
         // Apply spring.rabbitmq.listener.simple.*
         configurer.configure(factory, connectionFactory);
 
         factory.setMessageConverter(converter);
 
-        factory.setAdviceChain(
-            RetryInterceptorBuilder.stateless()
+        factory.setAdviceChain(RetryInterceptorBuilder.stateless()
                 .maxRetries(retryProperties.maxRetries())
                 .recoverer(recoverer)
-                .build()
-        );
+                .build());
 
         return factory;
     }

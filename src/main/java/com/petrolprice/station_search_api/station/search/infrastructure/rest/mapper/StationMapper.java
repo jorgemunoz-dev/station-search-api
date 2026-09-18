@@ -1,11 +1,11 @@
 package com.petrolprice.station_search_api.station.search.infrastructure.rest.mapper;
 
-import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
-import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
+import com.petrolprice.station_search_api.contract.rest.model.*;
 import com.petrolprice.station_search_api.station.domain.model.Address;
 import com.petrolprice.station_search_api.station.domain.model.OpeningPeriod;
 import com.petrolprice.station_search_api.station.domain.model.ProductPrice;
-import com.petrolprice.station_search_api.contract.rest.model.*;
+import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
+import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

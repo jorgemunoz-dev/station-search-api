@@ -1,7 +1,5 @@
 package com.petrolprice.station_search_api.integration.support;
 
-import com.petrolprice.station_search_api.station.ingestion.application.command.CompleteStationPublishingCommand;
-import com.petrolprice.station_search_api.station.ingestion.application.command.ProcessStationSnapshotCommand;
 import com.petrolprice.station_search_api.station.domain.model.Address;
 import com.petrolprice.station_search_api.station.domain.model.GeoLocation;
 import com.petrolprice.station_search_api.station.domain.model.OpeningPeriod;
@@ -10,6 +8,8 @@ import com.petrolprice.station_search_api.station.domain.model.Station;
 import com.petrolprice.station_search_api.station.domain.type.Country;
 import com.petrolprice.station_search_api.station.domain.type.Day;
 import com.petrolprice.station_search_api.station.domain.type.ProductType;
+import com.petrolprice.station_search_api.station.ingestion.application.command.CompleteStationPublishingCommand;
+import com.petrolprice.station_search_api.station.ingestion.application.command.ProcessStationSnapshotCommand;
 import com.petrolprice.station_search_api.station.ingestion.infrastructure.rabbit.StationImportCompletedEvent;
 import com.petrolprice.station_search_api.station.ingestion.infrastructure.rabbit.dto.AddressMessage;
 import com.petrolprice.station_search_api.station.ingestion.infrastructure.rabbit.dto.FuelPriceMessage;
@@ -34,8 +34,8 @@ public final class StationSnapshotFixture {
     private BigDecimal longitude = randomCoordinate(-7, 2);
     private final Address address = randomAddress();
     private List<ProductPrice> prices = List.of(price(ProductType.DIESEL_A, "1.599"));
-    private List<OpeningPeriod> openingPeriods = List.of(openingPeriod(
-            List.of(Day.MON, Day.TUE, Day.WED), LocalTime.of(7, 0), LocalTime.of(22, 0)));
+    private List<OpeningPeriod> openingPeriods =
+            List.of(openingPeriod(List.of(Day.MON, Day.TUE, Day.WED), LocalTime.of(7, 0), LocalTime.of(22, 0)));
 
     private StationSnapshotFixture() {}
 
@@ -129,7 +129,9 @@ public final class StationSnapshotFixture {
                                 .map(period -> new OpeningPeriodMessage(
                                         period.getOpen().toString(),
                                         period.getClose().toString(),
-                                        period.getDays().stream().map(Enum::name).toList()))
+                                        period.getDays().stream()
+                                                .map(Enum::name)
+                                                .toList()))
                                 .toList(),
                         new AddressMessage(
                                 address.getStreet(),
@@ -140,7 +142,8 @@ public final class StationSnapshotFixture {
                         new LocationMessage(latitude.doubleValue(), longitude.doubleValue()),
                         prices.stream()
                                 .map(price -> new FuelPriceMessage(
-                                        price.getProductType().name(), price.getPrice().doubleValue()))
+                                        price.getProductType().name(),
+                                        price.getPrice().doubleValue()))
                                 .toList()),
                 "integration-test");
     }
@@ -150,7 +153,10 @@ public final class StationSnapshotFixture {
     }
 
     public static ProductPrice price(ProductType type, String value) {
-        return ProductPrice.builder().productType(type).price(new BigDecimal(value)).build();
+        return ProductPrice.builder()
+                .productType(type)
+                .price(new BigDecimal(value))
+                .build();
     }
 
     public static OpeningPeriod openingPeriod(List<Day> days, LocalTime open, LocalTime close) {

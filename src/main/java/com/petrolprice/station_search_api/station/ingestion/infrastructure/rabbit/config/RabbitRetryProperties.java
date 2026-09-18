@@ -2,9 +2,5 @@ package com.petrolprice.station_search_api.station.ingestion.infrastructure.rabb
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import java.time.Duration;
-
 @ConfigurationProperties(prefix = "app.messaging.rabbit.retry")
-public record RabbitRetryProperties(
-    int maxRetries
-) {}
+public record RabbitRetryProperties(int maxRetries) {}

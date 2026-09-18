@@ -1,27 +1,27 @@
 package com.petrolprice.station_search_api.integration;
 
+import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.aStationSnapshot;
+import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.openingPeriod;
+import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.price;
 import static com.petrolprice.station_search_api.station.domain.type.Day.MON;
 import static com.petrolprice.station_search_api.station.domain.type.Day.SAT;
 import static com.petrolprice.station_search_api.station.domain.type.Day.TUE;
 import static com.petrolprice.station_search_api.station.domain.type.Day.WED;
 import static com.petrolprice.station_search_api.station.domain.type.ProductType.DIESEL_A;
 import static com.petrolprice.station_search_api.station.domain.type.ProductType.GASOLINE_95_E5;
-import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.aStationSnapshot;
-import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.openingPeriod;
-import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.price;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.petrolprice.station_search_api.integration.support.StationImportProbe;
+import com.petrolprice.station_search_api.integration.support.StationSnapshotFixture;
+import com.petrolprice.station_search_api.station.domain.type.ProductType;
+import com.petrolprice.station_search_api.station.infrastructure.postgres.PostgresStationSearchPersistenceAdapter;
+import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsPageRequest;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsQuery;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsSort;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
 import com.petrolprice.station_search_api.station.search.application.searcharea.RadiusSearchArea;
-import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
-import com.petrolprice.station_search_api.station.domain.type.ProductType;
-import com.petrolprice.station_search_api.integration.support.StationImportProbe;
-import com.petrolprice.station_search_api.integration.support.StationSnapshotFixture;
-import com.petrolprice.station_search_api.station.infrastructure.postgres.PostgresStationSearchPersistenceAdapter;
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
@@ -98,8 +98,7 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         FindStationsResult result = adapter.search(query(DIESEL_A, FindStationsSort.PRICE, 10));
 
         assertThat(externalIds(result))
-                .containsExactly(
-                        cheapestDiesel.externalId(), middleDiesel.externalId(), expensiveDiesel.externalId());
+                .containsExactly(cheapestDiesel.externalId(), middleDiesel.externalId(), expensiveDiesel.externalId());
     }
 
     @Test
@@ -136,8 +135,7 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         return aStationSnapshot().withLocation(latitude.add(delta), longitude.add(delta));
     }
 
-    private FindStationsQuery query(
-            ProductType productType, FindStationsSort sort, int size) {
+    private FindStationsQuery query(ProductType productType, FindStationsSort sort, int size) {
         return FindStationsQuery.builder()
                 .searchArea(new RadiusSearchArea(latitude, longitude, 500))
                 .productType(productType)
@@ -147,6 +145,8 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
     }
 
     private List<String> externalIds(FindStationsResult result) {
-        return result.items().stream().map(item -> item.station().getExternalId()).toList();
+        return result.items().stream()
+                .map(item -> item.station().getExternalId())
+                .toList();
     }
 }

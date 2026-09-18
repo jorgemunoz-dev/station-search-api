@@ -1,7 +1,7 @@
 package com.petrolprice.station_search_api.station.search.application.query;
 
-import com.petrolprice.station_search_api.station.search.application.searcharea.StationSearchArea;
 import com.petrolprice.station_search_api.station.domain.type.ProductType;
+import com.petrolprice.station_search_api.station.search.application.searcharea.StationSearchArea;
 import java.util.Objects;
 import lombok.Builder;
 

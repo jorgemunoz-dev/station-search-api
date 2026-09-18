@@ -4,16 +4,13 @@ import com.petrolprice.station_search_api.statistics.domain.ProductType;
 import java.math.BigDecimal;
 
 public record RadiusStatisticsQuery(
-        String countryCode,
-        ProductType productType,
-        BigDecimal latitude,
-        BigDecimal longitude,
-        int radiusMeters) {
+        String countryCode, ProductType productType, BigDecimal latitude, BigDecimal longitude, int radiusMeters) {
     public RadiusStatisticsQuery {
         if (countryCode == null || countryCode.length() != 2 || productType == null) {
             throw new IllegalArgumentException("countryCode and productType are required");
         }
-        if (latitude == null || longitude == null
+        if (latitude == null
+                || longitude == null
                 || latitude.compareTo(BigDecimal.valueOf(-90)) < 0
                 || latitude.compareTo(BigDecimal.valueOf(90)) > 0
                 || longitude.compareTo(BigDecimal.valueOf(-180)) < 0

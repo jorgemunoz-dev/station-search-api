@@ -1,14 +1,13 @@
 package com.petrolprice.station_search_api.station.infrastructure.postgres;
 
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,7 +17,8 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
 
     @Override
     public void ensureExists(UUID snapshotId, String countryCode) {
-        String sql = """
+        String sql =
+                """
             INSERT INTO station_import (
                 snapshot_id,
                 country,
@@ -39,15 +39,13 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
             SET country = COALESCE(station_import.country, EXCLUDED.country)
             """;
 
-        jdbcTemplate.update(
-            sql,
-            new MapSqlParameterSource("snapshotId", snapshotId).addValue("country", countryCode)
-        );
+        jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId).addValue("country", countryCode));
     }
 
     @Override
     public boolean claimEvent(UUID snapshotId, UUID eventId) {
-        String sql = """
+        String sql =
+                """
             INSERT INTO station_import_event (
                 snapshot_id,
                 event_id,
@@ -61,33 +59,31 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
             ON CONFLICT (snapshot_id, event_id) DO NOTHING
             """;
 
-        MapSqlParameterSource params = new MapSqlParameterSource()
-            .addValue("snapshotId", snapshotId)
-            .addValue("eventId", eventId);
+        MapSqlParameterSource params =
+                new MapSqlParameterSource().addValue("snapshotId", snapshotId).addValue("eventId", eventId);
 
         return jdbcTemplate.update(sql, params) == 1;
     }
 
     @Override
     public void incrementProcessedStations(UUID snapshotId) {
-        String sql = """
+        String sql =
+                """
             UPDATE station_import
             SET processed_stations = processed_stations + 1,
                 updated_at = NOW()
             WHERE snapshot_id = :snapshotId
             """;
 
-        int updated = jdbcTemplate.update(
-            sql,
-            new MapSqlParameterSource("snapshotId", snapshotId)
-        );
+        int updated = jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
 
         assertOneRowUpdated(updated, snapshotId);
     }
 
     @Override
     public void markPublishingCompleted(UUID snapshotId, int publishedStations, Instant completedAt) {
-        String sql = """
+        String sql =
+                """
             INSERT INTO station_import (
                 snapshot_id,
                 status,
@@ -117,19 +113,17 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
             """;
 
         MapSqlParameterSource params = new MapSqlParameterSource()
-            .addValue("snapshotId", snapshotId)
-            .addValue("publishedStations", publishedStations)
-            .addValue(
-                "completedAt",
-                completedAt.atOffset(ZoneOffset.UTC)
-            );
+                .addValue("snapshotId", snapshotId)
+                .addValue("publishedStations", publishedStations)
+                .addValue("completedAt", completedAt.atOffset(ZoneOffset.UTC));
 
         jdbcTemplate.update(sql, params);
     }
 
     @Override
     public boolean claimForStatisticsIfReady(UUID snapshotId) {
-        String sql = """
+        String sql =
+                """
             UPDATE station_import
             SET status = 'CALCULATING_STATISTICS',
                 statistics_started_at = NOW(),
@@ -141,17 +135,15 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
               AND processed_stations = published_stations
             """;
 
-        int updated = jdbcTemplate.update(
-            sql,
-            new MapSqlParameterSource("snapshotId", snapshotId)
-        );
+        int updated = jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
 
         return updated == 1;
     }
 
     @Override
     public void markCompleted(UUID snapshotId) {
-        String sql = """
+        String sql =
+                """
             UPDATE station_import
             SET status = 'COMPLETED',
                 completed_at = NOW(),
@@ -160,10 +152,7 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
               AND status = 'CALCULATING_STATISTICS'
             """;
 
-        int updated = jdbcTemplate.update(
-            sql,
-            new MapSqlParameterSource("snapshotId", snapshotId)
-        );
+        int updated = jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
 
         assertOneRowUpdated(updated, snapshotId);
     }
@@ -171,9 +160,7 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
     private void assertOneRowUpdated(int updatedRows, UUID snapshotId) {
         if (updatedRows != 1) {
             throw new IllegalStateException(
-                "Expected to update station import %s but updated %d rows"
-                    .formatted(snapshotId, updatedRows)
-            );
+                    "Expected to update station import %s but updated %d rows".formatted(snapshotId, updatedRows));
         }
     }
 }
