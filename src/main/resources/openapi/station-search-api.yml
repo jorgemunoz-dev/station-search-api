@@ -272,8 +272,8 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
-        - {name: area, in: query, required: false, schema: {type: string}}
+        - {name: level, in: query, required: false, description: Supports country, province, municipality and locality scopes, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
+        - {name: area, in: query, required: false, description: Province, municipality or locality name, schema: {type: string}}
         - {name: province, in: query, required: false, description: Required for municipality scope, schema: {type: string}}
       responses:
         '200':
@@ -291,7 +291,7 @@ paths:
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
         - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
         - {name: area, in: query, required: false, schema: {type: string}}
-        - {name: province, in: query, required: false, schema: {type: string}}
+        - {name: province, in: query, required: false, description: Required for municipality and locality scopes, schema: {type: string}}
         - {name: from, in: query, required: true, schema: {type: string, format: date}}
         - {name: to, in: query, required: true, schema: {type: string, format: date}}
       responses:
@@ -326,7 +326,7 @@ paths:
       operationId: getFuelPriceSummary
       summary: Get fuel price summary
       description: >
-        Returns aggregated fuel price statistics for a country and product,
+        Returns aggregated fuel price statistics for a country or administrative area and product,
         including average price, variation, minimum and maximum prices and number of stations analysed.
 
       parameters:
@@ -353,6 +353,24 @@ paths:
             maximum: 365
             default: 7
           example: 7
+        - name: level
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/GeographicLevel'
+            default: NATIONAL
+        - name: area
+          in: query
+          required: false
+          description: Province, municipality or locality name. Required for non-national scopes.
+          schema:
+            type: string
+        - name: province
+          in: query
+          required: false
+          description: Required for municipality and locality scopes to disambiguate the area.
+          schema:
+            type: string
       responses:
         '200':
           description: Fuel price summary
@@ -442,7 +460,7 @@ components:
 
     GeographicLevel:
       type: string
-      enum: [NATIONAL, PROVINCE, MUNICIPALITY]
+      enum: [NATIONAL, PROVINCE, MUNICIPALITY, LOCALITY]
 
     GeographicScopeResponse:
       type: object

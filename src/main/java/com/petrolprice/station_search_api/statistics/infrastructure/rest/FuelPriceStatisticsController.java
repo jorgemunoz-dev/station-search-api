@@ -38,8 +38,15 @@ public class FuelPriceStatisticsController implements StatisticsApi {
     }
 
     @Override
-    public ResponseEntity<FuelPriceSummaryResponse> getFuelPriceSummary(String countryCode, ProductType productType, Integer days) {
-        FuelPriceSummaryResult result = summaryUseCase.getFuelPriceSummary(countryCode, product(productType), days);
+    public ResponseEntity<FuelPriceSummaryResponse> getFuelPriceSummary(
+            String countryCode,
+            ProductType productType,
+            Integer days,
+            GeographicLevel level,
+            String area,
+            String province) {
+        FuelPriceSummaryResult result = summaryUseCase.getFuelPriceSummary(
+                countryCode, product(productType), days, scope(level, area, province));
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
@@ -95,8 +102,9 @@ public class FuelPriceStatisticsController implements StatisticsApi {
         GeographicLevel effectiveLevel = level == null ? GeographicLevel.NATIONAL : level;
         return switch (effectiveLevel) {
             case NATIONAL -> GeographicScope.national();
-            case PROVINCE -> GeographicScope.province(province);
+            case PROVINCE -> GeographicScope.province(area);
             case MUNICIPALITY -> GeographicScope.municipality(province, area);
+            case LOCALITY -> GeographicScope.locality(province, area);
         };
     }
 }
