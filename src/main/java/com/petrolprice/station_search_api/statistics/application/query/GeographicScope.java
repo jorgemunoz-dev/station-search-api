@@ -10,8 +10,9 @@ public record GeographicScope(GeographicLevel level, String name, String provinc
         if (level != GeographicLevel.NATIONAL && (name == null || name.isBlank())) {
             throw new IllegalArgumentException("A geographic name is required for " + level);
         }
-        if (level == GeographicLevel.MUNICIPALITY && (province == null || province.isBlank())) {
-            throw new IllegalArgumentException("province is required for a municipality scope");
+        if ((level == GeographicLevel.MUNICIPALITY || level == GeographicLevel.LOCALITY)
+                && (province == null || province.isBlank())) {
+            throw new IllegalArgumentException("province is required for a municipality or locality scope");
         }
         name = name == null ? null : name.trim();
         province = province == null ? null : province.trim();
@@ -27,5 +28,9 @@ public record GeographicScope(GeographicLevel level, String name, String provinc
 
     public static GeographicScope municipality(String province, String municipality) {
         return new GeographicScope(GeographicLevel.MUNICIPALITY, municipality, province);
+    }
+
+    public static GeographicScope locality(String province, String locality) {
+        return new GeographicScope(GeographicLevel.LOCALITY, locality, province);
     }
 }

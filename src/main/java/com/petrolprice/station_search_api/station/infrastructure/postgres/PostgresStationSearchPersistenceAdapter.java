@@ -16,6 +16,7 @@ import com.petrolprice.station_search_api.station.search.application.query.FindS
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsPage;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
+import com.petrolprice.station_search_api.station.search.application.searcharea.AdministrativeSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.RadiusSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.ViewportSearchArea;
 import java.time.LocalTime;
@@ -75,10 +76,35 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
 
     private List<StationRankingProjection> findRankedStations(FindStationsQuery query) {
         return switch (query.searchArea()) {
+            case AdministrativeSearchArea area -> findRankedStationsByAdministrativeArea(query, area);
             case RadiusSearchArea radius -> findRankedStationsByRadius(query, radius);
 
             case ViewportSearchArea viewport -> findRankedStationsByViewport(query, viewport);
         };
+    }
+
+    private List<StationRankingProjection> findRankedStationsByAdministrativeArea(
+            FindStationsQuery query, AdministrativeSearchArea area) {
+        String areaColumn = switch (area.type()) {
+            case LOCALITY -> "s.locality";
+            case MUNICIPALITY -> "s.municipality";
+            case PROVINCE -> "s.province";
+        };
+        String candidateStationsSql = """
+            SELECT
+                s.id, s.external_id, s.country, s.brand, s.normalized_brand,
+                s.street, s.postal_code, s.locality, s.municipality, s.province,
+                s.location, NULL::double precision AS distance_meters
+            FROM station s
+            WHERE s.country = :countryCode
+              AND LOWER(%s) = LOWER(:areaName)
+            """.formatted(areaColumn);
+
+        MapSqlParameterSource parameters = createCommonParameters(query)
+                .addValue("countryCode", area.countryCode())
+                .addValue("areaName", area.name());
+
+        return executeRankingQuery(query, candidateStationsSql, nonDistanceOrderBy(query.sortBy()), parameters);
     }
 
     /*
@@ -337,8 +363,12 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
     }
 
     private String viewportOrderBy(FindStationsSort sort) {
+        return nonDistanceOrderBy(sort);
+    }
+
+    private String nonDistanceOrderBy(FindStationsSort sort) {
         if (sort != FindStationsSort.PRICE) {
-            throw new IllegalArgumentException("DISTANCE sorting is not supported for VIEWPORT searches");
+            throw new IllegalArgumentException("DISTANCE sorting requires reference coordinates");
         }
 
         return """

@@ -72,7 +72,7 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
-    void shouldCalculateNationalProvinceAndMunicipalityCurrentStatistics() {
+    void shouldCalculateNationalAndAdministrativeAreaCurrentStatistics() {
         var national = currentStatistics
                 .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.national()))
                 .orElseThrow();
@@ -83,6 +83,10 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
                 .current(new CurrentStatisticsQuery(
                         "ES", ProductType.DIESEL_A, GeographicScope.municipality("South", "Beta")))
                 .orElseThrow();
+        var locality = currentStatistics
+                .current(new CurrentStatisticsQuery(
+                        "ES", ProductType.DIESEL_A, GeographicScope.locality("North", "Alpha Town")))
+                .orElseThrow();
 
         assertThat(national.averagePrice()).isEqualByComparingTo("1.600");
         assertThat(national.minimumPrice()).isEqualByComparingTo("1.400");
@@ -92,6 +96,7 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         assertThat(national.mostExpensiveStation().externalId()).isEqualTo(expensive.externalId());
         assertThat(province.nationalAverageDifference()).isEqualByComparingTo("-0.200");
         assertThat(municipality.provincialAverageDifference()).isEqualByComparingTo("0.000");
+        assertThat(locality.averagePrice()).isEqualByComparingTo("1.400");
     }
 
     @Test
@@ -114,9 +119,10 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
 
     private void classify(StationSnapshotFixture station, String province, String municipality) {
         jdbcTemplate.update(
-                "UPDATE station SET province = ?, municipality = ? WHERE external_id = ?",
+                "UPDATE station SET province = ?, municipality = ?, locality = ? WHERE external_id = ?",
                 province,
                 municipality,
+                municipality + " Town",
                 station.externalId());
     }
 

@@ -1,10 +1,13 @@
 package com.petrolprice.station_search_api.station.search.infrastructure.rest.factory;
 
+import com.petrolprice.station_search_api.contract.rest.model.AdministrativeAreaType;
+import com.petrolprice.station_search_api.contract.rest.model.ProductType;
 import com.petrolprice.station_search_api.contract.rest.model.StationSearchSortBy;
 import com.petrolprice.station_search_api.platform.rest.exception.InvalidStationSearchRequestException;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsPageRequest;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsQuery;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsSort;
+import com.petrolprice.station_search_api.station.search.application.searcharea.AdministrativeSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.RadiusSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.StationSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.ViewportSearchArea;
@@ -14,6 +17,31 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class FindStationsQueryFactory {
+
+    public FindStationsQuery createAdministrativeArea(
+            AdministrativeAreaType areaType,
+            String name,
+            String countryCode,
+            ProductType productType,
+            int page,
+            int size) {
+        if (areaType == null) {
+            throw new InvalidStationSearchRequestException("areaType is required");
+        }
+
+        try {
+            AdministrativeSearchArea area = new AdministrativeSearchArea(
+                    AdministrativeSearchArea.Type.valueOf(areaType.name()), name, countryCode);
+            return FindStationsQuery.builder()
+                    .searchArea(area)
+                    .productType(mapProductType(productType))
+                    .sortBy(FindStationsSort.PRICE)
+                    .pageRequest(FindStationsPageRequest.builder().page(page).size(size).build())
+                    .build();
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidStationSearchRequestException(exception.getMessage());
+        }
+    }
 
     public FindStationsQuery create(StationSearchParameters parameters) {
         Objects.requireNonNull(parameters, "parameters is required");

@@ -1,11 +1,11 @@
 package com.petrolprice.station_search_api.statistics.application;
 
-import com.petrolprice.station_search_api.statistics.application.result.FuelPriceSummaryResult;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.GeographicScope;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.EstimatedSaving;
+import com.petrolprice.station_search_api.statistics.application.result.FuelPriceSummaryResult;
 import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
 import com.petrolprice.station_search_api.statistics.domain.ProductType;
 import java.math.BigDecimal;
@@ -14,6 +14,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 @Service
 @RequiredArgsConstructor
 public class GetFuelPriceSummaryService implements GetFuelPriceSummaryUseCase {
@@ -22,16 +23,16 @@ public class GetFuelPriceSummaryService implements GetFuelPriceSummaryUseCase {
     private final FuelPriceStatisticsUseCase statistics;
 
     @Override
-    public FuelPriceSummaryResult getFuelPriceSummary(String countryCode, ProductType productType, Integer days) {
+    public FuelPriceSummaryResult getFuelPriceSummary(
+            String countryCode, ProductType productType, Integer days, GeographicScope scope) {
         int periodDays = days == null ? 7 : days;
         if (periodDays < 1 || periodDays > 365) {
             throw new IllegalArgumentException("days must be between 1 and 365");
         }
-        CurrentPriceStatistics current = statistics.current(
-            new CurrentStatisticsQuery(countryCode, productType, GeographicScope.national()));
+        CurrentPriceStatistics current = statistics.current(new CurrentStatisticsQuery(countryCode, productType, scope));
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         List<HistoricalPricePoint> history = statistics.history(new HistoricalStatisticsQuery(
-            countryCode, productType, GeographicScope.national(), today.minusDays(periodDays), today));
+            countryCode, productType, scope, today.minusDays(periodDays), today));
         BigDecimal previous = history.isEmpty() ? null : history.getFirst().averagePrice();
         BigDecimal variation = previous == null ? null : current.averagePrice().subtract(previous);
         Double percentage = previous == null || previous.signum() == 0
