@@ -4,6 +4,69 @@ info:
   version: 1.0.0
 
 paths:
+  /stations/by-administrative-area:
+    get:
+      tags:
+        - Stations
+      operationId: searchStationsByAdministrativeArea
+      summary: Search stations by locality, municipality or province
+      description: |
+        Returns the stations whose address belongs to the supplied administrative area.
+        LOCALITY also covers towns and villages stored in the station locality field.
+        Name matching is case-insensitive. DISTANCE sorting is unavailable because this
+        search has no reference coordinates.
+      parameters:
+        - name: areaType
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/AdministrativeAreaType"
+        - name: name
+          in: query
+          required: true
+          description: Exact name of the locality, municipality or province.
+          schema:
+            type: string
+            minLength: 1
+          example: Malaga
+        - name: countryCode
+          in: query
+          required: false
+          description: ISO 3166-1 alpha-2 country code.
+          schema:
+            type: string
+            pattern: "^[A-Za-z]{2}$"
+            default: ES
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: productType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ProductType"
+      responses:
+        "200":
+          description: Stations found in the administrative area
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StationSearchResponse"
+
   /stations:
     get:
       tags:
@@ -523,6 +586,13 @@ components:
       enum:
         - VIEWPORT
         - RADIUS
+    AdministrativeAreaType:
+      type: string
+      description: Address field used to select stations.
+      enum:
+        - LOCALITY
+        - MUNICIPALITY
+        - PROVINCE
     ProductType:
       type: string
       enum:
