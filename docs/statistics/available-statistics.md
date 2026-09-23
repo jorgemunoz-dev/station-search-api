@@ -8,8 +8,9 @@ snapshot has been processed, `StationImportFinalizer` atomically claims the impo
 `CalculateFuelPriceStatisticsUseCase`, and marks the import `COMPLETED` only after calculation
 succeeds.
 
-The calculator scans the historical prices belonging to that snapshot and materializes national,
-province, and municipality aggregates in `fuel_price_statistics`. A failure rolls back both the
+The calculator scans the historical prices belonging to that snapshot and materializes national and
+administrative-area aggregates in `fuel_price_statistics`. Legacy province and municipality address
+values are resolved through the administrative-area catalogue. A failure rolls back both the
 statistics and the import state, allowing Rabbit retry to run the whole operation again. Replacing
 rows by snapshot makes calculation idempotent.
 
@@ -21,8 +22,8 @@ calculated snapshot and PostGIS; they never use `station_current_product_price`.
 ## Available statistics
 
 For each product, current snapshot aggregates provide average, minimum, maximum, station count,
-cheapest/most-expensive station, national and provincial differences where applicable, and province
-rankings. Municipality statistics require their province, use `municipality`, and fall back to
+cheapest/most-expensive station, national and parent-area differences where applicable, and generic
+administrative-area rankings. Municipality compatibility data uses `municipality` and falls back to
 `locality` when municipality is null.
 
 Historical results expose the calculated aggregates for each completed snapshot/day, period
@@ -37,10 +38,9 @@ reference price. They return per-litre and per-tank savings and default to 55 li
 
 ## Not derivable reliably
 
-- **Autonomous communities:** the station table has no autonomous-community field or stable province
-  code. Add community and province codes in ingestion before grouping by community.
-- **Canonical administrative comparisons:** province and municipality are free text. INE codes are
-  needed to eliminate aliases and spelling differences.
+- **Authoritative administrative identity:** existing events only provide province and municipality
+  names, so imported `legacy-address` codes cannot eliminate upstream aliases. Provider or registry
+  codes are needed for canonical comparisons and additional hierarchy levels.
 - **Continuous daily history:** a missing snapshot date cannot be reconstructed.
 - **Sales-weighted prices:** there is no sales volume, so averages are station-weighted.
 - **Realized consumer savings:** there is no purchase, route, vehicle-consumption, or fill data.
@@ -51,6 +51,8 @@ reference price. They return per-litre and per-tank savings and default to 55 li
 - `GET /statistics/fuel-prices/history`
 - `GET /statistics/fuel-prices/around`
 - `GET /statistics/fuel-prices/provinces`
+- `GET /statistics/fuel-prices/administrative-areas`
+- `GET /administrative-areas`
 - `GET /statistics/fuel-prices/savings`
 - `GET /statistics/fuel-prices/summary`
 

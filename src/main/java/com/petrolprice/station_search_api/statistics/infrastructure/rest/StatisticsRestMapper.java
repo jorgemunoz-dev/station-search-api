@@ -1,6 +1,7 @@
 package com.petrolprice.station_search_api.statistics.infrastructure.rest;
 
 import com.petrolprice.station_search_api.contract.rest.model.*;
+import com.petrolprice.station_search_api.statistics.application.result.AdministrativeArea;
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.FuelSaving;
 import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
@@ -24,6 +25,8 @@ public interface StatisticsRestMapper {
 
     RankedAreaStatisticsResponse toResponse(RankedAreaStatistics result);
 
+    AdministrativeAreaResponse toResponse(AdministrativeArea result);
+
     default OffsetDateTime map(Instant value) {
         return value == null ? null : value.atOffset(ZoneOffset.UTC);
     }
@@ -33,6 +36,10 @@ public interface StatisticsRestMapper {
     }
 
     default List<RankedAreaStatisticsResponse> toRankingResponse(List<RankedAreaStatistics> results) {
+        return results.stream().map(this::toResponse).toList();
+    }
+
+    default List<AdministrativeAreaResponse> toAreaResponse(List<AdministrativeArea> results) {
         return results.stream().map(this::toResponse).toList();
     }
 }

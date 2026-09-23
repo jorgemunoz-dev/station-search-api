@@ -1,16 +1,17 @@
 package com.petrolprice.station_search_api.statistics.application.query;
 
 import com.petrolprice.station_search_api.statistics.domain.GeographicLevel;
+import java.util.UUID;
 
-public record GeographicScope(GeographicLevel level, String name, String province) {
+public record GeographicScope(UUID areaId, String areaType, GeographicLevel level, String name, String province) {
     public GeographicScope {
-        if (level == null) {
+        if (areaId == null && level == null) {
             throw new IllegalArgumentException("Geographic level is required");
         }
-        if (level != GeographicLevel.NATIONAL && (name == null || name.isBlank())) {
+        if (areaId == null && level != GeographicLevel.NATIONAL && (name == null || name.isBlank())) {
             throw new IllegalArgumentException("A geographic name is required for " + level);
         }
-        if (level == GeographicLevel.MUNICIPALITY && (province == null || province.isBlank())) {
+        if (areaId == null && level == GeographicLevel.MUNICIPALITY && (province == null || province.isBlank())) {
             throw new IllegalArgumentException("province is required for a municipality scope");
         }
         name = name == null ? null : name.trim();
@@ -18,14 +19,26 @@ public record GeographicScope(GeographicLevel level, String name, String provinc
     }
 
     public static GeographicScope national() {
-        return new GeographicScope(GeographicLevel.NATIONAL, null, null);
+        return new GeographicScope(null, null, GeographicLevel.NATIONAL, null, null);
     }
 
     public static GeographicScope province(String province) {
-        return new GeographicScope(GeographicLevel.PROVINCE, province, province);
+        return new GeographicScope(null, "PROVINCE", GeographicLevel.PROVINCE, province, province);
     }
 
     public static GeographicScope municipality(String province, String municipality) {
-        return new GeographicScope(GeographicLevel.MUNICIPALITY, municipality, province);
+        return new GeographicScope(null, "MUNICIPALITY", GeographicLevel.MUNICIPALITY, municipality, province);
+    }
+
+    public static GeographicScope administrativeArea(UUID areaId) {
+        if (areaId == null) {
+            throw new IllegalArgumentException("areaId is required");
+        }
+        return new GeographicScope(areaId, null, null, null, null);
+    }
+
+    public static GeographicScope resolvedAdministrativeArea(
+            UUID areaId, String areaType, GeographicLevel legacyLevel, String name, String parentName) {
+        return new GeographicScope(areaId, areaType, legacyLevel, name, parentName);
     }
 }

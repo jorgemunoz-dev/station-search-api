@@ -1,0 +1,47 @@
+@baseUrl = http://localhost:8080
+@countryCode = ES
+@productType = DIESEL_A
+
+### 1. Discover top-level administrative areas (for Spain these are currently provinces)
+GET {{baseUrl}}/administrative-areas?countryCode={{countryCode}}
+Accept: application/json
+
+> {%
+  client.global.set("provinceId", response.body[0].id);
+%}
+
+### 2. Discover the children of an area without assuming that they are municipalities
+GET {{baseUrl}}/administrative-areas?countryCode={{countryCode}}&parentAreaId={{provinceId}}
+Accept: application/json
+
+> {%
+  client.global.set("childAreaId", response.body[0].id);
+%}
+
+### 3. Current national statistics (areaId omitted)
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}
+Accept: application/json
+
+### 4. Current statistics for any administrative area
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}&areaId={{childAreaId}}
+Accept: application/json
+
+### 5. Historical statistics for the same stable area identity
+GET {{baseUrl}}/statistics/fuel-prices/history?countryCode={{countryCode}}&productType={{productType}}&areaId={{childAreaId}}&from=2026-09-01&to=2026-09-23
+Accept: application/json
+
+### 6. Rank top-level areas of a country
+GET {{baseUrl}}/statistics/fuel-prices/administrative-areas?countryCode={{countryCode}}&productType={{productType}}
+Accept: application/json
+
+### 7. Rank children of one area, optionally constrained to a country-specific type
+GET {{baseUrl}}/statistics/fuel-prices/administrative-areas?countryCode={{countryCode}}&productType={{productType}}&parentAreaId={{provinceId}}&areaType=MUNICIPALITY
+Accept: application/json
+
+### 8. Deprecated compatibility request: province by name
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}&level=PROVINCE&province=North
+Accept: application/json
+
+### 9. Deprecated compatibility endpoint: rank provinces
+GET {{baseUrl}}/statistics/fuel-prices/provinces?countryCode={{countryCode}}&productType={{productType}}
+Accept: application/json

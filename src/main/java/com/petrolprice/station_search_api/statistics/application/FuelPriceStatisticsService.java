@@ -4,6 +4,7 @@ import com.petrolprice.station_search_api.statistics.application.port.out.Curren
 import com.petrolprice.station_search_api.statistics.application.port.out.HistoricalPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
+import com.petrolprice.station_search_api.statistics.application.result.AdministrativeArea;
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.FuelSaving;
 import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
@@ -37,6 +38,17 @@ public class FuelPriceStatisticsService implements FuelPriceStatisticsUseCase {
     @Override
     public List<RankedAreaStatistics> provinceRanking(String countryCode, ProductType productType) {
         return currentRepository.provinces(countryCode, productType);
+    }
+
+    @Override
+    public List<RankedAreaStatistics> areaRanking(
+            String countryCode, ProductType productType, UUID parentAreaId, String areaType) {
+        return currentRepository.areas(countryCode, productType, parentAreaId, areaType);
+    }
+
+    @Override
+    public List<AdministrativeArea> findAreas(String countryCode, UUID parentAreaId, String areaType) {
+        return currentRepository.findAreas(countryCode, parentAreaId, areaType);
     }
 
     @Override

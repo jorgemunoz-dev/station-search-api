@@ -95,6 +95,35 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
+    void shouldDiscoverAndQueryAdministrativeAreasByStableIdentity() {
+        var provinces = currentStatistics.findAreas("ES", null, "province");
+        assertThat(provinces).extracting(area -> area.name()).containsExactly("North", "South");
+
+        var south = provinces.stream().filter(area -> area.name().equals("South")).findFirst().orElseThrow();
+        var municipalities = currentStatistics.findAreas("ES", south.id(), null);
+        assertThat(municipalities).singleElement().satisfies(area -> {
+            assertThat(area.name()).isEqualTo("Beta");
+            assertThat(area.type()).isEqualTo("MUNICIPALITY");
+            assertThat(area.parentId()).isEqualTo(south.id());
+        });
+
+        var areaStatistics = currentStatistics
+                .current(new CurrentStatisticsQuery(
+                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeArea(municipalities.getFirst().id())))
+                .orElseThrow();
+        assertThat(areaStatistics.averagePrice()).isEqualByComparingTo("1.800");
+        assertThat(areaStatistics.scope().areaId()).isEqualTo(municipalities.getFirst().id());
+        assertThat(areaStatistics.scope().name()).isEqualTo("Beta");
+
+        var rankedChildren = currentStatistics.areas("ES", ProductType.DIESEL_A, south.id(), "municipality");
+        assertThat(rankedChildren).singleElement().satisfies(result -> {
+            assertThat(result.areaId()).isEqualTo(municipalities.getFirst().id());
+            assertThat(result.area()).isEqualTo("Beta");
+            assertThat(result.areaType()).isEqualTo("MUNICIPALITY");
+        });
+    }
+
+    @Test
     void shouldReadHistoricalStatisticsCalculatedForCompletedSnapshots() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         UUID stationId = stationId(cheap.externalId());

@@ -31,9 +31,9 @@ public class FuelPriceStatisticsController implements StatisticsApi {
 
     @Override
     public ResponseEntity<CurrentPriceStatisticsResponse> getCurrentFuelPriceStatistics(
-            String countryCode, ProductType productType, GeographicLevel level, String area, String province) {
+            String countryCode, ProductType productType, UUID areaId, GeographicLevel level, String area, String province) {
         CurrentPriceStatistics result = statistics.current(
-                new CurrentStatisticsQuery(countryCode, product(productType), scope(level, area, province)));
+                new CurrentStatisticsQuery(countryCode, product(productType), scope(areaId, level, area, province)));
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
@@ -56,11 +56,12 @@ public class FuelPriceStatisticsController implements StatisticsApi {
             ProductType productType,
             LocalDate from,
             LocalDate to,
+            UUID areaId,
             GeographicLevel level,
             String area,
             String province) {
         List<HistoricalPricePoint> result = statistics.history(new HistoricalStatisticsQuery(
-                countryCode, product(productType), scope(level, area, province), from, to));
+                countryCode, product(productType), scope(areaId, level, area, province), from, to));
         return ResponseEntity.ok(mapper.toHistoryResponse(result));
     }
 
@@ -69,6 +70,13 @@ public class FuelPriceStatisticsController implements StatisticsApi {
             String countryCode, ProductType productType) {
         return ResponseEntity.ok(
                 mapper.toRankingResponse(statistics.provinceRanking(countryCode, product(productType))));
+    }
+
+    @Override
+    public ResponseEntity<List<RankedAreaStatisticsResponse>> getAdministrativeAreaFuelPriceStatistics(
+            String countryCode, ProductType productType, UUID parentAreaId, String areaType) {
+        return ResponseEntity.ok(mapper.toRankingResponse(
+                statistics.areaRanking(countryCode, product(productType), parentAreaId, areaType)));
     }
 
     @ExceptionHandler(StatisticsNotFoundException.class)
@@ -91,11 +99,14 @@ public class FuelPriceStatisticsController implements StatisticsApi {
         return com.petrolprice.station_search_api.statistics.domain.ProductType.valueOf(productType.name());
     }
 
-    private GeographicScope scope(GeographicLevel level, String area, String province) {
+    private GeographicScope scope(UUID areaId, GeographicLevel level, String area, String province) {
+        if (areaId != null) {
+            return GeographicScope.administrativeArea(areaId);
+        }
         GeographicLevel effectiveLevel = level == null ? GeographicLevel.NATIONAL : level;
         return switch (effectiveLevel) {
             case NATIONAL -> GeographicScope.national();
-            case PROVINCE -> GeographicScope.province(province);
+            case PROVINCE -> GeographicScope.province(area == null || area.isBlank() ? province : area);
             case MUNICIPALITY -> GeographicScope.municipality(province, area);
         };
     }

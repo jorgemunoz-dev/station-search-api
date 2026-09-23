@@ -209,9 +209,10 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: areaId, in: query, required: false, description: Stable administrative-area identifier. Takes precedence over deprecated name parameters., schema: {type: string, format: uuid}}
         - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
-        - {name: area, in: query, required: false, schema: {type: string}}
-        - {name: province, in: query, required: false, description: Required for municipality scope, schema: {type: string}}
+        - {name: area, in: query, required: false, deprecated: true, schema: {type: string}}
+        - {name: province, in: query, required: false, deprecated: true, description: Required for legacy municipality scope, schema: {type: string}}
       responses:
         '200':
           description: Current aggregate
@@ -226,9 +227,10 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: areaId, in: query, required: false, description: Stable administrative-area identifier., schema: {type: string, format: uuid}}
         - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
-        - {name: area, in: query, required: false, schema: {type: string}}
-        - {name: province, in: query, required: false, schema: {type: string}}
+        - {name: area, in: query, required: false, deprecated: true, schema: {type: string}}
+        - {name: province, in: query, required: false, deprecated: true, schema: {type: string}}
         - {name: from, in: query, required: true, schema: {type: string, format: date}}
         - {name: to, in: query, required: true, schema: {type: string, format: date}}
       responses:
@@ -244,6 +246,7 @@ paths:
     get:
       tags: [Fuel Price Statistics]
       operationId: getProvinceFuelPriceStatistics
+      deprecated: true
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
@@ -255,6 +258,41 @@ paths:
               schema:
                 type: array
                 items: {$ref: '#/components/schemas/RankedAreaStatisticsResponse'}
+
+  /statistics/fuel-prices/administrative-areas:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getAdministrativeAreaFuelPriceStatistics
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: parentAreaId, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: areaType, in: query, required: false, description: Country-specific type such as STATE, PROVINCE or MUNICIPALITY., schema: {type: string}}
+      responses:
+        '200':
+          description: Ranked administrative-area aggregates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/RankedAreaStatisticsResponse'}
+
+  /administrative-areas:
+    get:
+      tags: [Administrative Areas]
+      operationId: getAdministrativeAreas
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
+        - {name: parentAreaId, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: areaType, in: query, required: false, description: Optional country-specific area type., schema: {type: string}}
+      responses:
+        '200':
+          description: Administrative areas matching the hierarchy filters
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/AdministrativeAreaResponse'}
 
   /statistics/fuel-prices/summary:
     get:
@@ -384,7 +422,11 @@ components:
     GeographicScopeResponse:
       type: object
       properties:
-        level: {$ref: '#/components/schemas/GeographicLevel'}
+        areaId: {type: string, format: uuid, nullable: true}
+        areaType: {type: string, nullable: true}
+        level:
+          nullable: true
+          allOf: [{$ref: '#/components/schemas/GeographicLevel'}]
         name: {type: string, nullable: true}
         province: {type: string, nullable: true}
 
@@ -434,7 +476,10 @@ components:
     RankedAreaStatisticsResponse:
       type: object
       properties:
+        areaId: {type: string, format: uuid}
         area: {type: string}
+        areaType: {type: string}
+        parentAreaId: {type: string, format: uuid, nullable: true}
         averagePrice: {type: number}
         minimumPrice: {type: number}
         maximumPrice: {type: number}
@@ -443,6 +488,17 @@ components:
         nationalAverageDifference: {type: number}
         cheapestRank: {type: integer}
         mostExpensiveRank: {type: integer}
+
+    AdministrativeAreaResponse:
+      type: object
+      required: [id, countryCode, type, name]
+      properties:
+        id: {type: string, format: uuid}
+        countryCode: {type: string}
+        type: {type: string}
+        name: {type: string}
+        parentId: {type: string, format: uuid, nullable: true}
+        parentName: {type: string, nullable: true}
 
     EstimatedSaving:
       type: object

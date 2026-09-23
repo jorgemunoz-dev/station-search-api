@@ -30,6 +30,92 @@ databaseChangeLog:
               - column: {name: product_type}
               - column: {name: station_id}
         - createTable:
+            tableName: administrative_area
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints: {primaryKey: true, nullable: false}
+              - column:
+                  name: country
+                  type: varchar(2)
+                  constraints: {nullable: false}
+              - column:
+                  name: source
+                  type: varchar(50)
+                  constraints: {nullable: false}
+              - column:
+                  name: external_code
+                  type: varchar(255)
+                  constraints: {nullable: false}
+              - column:
+                  name: type
+                  type: varchar(100)
+                  constraints: {nullable: false}
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints: {nullable: false}
+              - column:
+                  name: normalized_name
+                  type: varchar(255)
+                  constraints: {nullable: false}
+              - column: {name: parent_id, type: uuid}
+        - addUniqueConstraint:
+            tableName: administrative_area
+            columnNames: country, source, external_code
+            constraintName: uk_administrative_area_external
+        - addForeignKeyConstraint:
+            baseTableName: administrative_area
+            baseColumnNames: parent_id
+            referencedTableName: administrative_area
+            referencedColumnNames: id
+            constraintName: fk_administrative_area_parent
+        - createIndex:
+            tableName: administrative_area
+            indexName: idx_administrative_area_hierarchy
+            columns:
+              - column: {name: country}
+              - column: {name: parent_id}
+              - column: {name: type}
+              - column: {name: normalized_name}
+        - createTable:
+            tableName: station_administrative_area
+            columns:
+              - column:
+                  name: station_id
+                  type: uuid
+                  constraints: {nullable: false}
+              - column:
+                  name: administrative_area_id
+                  type: uuid
+                  constraints: {nullable: false}
+        - addPrimaryKey:
+            tableName: station_administrative_area
+            columnNames: station_id, administrative_area_id
+            constraintName: pk_station_administrative_area
+        - addForeignKeyConstraint:
+            baseTableName: station_administrative_area
+            baseColumnNames: station_id
+            referencedTableName: station
+            referencedColumnNames: id
+            constraintName: fk_station_administrative_area_station
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: station_administrative_area
+            baseColumnNames: administrative_area_id
+            referencedTableName: administrative_area
+            referencedColumnNames: id
+            constraintName: fk_station_administrative_area_area
+            onDelete: CASCADE
+        - createIndex:
+            tableName: station_administrative_area
+            indexName: idx_station_administrative_area_area
+            columns:
+              - column: {name: administrative_area_id}
+              - column: {name: station_id}
+        - createTable:
             tableName: fuel_price_statistics
             columns:
               - column:
@@ -58,24 +144,8 @@ databaseChangeLog:
                     nullable: false
 
               - column:
-                  name: geographic_level
-                  type: varchar(20)
-                  constraints:
-                    nullable: false
-
-              - column:
-                  name: scope_key
-                  type: varchar(500)
-                  constraints:
-                    nullable: false
-
-              - column:
-                  name: area_name
-                  type: varchar(255)
-
-              - column:
-                  name: province
-                  type: varchar(255)
+                  name: administrative_area_id
+                  type: uuid
 
               - column:
                   name: average_price
@@ -125,16 +195,27 @@ databaseChangeLog:
             referencedColumnNames: snapshot_id
             constraintName: fk_statistics_snapshot
             onDelete: CASCADE
-        - addUniqueConstraint:
-            tableName: fuel_price_statistics
-            columnNames: snapshot_id, country, product_type, geographic_level, scope_key
-            constraintName: uk_statistics_snapshot_scope
+        - addForeignKeyConstraint:
+            baseTableName: fuel_price_statistics
+            baseColumnNames: administrative_area_id
+            referencedTableName: administrative_area
+            referencedColumnNames: id
+            constraintName: fk_statistics_administrative_area
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_national
+              ON fuel_price_statistics (snapshot_id, country, product_type)
+              WHERE administrative_area_id IS NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_area
+              ON fuel_price_statistics (snapshot_id, country, product_type, administrative_area_id)
+              WHERE administrative_area_id IS NOT NULL
         - createIndex:
             tableName: fuel_price_statistics
             indexName: idx_statistics_current_lookup
             columns:
               - column: {name: country}
               - column: {name: product_type}
-              - column: {name: geographic_level}
-              - column: {name: scope_key}
+              - column: {name: administrative_area_id}
               - column: {name: calculated_at, descending: true}
