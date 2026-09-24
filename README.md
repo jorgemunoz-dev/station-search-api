@@ -73,6 +73,8 @@ statistics are available in
 [`requests/locality-statistics.http`](requests/locality-statistics.http).
 Copy-and-paste cURL examples for all public endpoints are available in
 [`requests/curl-examples.md`](requests/curl-examples.md).
+An endpoint-by-endpoint usage guide is available in
+[`docs/api/endpoints.md`](docs/api/endpoints.md).
 
 ---
 
