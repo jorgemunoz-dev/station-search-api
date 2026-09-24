@@ -209,6 +209,9 @@ paths:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
         - {name: locality, in: query, required: false, description: Locality name returned by location search. Omit it for country-wide statistics., schema: {type: string}}
+        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Mutually exclusive with other scopes., schema: {type: string}}
       responses:
         '200':
           description: Current aggregate
@@ -224,6 +227,9 @@ paths:
         - {name: countryCode, in: query, required: true, schema: {type: string}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
         - {name: locality, in: query, required: false, description: Locality name returned by location search. Omit it for country-wide statistics., schema: {type: string}}
+        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Mutually exclusive with other scopes., schema: {type: string}}
         - {name: from, in: query, required: true, schema: {type: string, format: date}}
         - {name: to, in: query, required: true, schema: {type: string, format: date}}
       responses:

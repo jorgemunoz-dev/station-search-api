@@ -19,4 +19,12 @@ class GeographicScopeTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("locality is required");
     }
+
+    @Test
+    void shouldSelectCountrySpecificAdministrativePositionsWithoutEnums() {
+        GeographicScope scope = GeographicScope.adminArea2("  Málaga  ");
+
+        assertThat(scope.adminArea2Name()).isEqualTo("Málaga");
+        assertThat(scope.normalizedLocalityName()).isNull();
+    }
 }

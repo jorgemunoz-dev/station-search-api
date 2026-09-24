@@ -29,3 +29,11 @@ Accept: application/json
 ### 6. Rank localities filtered by country-specific administrative metadata
 GET {{baseUrl}}/statistics/fuel-prices/localities?countryCode={{countryCode}}&productType={{productType}}&adminArea2=Málaga
 Accept: application/json
+
+### 7. Current statistics for an admin_area_2 (province in Spain)
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}&adminArea2=Málaga
+Accept: application/json
+
+### 8. Historical statistics for an admin_area_2
+GET {{baseUrl}}/statistics/fuel-prices/history?countryCode={{countryCode}}&productType={{productType}}&adminArea2=Málaga&from=2026-09-01&to=2026-09-24
+Accept: application/json

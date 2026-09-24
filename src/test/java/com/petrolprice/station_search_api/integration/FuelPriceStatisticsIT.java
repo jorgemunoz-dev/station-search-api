@@ -84,6 +84,10 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
                 .current(new CurrentStatisticsQuery(
                         "ES", ProductType.DIESEL_A, GeographicScope.locality("Beta")))
                 .orElseThrow();
+        var south = currentStatistics
+                .current(new CurrentStatisticsQuery(
+                        "ES", ProductType.DIESEL_A, GeographicScope.adminArea2("south")))
+                .orElseThrow();
 
         assertThat(country.averagePrice()).isEqualByComparingTo("1.600");
         assertThat(country.minimumPrice()).isEqualByComparingTo("1.400");
@@ -94,6 +98,7 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         assertThat(alpha.countryAverageDifference()).isEqualByComparingTo("-0.200");
         assertThat(beta.scope().adminArea2Name()).isEqualTo("South");
         assertThat(beta.adminArea2AverageDifference()).isEqualByComparingTo("0.000");
+        assertThat(south.averagePrice()).isEqualByComparingTo("1.800");
     }
 
     @Test
@@ -122,6 +127,15 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         assertThat(history.getFirst().averagePrice()).isEqualByComparingTo("1.600");
         assertThat(history.getFirst().periodAveragePrice()).isEqualByComparingTo("1.650");
         assertThat(history.getLast().changeFromSevenDaysAgo()).isEqualByComparingTo("0.100");
+
+        var adminAreaHistory = historicalStatistics.history(new HistoricalStatisticsQuery(
+                "ES",
+                ProductType.DIESEL_A,
+                GeographicScope.adminArea2("North"),
+                today.minusDays(8),
+                today.minusDays(1)));
+        assertThat(adminAreaHistory).hasSize(2);
+        assertThat(adminAreaHistory.getLast().averagePrice()).isEqualByComparingTo("1.700");
     }
 
     private void classify(

@@ -64,6 +64,33 @@ curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/history" \
 
 También se puede enviar directamente `locality=Ardales`; el backend aplica la misma normalización.
 
+## Estadísticas de un área administrativa
+
+Los tres parámetros son posiciones neutrales por país. En España, si la fuente carga la provincia
+en `admin_area_2`, las estadísticas actuales de Málaga se consultan así:
+
+```bash
+curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/current" \
+  --header 'Accept: application/json' \
+  --data-urlencode "countryCode=${COUNTRY_CODE}" \
+  --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode 'adminArea2=Málaga'
+```
+
+Y su histórico así:
+
+```bash
+curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/history" \
+  --header 'Accept: application/json' \
+  --data-urlencode "countryCode=${COUNTRY_CODE}" \
+  --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode 'adminArea2=Málaga' \
+  --data-urlencode 'from=2026-09-01' \
+  --data-urlencode 'to=2026-09-24'
+```
+
+Solo se puede seleccionar un scope cada vez: `locality`, `adminArea1`, `adminArea2` o `adminArea3`.
+
 ## Estadísticas del país completo
 
 Omitir `locality` selecciona todo el país:

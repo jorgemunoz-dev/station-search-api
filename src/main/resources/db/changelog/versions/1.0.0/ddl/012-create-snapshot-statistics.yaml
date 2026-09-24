@@ -47,6 +47,9 @@ databaseChangeLog:
               - column:
                   name: normalized_locality_name
                   type: varchar(150)
+              - column: {name: admin_area_1_name, type: varchar(150)}
+              - column: {name: admin_area_2_name, type: varchar(150)}
+              - column: {name: admin_area_3_name, type: varchar(150)}
               - column:
                   name: average_price
                   type: "numeric(12,6)"
@@ -87,11 +90,27 @@ databaseChangeLog:
               CREATE UNIQUE INDEX uk_statistics_snapshot_country
               ON fuel_price_statistics (snapshot_id, country, product_type)
               WHERE normalized_locality_name IS NULL
+                AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
         - sql:
             sql: >-
               CREATE UNIQUE INDEX uk_statistics_snapshot_locality
               ON fuel_price_statistics (snapshot_id, country, product_type, normalized_locality_name)
               WHERE normalized_locality_name IS NOT NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_1
+              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_1_name)
+              WHERE admin_area_1_name IS NOT NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_2
+              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_2_name)
+              WHERE admin_area_2_name IS NOT NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_3
+              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_3_name)
+              WHERE admin_area_3_name IS NOT NULL
         - createIndex:
             tableName: fuel_price_statistics
             indexName: idx_statistics_current_lookup
@@ -99,4 +118,7 @@ databaseChangeLog:
               - column: {name: country}
               - column: {name: product_type}
               - column: {name: normalized_locality_name}
+              - column: {name: admin_area_1_name}
+              - column: {name: admin_area_2_name}
+              - column: {name: admin_area_3_name}
               - column: {name: calculated_at, descending: true}

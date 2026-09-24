@@ -3,7 +3,8 @@
 ## Calculation lifecycle
 
 Statistics are calculated from historical prices after a snapshot finishes. Each snapshot produces
-one aggregate per country/product and one aggregate per matched normalized locality/product. A
+one aggregate per country/product, normalized locality/product, and available positional
+administrative area/product. A
 failure rolls back statistics and import completion, so Rabbit retry can safely repeat the operation.
 
 Locality assignment reuses `search_location`: station country and normalized postal code identify
@@ -17,6 +18,7 @@ places. A station with no match still contributes to its country aggregate.
 - Difference between a locality average and its country average.
 - Difference between a locality and its `admin_area_2` weighted average where metadata exists.
 - Historical daily aggregates and exact 1/7/30-day absolute and percentage variations.
+- Current and historical queries for `adminArea1`, `adminArea2`, or `adminArea3`.
 - Locality rankings, optionally filtered by `adminArea1`, `adminArea2`, or `adminArea3`.
 - Radius statistics and theoretical station savings.
 
@@ -30,5 +32,6 @@ places. A station with no match still contributes to its country aggregate.
 - `GET /statistics/fuel-prices/savings`
 - `GET /statistics/fuel-prices/summary`
 
-`countryCode` is required. The current and historical endpoints use country scope when `locality` is
-omitted and locality scope when it is supplied. No separate administrative catalogue is required.
+`countryCode` is required. Current and historical queries select exactly one optional scope:
+`locality`, `adminArea1`, `adminArea2`, or `adminArea3`; omitting all four selects the country. No
+separate administrative catalogue is required.
