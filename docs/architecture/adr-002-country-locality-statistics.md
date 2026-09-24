@@ -49,10 +49,6 @@ remain part of country statistics but are not included in a locality aggregate.
 This keeps statistics derived from data that the service already receives and avoids a catalogue
 that must be populated independently.
 
-An idempotent startup backfill adds missing locality and administrative rows to previously calculated
-country-only snapshots. It preserves their original `calculated_at` value and uses unique indexes plus
-`ON CONFLICT DO NOTHING`, so restarts do not duplicate statistics.
-
 ## Consequences
 
 ### Positive

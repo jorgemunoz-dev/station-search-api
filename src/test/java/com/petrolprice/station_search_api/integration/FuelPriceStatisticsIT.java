@@ -166,28 +166,6 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
-    void shouldBackfillScopesForPreviouslyCalculatedCountryOnlySnapshots() throws Exception {
-        jdbcTemplate.update(
-                """
-                DELETE FROM fuel_price_statistics
-                WHERE normalized_locality_name IS NOT NULL
-                   OR admin_area_1_name IS NOT NULL
-                   OR admin_area_2_name IS NOT NULL
-                   OR admin_area_3_name IS NOT NULL
-                """);
-
-        assertThat(calculationRepository.backfillMissingScopes()).isPositive();
-
-        mockMvc.perform(get("/statistics/fuel-prices/localities")
-                        .queryParam("countryCode", "ES")
-                        .queryParam("productType", "DIESEL_A")
-                        .queryParam("adminArea2", "South"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].normalizedLocalityName", is("beta")));
-    }
-
-    @Test
     void shouldExposeAdminAreaHistoryAndRejectAmbiguousScopes() throws Exception {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         mockMvc.perform(get("/statistics/fuel-prices/history")
