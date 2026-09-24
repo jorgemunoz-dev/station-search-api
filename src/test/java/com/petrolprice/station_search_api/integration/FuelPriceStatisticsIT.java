@@ -66,70 +66,43 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
                 .withPrices(price(DIESEL_A, "1.800"));
         snapshotService.consume(cheap.processCommand());
         snapshotService.consume(expensive.processCommand());
-        classify(cheap, "North", "Alpha");
-        classify(expensive, "South", "Beta");
+        classify(cheap, "10001", "North", "Alpha", "alpha");
+        classify(expensive, "20001", "South", "Beta", "beta");
         completionService.complete(cheap.completionCommand(2));
     }
 
     @Test
-    void shouldCalculateCountryAndAdministrativeAreaCurrentStatistics() {
-        var national = currentStatistics
+    void shouldCalculateCountryAndLocalityCurrentStatistics() {
+        var country = currentStatistics
                 .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.country()))
                 .orElseThrow();
-        var north = currentStatistics.findAreas("ES", null, "PROVINCE").stream()
-                .filter(area -> area.name().equals("North"))
-                .findFirst()
-                .orElseThrow();
-        var south = currentStatistics.findAreas("ES", null, "PROVINCE").stream()
-                .filter(area -> area.name().equals("South"))
-                .findFirst()
-                .orElseThrow();
-        var beta = currentStatistics.findAreas("ES", south.id(), "MUNICIPALITY").getFirst();
-        var topLevelArea = currentStatistics
+        var alpha = currentStatistics
                 .current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeArea(north.id())))
+                        "ES", ProductType.DIESEL_A, GeographicScope.locality("Álpha")))
                 .orElseThrow();
-        var childArea = currentStatistics
+        var beta = currentStatistics
                 .current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeArea(beta.id())))
+                        "ES", ProductType.DIESEL_A, GeographicScope.locality("Beta")))
                 .orElseThrow();
 
-        assertThat(national.averagePrice()).isEqualByComparingTo("1.600");
-        assertThat(national.minimumPrice()).isEqualByComparingTo("1.400");
-        assertThat(national.maximumPrice()).isEqualByComparingTo("1.800");
-        assertThat(national.stationCount()).isEqualTo(2);
-        assertThat(national.cheapestStation().externalId()).isEqualTo(cheap.externalId());
-        assertThat(national.mostExpensiveStation().externalId()).isEqualTo(expensive.externalId());
-        assertThat(topLevelArea.countryAverageDifference()).isEqualByComparingTo("-0.200");
-        assertThat(childArea.parentAreaAverageDifference()).isEqualByComparingTo("0.000");
+        assertThat(country.averagePrice()).isEqualByComparingTo("1.600");
+        assertThat(country.minimumPrice()).isEqualByComparingTo("1.400");
+        assertThat(country.maximumPrice()).isEqualByComparingTo("1.800");
+        assertThat(country.stationCount()).isEqualTo(2);
+        assertThat(country.cheapestStation().externalId()).isEqualTo(cheap.externalId());
+        assertThat(country.mostExpensiveStation().externalId()).isEqualTo(expensive.externalId());
+        assertThat(alpha.countryAverageDifference()).isEqualByComparingTo("-0.200");
+        assertThat(beta.scope().adminArea2Name()).isEqualTo("South");
+        assertThat(beta.adminArea2AverageDifference()).isEqualByComparingTo("0.000");
     }
 
     @Test
-    void shouldDiscoverAndQueryAdministrativeAreasByStableIdentity() {
-        var provinces = currentStatistics.findAreas("ES", null, "province");
-        assertThat(provinces).extracting(area -> area.name()).containsExactly("North", "South");
-
-        var south = provinces.stream().filter(area -> area.name().equals("South")).findFirst().orElseThrow();
-        var municipalities = currentStatistics.findAreas("ES", south.id(), null);
-        assertThat(municipalities).singleElement().satisfies(area -> {
-            assertThat(area.name()).isEqualTo("Beta");
-            assertThat(area.type()).isEqualTo("MUNICIPALITY");
-            assertThat(area.parentId()).isEqualTo(south.id());
-        });
-
-        var areaStatistics = currentStatistics
-                .current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeArea(municipalities.getFirst().id())))
-                .orElseThrow();
-        assertThat(areaStatistics.averagePrice()).isEqualByComparingTo("1.800");
-        assertThat(areaStatistics.scope().areaId()).isEqualTo(municipalities.getFirst().id());
-        assertThat(areaStatistics.scope().name()).isEqualTo("Beta");
-
-        var rankedChildren = currentStatistics.areas("ES", ProductType.DIESEL_A, south.id(), "municipality");
-        assertThat(rankedChildren).singleElement().satisfies(result -> {
-            assertThat(result.areaId()).isEqualTo(municipalities.getFirst().id());
-            assertThat(result.area()).isEqualTo("Beta");
-            assertThat(result.areaType()).isEqualTo("MUNICIPALITY");
+    void shouldRankLocalitiesFilteredByAdministrativeContext() {
+        var ranked = currentStatistics.localities("ES", ProductType.DIESEL_A, null, "South", null);
+        assertThat(ranked).singleElement().satisfies(result -> {
+            assertThat(result.normalizedLocalityName()).isEqualTo("beta");
+            assertThat(result.localityName()).isEqualTo("Beta");
+            assertThat(result.adminArea2Name()).isEqualTo("South");
         });
     }
 
@@ -151,12 +124,34 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         assertThat(history.getLast().changeFromSevenDaysAgo()).isEqualByComparingTo("0.100");
     }
 
-    private void classify(StationSnapshotFixture station, String province, String municipality) {
+    private void classify(
+            StationSnapshotFixture station,
+            String postalCode,
+            String adminArea2,
+            String locality,
+            String normalizedLocality) {
         jdbcTemplate.update(
-                "UPDATE station SET province = ?, municipality = ? WHERE external_id = ?",
-                province,
-                municipality,
+                "UPDATE station SET postal_code = ?, province = ?, municipality = ? WHERE external_id = ?",
+                postalCode,
+                adminArea2,
+                locality,
                 station.externalId());
+        jdbcTemplate.update(
+                """
+                INSERT INTO search_location (
+                    id, country_code, postal_code, normalized_postal_code,
+                    locality_name, normalized_locality_name, admin_area_2_name,
+                    location, accuracy, source, created_at, updated_at
+                ) VALUES (?, 'ES', ?, ?, ?, ?, ?, ST_GeogFromText('SRID=4326;POINT(-3 40)'),
+                          10, 'TEST', NOW(), NOW())
+                ON CONFLICT (country_code, normalized_postal_code, normalized_locality_name) DO NOTHING
+                """,
+                UUID.randomUUID(),
+                postalCode,
+                postalCode,
+                locality,
+                normalizedLocality,
+                adminArea2);
     }
 
     private UUID stationId(String externalId) {

@@ -173,12 +173,11 @@ paths:
           example: Malaga
         - name: countryCode
           in: query
-          required: false
+          required: true
           description: ISO 3166-1 alpha-2 country code.
           schema:
             type: string
             pattern: '^[A-Z]{2}$'
-            default: ES
           example: ES
         - name: limit
           in: query
@@ -209,7 +208,7 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: areaId, in: query, required: false, description: Stable administrative-area identifier. Omit it for country-wide statistics., schema: {type: string, format: uuid}}
+        - {name: locality, in: query, required: false, description: Locality name returned by location search. Omit it for country-wide statistics., schema: {type: string}}
       responses:
         '200':
           description: Current aggregate
@@ -224,7 +223,7 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: areaId, in: query, required: false, description: Stable administrative-area identifier. Omit it for country-wide statistics., schema: {type: string, format: uuid}}
+        - {name: locality, in: query, required: false, description: Locality name returned by location search. Omit it for country-wide statistics., schema: {type: string}}
         - {name: from, in: query, required: true, schema: {type: string, format: date}}
         - {name: to, in: query, required: true, schema: {type: string, format: date}}
       responses:
@@ -236,40 +235,24 @@ paths:
                 type: array
                 items: {$ref: '#/components/schemas/HistoricalPricePointResponse'}
 
-  /statistics/fuel-prices/administrative-areas:
+  /statistics/fuel-prices/localities:
     get:
       tags: [Fuel Price Statistics]
-      operationId: getAdministrativeAreaFuelPriceStatistics
+      operationId: getLocalityFuelPriceStatistics
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: parentAreaId, in: query, required: false, schema: {type: string, format: uuid}}
-        - {name: areaType, in: query, required: false, description: Country-specific type such as STATE, PROVINCE or MUNICIPALITY., schema: {type: string}}
+        - {name: adminArea1, in: query, required: false, schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, schema: {type: string}}
       responses:
         '200':
-          description: Ranked administrative-area aggregates
+          description: Ranked locality aggregates, optionally filtered by administrative context
           content:
             application/json:
               schema:
                 type: array
-                items: {$ref: '#/components/schemas/RankedAreaStatisticsResponse'}
-
-  /administrative-areas:
-    get:
-      tags: [Administrative Areas]
-      operationId: getAdministrativeAreas
-      parameters:
-        - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
-        - {name: parentAreaId, in: query, required: false, schema: {type: string, format: uuid}}
-        - {name: areaType, in: query, required: false, description: Optional country-specific area type., schema: {type: string}}
-      responses:
-        '200':
-          description: Administrative areas matching the hierarchy filters
-          content:
-            application/json:
-              schema:
-                type: array
-                items: {$ref: '#/components/schemas/AdministrativeAreaResponse'}
+                items: {$ref: '#/components/schemas/RankedLocalityStatisticsResponse'}
 
   /statistics/fuel-prices/summary:
     get:
@@ -395,11 +378,11 @@ components:
     GeographicScopeResponse:
       type: object
       properties:
-        areaId: {type: string, format: uuid, nullable: true}
-        areaType: {type: string, nullable: true}
-        name: {type: string, nullable: true}
-        parentAreaId: {type: string, format: uuid, nullable: true}
-        parentAreaName: {type: string, nullable: true}
+        normalizedLocalityName: {type: string, nullable: true}
+        localityName: {type: string, nullable: true}
+        adminArea1Name: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
 
     StationPricePointResponse:
       type: object
@@ -423,7 +406,7 @@ components:
         cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
         mostExpensiveStation: {$ref: '#/components/schemas/StationPricePointResponse'}
         countryAverageDifference: {type: number, nullable: true}
-        parentAreaAverageDifference: {type: number, nullable: true}
+        adminArea2AverageDifference: {type: number, nullable: true}
         updatedAt: {type: string, format: date-time}
 
     HistoricalPricePointResponse:
@@ -444,13 +427,14 @@ components:
         percentageFromSevenDaysAgo: {type: number, nullable: true}
         percentageFromThirtyDaysAgo: {type: number, nullable: true}
 
-    RankedAreaStatisticsResponse:
+    RankedLocalityStatisticsResponse:
       type: object
       properties:
-        areaId: {type: string, format: uuid}
-        area: {type: string}
-        areaType: {type: string}
-        parentAreaId: {type: string, format: uuid, nullable: true}
+        normalizedLocalityName: {type: string}
+        localityName: {type: string}
+        adminArea1Name: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
         averagePrice: {type: number}
         minimumPrice: {type: number}
         maximumPrice: {type: number}
@@ -459,17 +443,6 @@ components:
         countryAverageDifference: {type: number}
         cheapestRank: {type: integer}
         mostExpensiveRank: {type: integer}
-
-    AdministrativeAreaResponse:
-      type: object
-      required: [id, countryCode, type, name]
-      properties:
-        id: {type: string, format: uuid}
-        countryCode: {type: string}
-        type: {type: string}
-        name: {type: string}
-        parentId: {type: string, format: uuid, nullable: true}
-        parentName: {type: string, nullable: true}
 
     EstimatedSaving:
       type: object
@@ -494,6 +467,7 @@ components:
         - primaryText
         - secondaryText
         - countryCode
+        - normalizedLocalityName
         - latitude
         - longitude
       properties:
@@ -522,6 +496,18 @@ components:
           nullable: true
           description: Postal code when the suggestion represents a postal code.
           example: '29001'
+
+        normalizedLocalityName:
+          type: string
+          description: Stable normalized locality value accepted by statistics endpoints.
+          example: malaga
+
+        adminArea1Name: {type: string, nullable: true}
+        adminArea1Code: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea2Code: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
+        adminArea3Code: {type: string, nullable: true}
 
         latitude:
           type: number

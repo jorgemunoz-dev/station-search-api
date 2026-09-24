@@ -65,12 +65,12 @@ adapters.
 The rationale, dependency rules, target tree, and incremental migration sequence are documented in
 [ADR-001: Feature-first modular monolith](docs/architecture/adr-001-feature-first-modular-monolith.md).
 
-The country-neutral model for geographical scopes and statistics is documented in
-[ADR-002: Country-neutral administrative areas](docs/architecture/adr-002-country-neutral-administrative-areas.md).
+The country/locality model shared by location search and statistics is documented in
+[ADR-002: Country and locality statistics](docs/architecture/adr-002-country-locality-statistics.md).
 
 Runnable HTTP examples for discovering administrative areas and querying national or area-level
 statistics are available in
-[`requests/administrative-area-statistics.http`](requests/administrative-area-statistics.http).
+[`requests/locality-statistics.http`](requests/locality-statistics.http).
 Copy-and-paste cURL examples for all public endpoints are available in
 [`requests/curl-examples.md`](requests/curl-examples.md).
 

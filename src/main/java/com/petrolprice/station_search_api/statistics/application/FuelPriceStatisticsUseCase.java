@@ -2,11 +2,10 @@ package com.petrolprice.station_search_api.statistics.application;
 
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
-import com.petrolprice.station_search_api.statistics.application.result.AdministrativeArea;
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.FuelSaving;
 import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
-import com.petrolprice.station_search_api.statistics.application.result.RankedAreaStatistics;
+import com.petrolprice.station_search_api.statistics.application.result.RankedLocalityStatistics;
 import com.petrolprice.station_search_api.statistics.domain.ProductType;
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,10 +16,12 @@ public interface FuelPriceStatisticsUseCase {
 
     List<HistoricalPricePoint> history(HistoricalStatisticsQuery query);
 
-    List<RankedAreaStatistics> areaRanking(
-            String countryCode, ProductType productType, UUID parentAreaId, String areaType);
-
-    List<AdministrativeArea> findAreas(String countryCode, UUID parentAreaId, String areaType);
+    List<RankedLocalityStatistics> localityRanking(
+            String countryCode,
+            ProductType productType,
+            String adminArea1,
+            String adminArea2,
+            String adminArea3);
 
     FuelSaving saving(UUID stationId, ProductType productType, BigDecimal referencePrice, BigDecimal tankLiters);
 }

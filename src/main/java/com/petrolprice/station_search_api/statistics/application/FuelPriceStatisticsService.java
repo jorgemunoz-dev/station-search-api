@@ -4,11 +4,10 @@ import com.petrolprice.station_search_api.statistics.application.port.out.Curren
 import com.petrolprice.station_search_api.statistics.application.port.out.HistoricalPriceStatisticsRepository;
 import com.petrolprice.station_search_api.statistics.application.query.CurrentStatisticsQuery;
 import com.petrolprice.station_search_api.statistics.application.query.HistoricalStatisticsQuery;
-import com.petrolprice.station_search_api.statistics.application.result.AdministrativeArea;
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.FuelSaving;
 import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
-import com.petrolprice.station_search_api.statistics.application.result.RankedAreaStatistics;
+import com.petrolprice.station_search_api.statistics.application.result.RankedLocalityStatistics;
 import com.petrolprice.station_search_api.statistics.domain.ProductType;
 import java.math.BigDecimal;
 import java.util.List;
@@ -36,14 +35,13 @@ public class FuelPriceStatisticsService implements FuelPriceStatisticsUseCase {
     }
 
     @Override
-    public List<RankedAreaStatistics> areaRanking(
-            String countryCode, ProductType productType, UUID parentAreaId, String areaType) {
-        return currentRepository.areas(countryCode, productType, parentAreaId, areaType);
-    }
-
-    @Override
-    public List<AdministrativeArea> findAreas(String countryCode, UUID parentAreaId, String areaType) {
-        return currentRepository.findAreas(countryCode, parentAreaId, areaType);
+    public List<RankedLocalityStatistics> localityRanking(
+            String countryCode,
+            ProductType productType,
+            String adminArea1,
+            String adminArea2,
+            String adminArea3) {
+        return currentRepository.localities(countryCode, productType, adminArea1, adminArea2, adminArea3);
     }
 
     @Override

@@ -31,9 +31,9 @@ public class FuelPriceStatisticsController implements StatisticsApi {
 
     @Override
     public ResponseEntity<CurrentPriceStatisticsResponse> getCurrentFuelPriceStatistics(
-            String countryCode, ProductType productType, UUID areaId) {
+            String countryCode, ProductType productType, String locality) {
         CurrentPriceStatistics result = statistics.current(
-                new CurrentStatisticsQuery(countryCode, product(productType), scope(areaId)));
+                new CurrentStatisticsQuery(countryCode, product(productType), scope(locality)));
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
@@ -56,17 +56,22 @@ public class FuelPriceStatisticsController implements StatisticsApi {
             ProductType productType,
             LocalDate from,
             LocalDate to,
-            UUID areaId) {
+            String locality) {
         List<HistoricalPricePoint> result = statistics.history(new HistoricalStatisticsQuery(
-                countryCode, product(productType), scope(areaId), from, to));
+                countryCode, product(productType), scope(locality), from, to));
         return ResponseEntity.ok(mapper.toHistoryResponse(result));
     }
 
     @Override
-    public ResponseEntity<List<RankedAreaStatisticsResponse>> getAdministrativeAreaFuelPriceStatistics(
-            String countryCode, ProductType productType, UUID parentAreaId, String areaType) {
+    public ResponseEntity<List<RankedLocalityStatisticsResponse>> getLocalityFuelPriceStatistics(
+            String countryCode,
+            ProductType productType,
+            String adminArea1,
+            String adminArea2,
+            String adminArea3) {
         return ResponseEntity.ok(mapper.toRankingResponse(
-                statistics.areaRanking(countryCode, product(productType), parentAreaId, areaType)));
+                statistics.localityRanking(
+                        countryCode, product(productType), adminArea1, adminArea2, adminArea3)));
     }
 
     @ExceptionHandler(StatisticsNotFoundException.class)
@@ -89,7 +94,9 @@ public class FuelPriceStatisticsController implements StatisticsApi {
         return com.petrolprice.station_search_api.statistics.domain.ProductType.valueOf(productType.name());
     }
 
-    private GeographicScope scope(UUID areaId) {
-        return areaId == null ? GeographicScope.country() : GeographicScope.administrativeArea(areaId);
+    private GeographicScope scope(String locality) {
+        return locality == null || locality.isBlank()
+                ? GeographicScope.country()
+                : GeographicScope.locality(locality);
     }
 }

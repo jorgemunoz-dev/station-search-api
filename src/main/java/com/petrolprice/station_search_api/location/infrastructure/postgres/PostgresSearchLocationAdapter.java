@@ -45,6 +45,13 @@ public class PostgresSearchLocationAdapter implements SearchLocationPort {
                 projection.secondaryText(),
                 projection.countryCode(),
                 projection.postalCode(),
+                projection.normalizedLocalityName(),
+                projection.adminArea1Name(),
+                projection.adminArea1Code(),
+                projection.adminArea2Name(),
+                projection.adminArea2Code(),
+                projection.adminArea3Name(),
+                projection.adminArea3Code(),
                 projection.latitude(),
                 projection.longitude());
     }

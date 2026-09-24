@@ -16,5 +16,5 @@ public record CurrentPriceStatistics(
         StationPricePoint cheapestStation,
         StationPricePoint mostExpensiveStation,
         BigDecimal countryAverageDifference,
-        BigDecimal parentAreaAverageDifference,
+        BigDecimal adminArea2AverageDifference,
         Instant updatedAt) {}
