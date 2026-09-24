@@ -14,6 +14,7 @@ import com.petrolprice.station_search_api.statistics.domain.ProductType;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,12 +41,12 @@ public class PostgresFuelPriceStatisticsRepository
                     SELECT * FROM fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
                       AND normalized_locality_name IS NOT DISTINCT FROM :locality
-                      AND ((:adminArea1 IS NULL AND admin_area_1_name IS NULL)
-                           OR LOWER(admin_area_1_name) = LOWER(:adminArea1))
-                      AND ((:adminArea2 IS NULL AND admin_area_2_name IS NULL)
-                           OR LOWER(admin_area_2_name) = LOWER(:adminArea2))
-                      AND ((:adminArea3 IS NULL AND admin_area_3_name IS NULL)
-                           OR LOWER(admin_area_3_name) = LOWER(:adminArea3))
+                      AND ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
+                           OR LOWER(admin_area_1_name) = LOWER(CAST(:adminArea1 AS varchar)))
+                      AND ((CAST(:adminArea2 AS varchar) IS NULL AND admin_area_2_name IS NULL)
+                           OR LOWER(admin_area_2_name) = LOWER(CAST(:adminArea2 AS varchar)))
+                      AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
+                           OR LOWER(admin_area_3_name) = LOWER(CAST(:adminArea3 AS varchar)))
                     ORDER BY calculated_at DESC LIMIT 1
                 ), country_statistics AS (
                     SELECT average_price FROM fuel_price_statistics
@@ -128,12 +129,12 @@ public class PostgresFuelPriceStatisticsRepository
                     FROM fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
                       AND normalized_locality_name IS NOT DISTINCT FROM :locality
-                      AND ((:adminArea1 IS NULL AND admin_area_1_name IS NULL)
-                           OR LOWER(admin_area_1_name) = LOWER(:adminArea1))
-                      AND ((:adminArea2 IS NULL AND admin_area_2_name IS NULL)
-                           OR LOWER(admin_area_2_name) = LOWER(:adminArea2))
-                      AND ((:adminArea3 IS NULL AND admin_area_3_name IS NULL)
-                           OR LOWER(admin_area_3_name) = LOWER(:adminArea3))
+                      AND ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
+                           OR LOWER(admin_area_1_name) = LOWER(CAST(:adminArea1 AS varchar)))
+                      AND ((CAST(:adminArea2 AS varchar) IS NULL AND admin_area_2_name IS NULL)
+                           OR LOWER(admin_area_2_name) = LOWER(CAST(:adminArea2 AS varchar)))
+                      AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
+                           OR LOWER(admin_area_3_name) = LOWER(CAST(:adminArea3 AS varchar)))
                       AND calculated_at >= CAST(:historyFrom AS date)
                       AND calculated_at < (CAST(:to AS date) + INTERVAL '1 day')
                     ORDER BY calculated_at::date, calculated_at DESC
@@ -183,9 +184,9 @@ public class PostgresFuelPriceStatisticsRepository
             String adminArea2,
             String adminArea3) {
         MapSqlParameterSource parameters = baseParameters(countryCode.toUpperCase(), productType)
-                .addValue("adminArea1", blankToNull(adminArea1))
-                .addValue("adminArea2", blankToNull(adminArea2))
-                .addValue("adminArea3", blankToNull(adminArea3));
+                .addValue("adminArea1", blankToNull(adminArea1), Types.VARCHAR)
+                .addValue("adminArea2", blankToNull(adminArea2), Types.VARCHAR)
+                .addValue("adminArea3", blankToNull(adminArea3), Types.VARCHAR);
         String sql =
                 """
                 WITH latest_snapshot AS (
@@ -213,9 +214,12 @@ public class PostgresFuelPriceStatisticsRepository
                     JOIN locality_metadata l USING (normalized_locality_name)
                     WHERE f.snapshot_id = (SELECT snapshot_id FROM latest_snapshot)
                       AND f.country = :country AND f.product_type = :productType
-                      AND (:adminArea1 IS NULL OR LOWER(l.admin_area_1_name) = LOWER(:adminArea1))
-                      AND (:adminArea2 IS NULL OR LOWER(l.admin_area_2_name) = LOWER(:adminArea2))
-                      AND (:adminArea3 IS NULL OR LOWER(l.admin_area_3_name) = LOWER(:adminArea3))
+                      AND (CAST(:adminArea1 AS varchar) IS NULL
+                           OR LOWER(l.admin_area_1_name) = LOWER(CAST(:adminArea1 AS varchar)))
+                      AND (CAST(:adminArea2 AS varchar) IS NULL
+                           OR LOWER(l.admin_area_2_name) = LOWER(CAST(:adminArea2 AS varchar)))
+                      AND (CAST(:adminArea3 AS varchar) IS NULL
+                           OR LOWER(l.admin_area_3_name) = LOWER(CAST(:adminArea3 AS varchar)))
                 )
                 SELECT ranked.*, latest_snapshot.country_average,
                        cheap.id cheap_id, cheap.external_id cheap_external_id,
@@ -337,10 +341,19 @@ public class PostgresFuelPriceStatisticsRepository
 
     private MapSqlParameterSource scopeParameters(MapSqlParameterSource parameters, GeographicScope scope) {
         return parameters
-                .addValue("locality", scope.normalizedLocalityName())
-                .addValue("adminArea1", scope.normalizedLocalityName() == null ? scope.adminArea1Name() : null)
-                .addValue("adminArea2", scope.normalizedLocalityName() == null ? scope.adminArea2Name() : null)
-                .addValue("adminArea3", scope.normalizedLocalityName() == null ? scope.adminArea3Name() : null);
+                .addValue("locality", scope.normalizedLocalityName(), Types.VARCHAR)
+                .addValue(
+                        "adminArea1",
+                        scope.normalizedLocalityName() == null ? scope.adminArea1Name() : null,
+                        Types.VARCHAR)
+                .addValue(
+                        "adminArea2",
+                        scope.normalizedLocalityName() == null ? scope.adminArea2Name() : null,
+                        Types.VARCHAR)
+                .addValue(
+                        "adminArea3",
+                        scope.normalizedLocalityName() == null ? scope.adminArea3Name() : null,
+                        Types.VARCHAR);
     }
 
     private String blankToNull(String value) {

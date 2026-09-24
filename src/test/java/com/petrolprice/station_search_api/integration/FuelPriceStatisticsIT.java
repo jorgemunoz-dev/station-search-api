@@ -4,6 +4,11 @@ import static com.petrolprice.station_search_api.integration.support.StationSnap
 import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.price;
 import static com.petrolprice.station_search_api.station.domain.type.ProductType.DIESEL_A;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.petrolprice.station_search_api.integration.support.StationImportProbe;
 import com.petrolprice.station_search_api.integration.support.StationSnapshotFixture;
@@ -25,9 +30,15 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
 
+@AutoConfigureMockMvc
 class FuelPriceStatisticsIT extends IntegrationTestBase {
+    @Autowired
+    private MockMvc mockMvc;
+
     @Autowired
     private ProcessStationSnapshotService snapshotService;
 
@@ -109,6 +120,71 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
             assertThat(result.localityName()).isEqualTo("Beta");
             assertThat(result.adminArea2Name()).isEqualTo("South");
         });
+    }
+
+    @Test
+    void shouldExposeCurrentCountryLocalityAndAdminAreaStatistics() throws Exception {
+        mockMvc.perform(get("/statistics/fuel-prices/current")
+                .queryParam("countryCode", "ES")
+                        .queryParam("productType", "DIESEL_A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stationCount", is(2)));
+
+        mockMvc.perform(get("/statistics/fuel-prices/current")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("productType", "DIESEL_A")
+                        .queryParam("locality", "Béta"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stationCount", is(1)))
+                .andExpect(jsonPath("$.scope.normalizedLocalityName", is("beta")))
+                .andExpect(jsonPath("$.scope.adminArea2Name", is("South")));
+
+        mockMvc.perform(get("/statistics/fuel-prices/current")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("productType", "DIESEL_A")
+                        .queryParam("adminArea2", "south"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stationCount", is(1)))
+                .andExpect(jsonPath("$.scope.adminArea2Name", is("South")));
+    }
+
+    @Test
+    void shouldExposeLocalityRankingsWithNullableAdminFilters() throws Exception {
+        mockMvc.perform(get("/statistics/fuel-prices/localities")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("productType", "DIESEL_A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)));
+
+        mockMvc.perform(get("/statistics/fuel-prices/localities")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("productType", "DIESEL_A")
+                        .queryParam("adminArea2", "SOUTH"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].normalizedLocalityName", is("beta")));
+    }
+
+    @Test
+    void shouldExposeAdminAreaHistoryAndRejectAmbiguousScopes() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        mockMvc.perform(get("/statistics/fuel-prices/history")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("productType", "DIESEL_A")
+                        .queryParam("adminArea2", "South")
+                        .queryParam("from", today.toString())
+                        .queryParam("to", today.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].stationCount", is(1)));
+
+        mockMvc.perform(get("/statistics/fuel-prices/current")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("productType", "DIESEL_A")
+                        .queryParam("locality", "Beta")
+                        .queryParam("adminArea2", "South"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is("INVALID_STATISTICS_QUERY")));
     }
 
     @Test
