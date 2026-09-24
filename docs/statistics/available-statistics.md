@@ -35,3 +35,10 @@ places. A station with no match still contributes to its country aggregate.
 `countryCode` is required. Current and historical queries select exactly one optional scope:
 `locality`, `adminArea1`, `adminArea2`, or `adminArea3`; omitting all four selects the country. No
 separate administrative catalogue is required.
+
+The locality-ranking endpoint always keeps locality granularity: each response element aggregates
+all matched stations for one `normalizedLocalityName`. Administrative parameters are cumulative
+filters over `search_location` metadata, not locality selectors. Consequently, several localities
+may be returned for one `adminArea3` value. To retrieve exactly one town or city, use `locality` on
+the current or historical endpoint; `stationCount` then reports how many stations contributed to
+that aggregate.

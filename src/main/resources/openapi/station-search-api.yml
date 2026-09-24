@@ -245,12 +245,18 @@ paths:
     get:
       tags: [Fuel Price Statistics]
       operationId: getLocalityFuelPriceStatistics
+      description: >
+        Returns one aggregate per locality. Administrative-area parameters only filter the
+        localities included in the ranking; they do not select a locality and they do not change
+        the response granularity. Use GET /statistics/fuel-prices/current?locality=... to obtain
+        the aggregate for one exact town or city. The meaning of each adminArea position comes
+        from search_location and is country/source-specific.
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: adminArea1, in: query, required: false, schema: {type: string}}
-        - {name: adminArea2, in: query, required: false, schema: {type: string}}
-        - {name: adminArea3, in: query, required: false, schema: {type: string}}
+        - {name: adminArea1, in: query, required: false, description: Filters the locality ranking by the country-specific level 1 metadata., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Filters the locality ranking by the country-specific level 2 metadata., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Filters the locality ranking by the country-specific level 3 metadata. This is not an alias for locality., schema: {type: string}}
       responses:
         '200':
           description: Ranked locality aggregates, optionally filtered by administrative context

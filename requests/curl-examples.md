@@ -104,6 +104,10 @@ curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/current" \
 
 ## Ranking de localidades
 
+Este endpoint siempre devuelve **una fila agregada por localidad**, no una fila por estación ni una
+fila por área administrativa. Los parámetros `adminArea1`, `adminArea2` y `adminArea3` son filtros
+acumulables sobre los metadatos de `search_location`; no convierten el área en la localidad buscada.
+
 Todas las localidades del país:
 
 ```bash
@@ -123,6 +127,23 @@ curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/localities"
   --data-urlencode "productType=${PRODUCT_TYPE}" \
   --data-urlencode 'adminArea2=Málaga'
 ```
+
+Por ejemplo, `adminArea2=Málaga&adminArea3=Málaga` puede devolver Torremolinos, Cuevas del Becerro
+y La Cala del Moral si las tres localidades tienen esos valores administrativos en
+`search_location`. Para consultar **la localidad exacta de Málaga**, se usa `locality` en el endpoint
+de estadísticas actuales (o históricas), no `adminArea3`:
+
+```bash
+curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/current" \
+  --header 'Accept: application/json' \
+  --data-urlencode "countryCode=${COUNTRY_CODE}" \
+  --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode 'locality=Málaga'
+```
+
+El campo `stationCount` de esa respuesta es el número de estaciones incluidas en el agregado. El
+objeto `cheapestStation` representa únicamente la estación más barata; no pretende listar todas las
+estaciones de la localidad.
 
 ## Resumen y ahorro
 
