@@ -72,6 +72,8 @@ current province-oriented API is documented in
 Runnable HTTP examples for discovering administrative areas and querying national or area-level
 statistics are available in
 [`requests/administrative-area-statistics.http`](requests/administrative-area-statistics.http).
+Copy-and-paste cURL examples for all public endpoints are available in
+[`requests/curl-examples.md`](requests/curl-examples.md).
 
 ---
 
