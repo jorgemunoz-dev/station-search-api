@@ -4,4 +4,6 @@ import java.util.UUID;
 
 public interface StatisticsCalculationRepository {
     void replaceForSnapshot(UUID snapshotId);
+
+    int backfillMissingScopes();
 }

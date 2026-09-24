@@ -11,6 +11,10 @@ Locality assignment reuses `search_location`: station country and normalized pos
 candidates, while locality similarity and source accuracy resolve postal codes shared by multiple
 places. A station with no match still contributes to its country aggregate.
 
+At application startup, snapshots that contain only their country row (for example snapshots
+calculated before locality metadata was available) are backfilled idempotently from their historical
+prices and the current `search_location` data. Existing complete snapshots are skipped.
+
 ## Available statistics
 
 - Current country or locality average, minimum, maximum, station count, and cheapest/most-expensive
