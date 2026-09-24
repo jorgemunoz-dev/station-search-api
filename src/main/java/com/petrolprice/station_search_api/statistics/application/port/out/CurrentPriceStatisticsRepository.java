@@ -13,8 +13,6 @@ import java.util.UUID;
 public interface CurrentPriceStatisticsRepository {
     Optional<CurrentPriceStatistics> current(CurrentStatisticsQuery query);
 
-    List<RankedAreaStatistics> provinces(String countryCode, ProductType productType);
-
     List<RankedAreaStatistics> areas(
             String countryCode, ProductType productType, UUID parentAreaId, String areaType);
 

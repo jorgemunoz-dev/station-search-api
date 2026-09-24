@@ -9,8 +9,8 @@ snapshot has been processed, `StationImportFinalizer` atomically claims the impo
 succeeds.
 
 The calculator scans the historical prices belonging to that snapshot and materializes national and
-administrative-area aggregates in `fuel_price_statistics`. Legacy province and municipality address
-values are resolved through the administrative-area catalogue. A failure rolls back both the
+administrative-area aggregates in `fuel_price_statistics`. Existing station address values bootstrap
+the administrative-area catalogue. A failure rolls back both the
 statistics and the import state, allowing Rabbit retry to run the whole operation again. Replacing
 rows by snapshot makes calculation idempotent.
 
@@ -23,7 +23,7 @@ calculated snapshot and PostGIS; they never use `station_current_product_price`.
 
 For each product, current snapshot aggregates provide average, minimum, maximum, station count,
 cheapest/most-expensive station, national and parent-area differences where applicable, and generic
-administrative-area rankings. Municipality compatibility data uses `municipality` and falls back to
+administrative-area rankings. Address-derived child areas use `municipality` and fall back to
 `locality` when municipality is null.
 
 Historical results expose the calculated aggregates for each completed snapshot/day, period
@@ -39,7 +39,7 @@ reference price. They return per-litre and per-tank savings and default to 55 li
 ## Not derivable reliably
 
 - **Authoritative administrative identity:** existing events only provide province and municipality
-  names, so imported `legacy-address` codes cannot eliminate upstream aliases. Provider or registry
+  names, so imported `station-address` codes cannot eliminate upstream aliases. Provider or registry
   codes are needed for canonical comparisons and additional hierarchy levels.
 - **Continuous daily history:** a missing snapshot date cannot be reconstructed.
 - **Sales-weighted prices:** there is no sales volume, so averages are station-weighted.
@@ -50,7 +50,6 @@ reference price. They return per-litre and per-tank savings and default to 55 li
 - `GET /statistics/fuel-prices/current`
 - `GET /statistics/fuel-prices/history`
 - `GET /statistics/fuel-prices/around`
-- `GET /statistics/fuel-prices/provinces`
 - `GET /statistics/fuel-prices/administrative-areas`
 - `GET /administrative-areas`
 - `GET /statistics/fuel-prices/savings`

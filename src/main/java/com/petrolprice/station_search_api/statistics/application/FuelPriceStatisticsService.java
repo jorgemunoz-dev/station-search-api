@@ -36,11 +36,6 @@ public class FuelPriceStatisticsService implements FuelPriceStatisticsUseCase {
     }
 
     @Override
-    public List<RankedAreaStatistics> provinceRanking(String countryCode, ProductType productType) {
-        return currentRepository.provinces(countryCode, productType);
-    }
-
-    @Override
     public List<RankedAreaStatistics> areaRanking(
             String countryCode, ProductType productType, UUID parentAreaId, String areaType) {
         return currentRepository.areas(countryCode, productType, parentAreaId, areaType);

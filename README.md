@@ -65,8 +65,7 @@ adapters.
 The rationale, dependency rules, target tree, and incremental migration sequence are documented in
 [ADR-001: Feature-first modular monolith](docs/architecture/adr-001-feature-first-modular-monolith.md).
 
-The proposed country-neutral model for geographical scopes, statistics, and compatibility with the
-current province-oriented API is documented in
+The country-neutral model for geographical scopes and statistics is documented in
 [ADR-002: Country-neutral administrative areas](docs/architecture/adr-002-country-neutral-administrative-areas.md).
 
 Runnable HTTP examples for discovering administrative areas and querying national or area-level

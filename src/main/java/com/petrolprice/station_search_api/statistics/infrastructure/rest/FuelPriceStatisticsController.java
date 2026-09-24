@@ -31,9 +31,9 @@ public class FuelPriceStatisticsController implements StatisticsApi {
 
     @Override
     public ResponseEntity<CurrentPriceStatisticsResponse> getCurrentFuelPriceStatistics(
-            String countryCode, ProductType productType, UUID areaId, GeographicLevel level, String area, String province) {
+            String countryCode, ProductType productType, UUID areaId) {
         CurrentPriceStatistics result = statistics.current(
-                new CurrentStatisticsQuery(countryCode, product(productType), scope(areaId, level, area, province)));
+                new CurrentStatisticsQuery(countryCode, product(productType), scope(areaId)));
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
@@ -56,20 +56,10 @@ public class FuelPriceStatisticsController implements StatisticsApi {
             ProductType productType,
             LocalDate from,
             LocalDate to,
-            UUID areaId,
-            GeographicLevel level,
-            String area,
-            String province) {
+            UUID areaId) {
         List<HistoricalPricePoint> result = statistics.history(new HistoricalStatisticsQuery(
-                countryCode, product(productType), scope(areaId, level, area, province), from, to));
+                countryCode, product(productType), scope(areaId), from, to));
         return ResponseEntity.ok(mapper.toHistoryResponse(result));
-    }
-
-    @Override
-    public ResponseEntity<List<RankedAreaStatisticsResponse>> getProvinceFuelPriceStatistics(
-            String countryCode, ProductType productType) {
-        return ResponseEntity.ok(
-                mapper.toRankingResponse(statistics.provinceRanking(countryCode, product(productType))));
     }
 
     @Override
@@ -99,15 +89,7 @@ public class FuelPriceStatisticsController implements StatisticsApi {
         return com.petrolprice.station_search_api.statistics.domain.ProductType.valueOf(productType.name());
     }
 
-    private GeographicScope scope(UUID areaId, GeographicLevel level, String area, String province) {
-        if (areaId != null) {
-            return GeographicScope.administrativeArea(areaId);
-        }
-        GeographicLevel effectiveLevel = level == null ? GeographicLevel.NATIONAL : level;
-        return switch (effectiveLevel) {
-            case NATIONAL -> GeographicScope.national();
-            case PROVINCE -> GeographicScope.province(area == null || area.isBlank() ? province : area);
-            case MUNICIPALITY -> GeographicScope.municipality(province, area);
-        };
+    private GeographicScope scope(UUID areaId) {
+        return areaId == null ? GeographicScope.country() : GeographicScope.administrativeArea(areaId);
     }
 }

@@ -7,11 +7,11 @@ GET {{baseUrl}}/administrative-areas?countryCode={{countryCode}}
 Accept: application/json
 
 > {%
-  client.global.set("provinceId", response.body[0].id);
+  client.global.set("topLevelAreaId", response.body[0].id);
 %}
 
 ### 2. Discover the children of an area without assuming that they are municipalities
-GET {{baseUrl}}/administrative-areas?countryCode={{countryCode}}&parentAreaId={{provinceId}}
+GET {{baseUrl}}/administrative-areas?countryCode={{countryCode}}&parentAreaId={{topLevelAreaId}}
 Accept: application/json
 
 > {%
@@ -35,13 +35,5 @@ GET {{baseUrl}}/statistics/fuel-prices/administrative-areas?countryCode={{countr
 Accept: application/json
 
 ### 7. Rank children of one area, optionally constrained to a country-specific type
-GET {{baseUrl}}/statistics/fuel-prices/administrative-areas?countryCode={{countryCode}}&productType={{productType}}&parentAreaId={{provinceId}}&areaType=MUNICIPALITY
-Accept: application/json
-
-### 8. Deprecated compatibility request: province by name
-GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}&level=PROVINCE&province=North
-Accept: application/json
-
-### 9. Deprecated compatibility endpoint: rank provinces
-GET {{baseUrl}}/statistics/fuel-prices/provinces?countryCode={{countryCode}}&productType={{productType}}
+GET {{baseUrl}}/statistics/fuel-prices/administrative-areas?countryCode={{countryCode}}&productType={{productType}}&parentAreaId={{topLevelAreaId}}&areaType=MUNICIPALITY
 Accept: application/json

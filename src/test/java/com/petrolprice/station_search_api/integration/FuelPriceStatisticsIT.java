@@ -72,16 +72,26 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
-    void shouldCalculateNationalProvinceAndMunicipalityCurrentStatistics() {
+    void shouldCalculateCountryAndAdministrativeAreaCurrentStatistics() {
         var national = currentStatistics
-                .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.national()))
+                .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.country()))
                 .orElseThrow();
-        var province = currentStatistics
-                .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.province("North")))
+        var north = currentStatistics.findAreas("ES", null, "PROVINCE").stream()
+                .filter(area -> area.name().equals("North"))
+                .findFirst()
                 .orElseThrow();
-        var municipality = currentStatistics
+        var south = currentStatistics.findAreas("ES", null, "PROVINCE").stream()
+                .filter(area -> area.name().equals("South"))
+                .findFirst()
+                .orElseThrow();
+        var beta = currentStatistics.findAreas("ES", south.id(), "MUNICIPALITY").getFirst();
+        var topLevelArea = currentStatistics
                 .current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.municipality("South", "Beta")))
+                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeArea(north.id())))
+                .orElseThrow();
+        var childArea = currentStatistics
+                .current(new CurrentStatisticsQuery(
+                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeArea(beta.id())))
                 .orElseThrow();
 
         assertThat(national.averagePrice()).isEqualByComparingTo("1.600");
@@ -90,8 +100,8 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         assertThat(national.stationCount()).isEqualTo(2);
         assertThat(national.cheapestStation().externalId()).isEqualTo(cheap.externalId());
         assertThat(national.mostExpensiveStation().externalId()).isEqualTo(expensive.externalId());
-        assertThat(province.nationalAverageDifference()).isEqualByComparingTo("-0.200");
-        assertThat(municipality.provincialAverageDifference()).isEqualByComparingTo("0.000");
+        assertThat(topLevelArea.countryAverageDifference()).isEqualByComparingTo("-0.200");
+        assertThat(childArea.parentAreaAverageDifference()).isEqualByComparingTo("0.000");
     }
 
     @Test
@@ -133,7 +143,7 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
                 stationId, "1.700", today.minusDays(1).atTime(8, 0).toInstant(ZoneOffset.UTC));
 
         var history = historicalStatistics.history(new HistoricalStatisticsQuery(
-                "ES", ProductType.DIESEL_A, GeographicScope.national(), today.minusDays(8), today.minusDays(1)));
+                "ES", ProductType.DIESEL_A, GeographicScope.country(), today.minusDays(8), today.minusDays(1)));
 
         assertThat(history).hasSize(2);
         assertThat(history.getFirst().averagePrice()).isEqualByComparingTo("1.600");

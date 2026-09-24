@@ -17,8 +17,6 @@ public interface FuelPriceStatisticsUseCase {
 
     List<HistoricalPricePoint> history(HistoricalStatisticsQuery query);
 
-    List<RankedAreaStatistics> provinceRanking(String countryCode, ProductType productType);
-
     List<RankedAreaStatistics> areaRanking(
             String countryCode, ProductType productType, UUID parentAreaId, String areaType);
 

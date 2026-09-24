@@ -23,8 +23,8 @@ This creates several problems:
 - adding a country with states, regions, departments, counties, districts, or a different number of
   hierarchy levels requires changing the enum, API, SQL, and schema together.
 
-The API must keep its current behaviour while allowing administrative structures that are not
-province/municipality based.
+The public API must expose only the country-neutral model; the unreleased name-based contract does
+not require a compatibility period.
 
 ## Decision
 
@@ -79,7 +79,7 @@ having a province-specific method.
 
 ### HTTP contract
 
-Add generic resources without immediately removing existing clients:
+Expose only generic resources:
 
 - `GET /administrative-areas?countryCode=ES&parentId=...&type=...` discovers areas;
 - `GET /statistics/fuel-prices/current?countryCode=ES&areaId=...` selects one area;
@@ -91,25 +91,22 @@ Omitting `areaId` retains national scope. The API returns an area reference cont
 `countryCode`, `type`, `name`, and, where useful, its ancestor path. Clients display labels but send
 IDs back; they do not construct scope keys or infer hierarchy.
 
-The existing `level`, `area`, and `province` parameters and `/provinces` endpoint remain temporarily
-available as deprecated compatibility adapters. They resolve legacy names to an area ID and invoke
-the same application use case. Ambiguous legacy names return a validation error instead of choosing
-silently. Existing response fields may remain during this window, but new clients use the area
-reference.
+The former `level`, `area`, and `province` parameters and `/provinces` endpoint are not part of the
+released contract. There is no parallel name-based query path: clients discover IDs and use the area
+reference everywhere.
 
 ## Implementation record
 
 The first-version schema was changed in place because it has not been released. Statistics now store
 only `administrative_area_id`; there is no dual-write of `scope_key`, `geographic_level`, `area_name`,
-or `province`. Snapshot calculation materializes a legacy address catalogue from the existing station
-fields, relates stations to every known containing area, and aggregates by stable area ID.
+or `province`. Snapshot calculation materializes an initial `station-address` catalogue from the
+existing station fields, relates stations to every known containing area, and aggregates by area ID.
 
-Generic discovery, current, historical, and ranking reads use area IDs. The existing name parameters
-and `/provinces` route are marked deprecated but resolve to the same IDs and use the same query path.
-This preserves current clients while allowing them to migrate incrementally.
+Generic discovery, current, historical, and ranking reads use area IDs. No province-specific method,
+route, enum, request parameter, or response field remains.
 
 The current Rabbit contract does not yet carry provider-owned administrative codes. Until it does,
-the compatibility importer creates deterministic `legacy-address` external codes from normalized
+the bootstrap importer creates deterministic `station-address` external codes from normalized
 province and municipality paths. A future ingestion change can add authoritative areas without
 changing the statistics schema or generic HTTP API.
 
@@ -130,7 +127,7 @@ changing the statistics schema or generic HTTP API.
 - New countries and administrative levels become data changes rather than Java enum and API changes.
 - Stable codes prevent case, spelling, translation, and same-name collisions.
 - Current, historical, and ranking APIs use the same selection mechanism.
-- Compatibility is preserved while consumers migrate.
+- The contract exposes a single administrative-area selection model.
 
 ### Trade-offs
 

@@ -60,7 +60,7 @@ public class PostgresFuelPriceStatisticsRepository
             )
             SELECT selected.*, national.average_price national_average,
                    parent_area.average_price parent_average,
-                   area.type area_type, area.name area_name, parent.name parent_name,
+                   area.type area_type, area.name area_name, area.parent_id, parent.name parent_name,
                    selected.cheapest_station_id cheap_id, selected.minimum_price cheap_price,
                    cheap.external_id cheap_external_id, cheap.brand cheap_brand,
                    ST_Y(cheap.location::geometry) cheap_latitude,
@@ -153,11 +153,6 @@ public class PostgresFuelPriceStatisticsRepository
                         rs.getBigDecimal("percentage_1d"),
                         rs.getBigDecimal("percentage_7d"),
                         rs.getBigDecimal("percentage_30d")));
-    }
-
-    @Override
-    public List<RankedAreaStatistics> provinces(String countryCode, ProductType productType) {
-        return areas(countryCode, productType, null, "PROVINCE");
     }
 
     @Override
@@ -302,7 +297,7 @@ public class PostgresFuelPriceStatisticsRepository
         jdbcTemplate.update(
                 """
                 INSERT INTO administrative_area (country, source, external_code, type, name, normalized_name)
-                SELECT DISTINCT s.country, 'legacy-address', 'province:' || LOWER(BTRIM(s.province)),
+                SELECT DISTINCT s.country, 'station-address', 'province:' || LOWER(BTRIM(s.province)),
                        'PROVINCE', BTRIM(s.province), LOWER(BTRIM(s.province))
                 FROM historical_product_price hp JOIN station s ON s.id = hp.station_id
                 WHERE hp.snapshot_id = :snapshotId AND NULLIF(BTRIM(s.province), '') IS NOT NULL
@@ -314,12 +309,12 @@ public class PostgresFuelPriceStatisticsRepository
                 """
                 INSERT INTO administrative_area
                     (country, source, external_code, type, name, normalized_name, parent_id)
-                SELECT DISTINCT s.country, 'legacy-address',
+                SELECT DISTINCT s.country, 'station-address',
                        'municipality:' || LOWER(BTRIM(s.province)) || ':' || LOWER(BTRIM(COALESCE(s.municipality, s.locality))),
                        'MUNICIPALITY', BTRIM(COALESCE(s.municipality, s.locality)),
                        LOWER(BTRIM(COALESCE(s.municipality, s.locality))), p.id
                 FROM historical_product_price hp JOIN station s ON s.id = hp.station_id
-                JOIN administrative_area p ON p.country = s.country AND p.source = 'legacy-address'
+                JOIN administrative_area p ON p.country = s.country AND p.source = 'station-address'
                   AND p.external_code = 'province:' || LOWER(BTRIM(s.province))
                 WHERE hp.snapshot_id = :snapshotId
                   AND NULLIF(BTRIM(s.province), '') IS NOT NULL
@@ -334,7 +329,7 @@ public class PostgresFuelPriceStatisticsRepository
                 DELETE FROM station_administrative_area saa
                 USING historical_product_price hp, administrative_area a
                 WHERE hp.snapshot_id = :snapshotId AND hp.station_id = saa.station_id
-                  AND a.id = saa.administrative_area_id AND a.source = 'legacy-address'
+                  AND a.id = saa.administrative_area_id AND a.source = 'station-address'
                 """,
                 parameters);
         jdbcTemplate.update(
@@ -342,7 +337,7 @@ public class PostgresFuelPriceStatisticsRepository
                 INSERT INTO station_administrative_area (station_id, administrative_area_id)
                 SELECT DISTINCT s.id, a.id
                 FROM historical_product_price hp JOIN station s ON s.id = hp.station_id
-                JOIN administrative_area a ON a.country = s.country AND a.source = 'legacy-address'
+                JOIN administrative_area a ON a.country = s.country AND a.source = 'station-address'
                   AND (a.external_code = 'province:' || LOWER(BTRIM(s.province))
                     OR a.external_code = 'municipality:' || LOWER(BTRIM(s.province)) || ':' ||
                        LOWER(BTRIM(COALESCE(s.municipality, s.locality))))
@@ -357,41 +352,18 @@ public class PostgresFuelPriceStatisticsRepository
     }
 
     private UUID resolveAreaId(String countryCode, GeographicScope scope) {
-        if (scope.areaId() != null) {
-            Integer count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM administrative_area WHERE id = :id AND country = :country",
-                    new MapSqlParameterSource("id", scope.areaId())
-                            .addValue("country", countryCode.toUpperCase(java.util.Locale.ROOT)),
-                    Integer.class);
-            if (count == null || count == 0) {
-                throw new IllegalArgumentException("areaId does not belong to countryCode");
-            }
-            return scope.areaId();
-        }
-        if (scope.level() == com.petrolprice.station_search_api.statistics.domain.GeographicLevel.NATIONAL) {
+        if (scope.areaId() == null) {
             return null;
         }
-        String sql = scope.level() == com.petrolprice.station_search_api.statistics.domain.GeographicLevel.PROVINCE
-                ? """
-                  SELECT id FROM administrative_area
-                  WHERE country = :country AND type = 'PROVINCE' AND normalized_name = LOWER(:name)
-                  """
-                : """
-                  SELECT a.id FROM administrative_area a JOIN administrative_area p ON p.id = a.parent_id
-                  WHERE a.country = :country AND a.type = 'MUNICIPALITY'
-                    AND a.normalized_name = LOWER(:name) AND p.normalized_name = LOWER(:province)
-                  """;
-        MapSqlParameterSource parameters = new MapSqlParameterSource()
-                .addValue("country", countryCode.toUpperCase(java.util.Locale.ROOT))
-                .addValue("name", scope.name())
-                .addValue("province", scope.province());
-        List<UUID> ids = jdbcTemplate.query(sql, parameters, (rs, rowNum) -> rs.getObject("id", UUID.class));
-        if (ids.size() != 1) {
-            throw new IllegalArgumentException(ids.isEmpty()
-                    ? "The legacy geographic area does not exist"
-                    : "The legacy geographic area name is ambiguous; use areaId");
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM administrative_area WHERE id = :id AND country = :country",
+                new MapSqlParameterSource("id", scope.areaId())
+                        .addValue("country", countryCode.toUpperCase(java.util.Locale.ROOT)),
+                Integer.class);
+        if (count == null || count == 0) {
+            throw new IllegalArgumentException("areaId does not belong to countryCode");
         }
-        return ids.getFirst();
+        return scope.areaId();
     }
 
     private String normalizeType(String areaType) {
@@ -403,18 +375,15 @@ public class PostgresFuelPriceStatisticsRepository
     private GeographicScope resolvedScope(ResultSet rs) throws SQLException {
         UUID areaId = rs.getObject("administrative_area_id", UUID.class);
         if (areaId == null) {
-            return GeographicScope.national();
+            return GeographicScope.country();
         }
         String type = rs.getString("area_type");
-        com.petrolprice.station_search_api.statistics.domain.GeographicLevel legacyLevel =
-                switch (type) {
-                    case "PROVINCE" -> com.petrolprice.station_search_api.statistics.domain.GeographicLevel.PROVINCE;
-                    case "MUNICIPALITY" ->
-                        com.petrolprice.station_search_api.statistics.domain.GeographicLevel.MUNICIPALITY;
-                    default -> null;
-                };
         return GeographicScope.resolvedAdministrativeArea(
-                areaId, type, legacyLevel, rs.getString("area_name"), rs.getString("parent_name"));
+                areaId,
+                type,
+                rs.getString("area_name"),
+                rs.getObject("parent_id", UUID.class),
+                rs.getString("parent_name"));
     }
 
     private StationPricePoint station(ResultSet rs, String prefix, Double distance) throws SQLException {

@@ -209,10 +209,7 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: areaId, in: query, required: false, description: Stable administrative-area identifier. Takes precedence over deprecated name parameters., schema: {type: string, format: uuid}}
-        - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
-        - {name: area, in: query, required: false, deprecated: true, schema: {type: string}}
-        - {name: province, in: query, required: false, deprecated: true, description: Required for legacy municipality scope, schema: {type: string}}
+        - {name: areaId, in: query, required: false, description: Stable administrative-area identifier. Omit it for country-wide statistics., schema: {type: string, format: uuid}}
       responses:
         '200':
           description: Current aggregate
@@ -227,10 +224,7 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: areaId, in: query, required: false, description: Stable administrative-area identifier., schema: {type: string, format: uuid}}
-        - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
-        - {name: area, in: query, required: false, deprecated: true, schema: {type: string}}
-        - {name: province, in: query, required: false, deprecated: true, schema: {type: string}}
+        - {name: areaId, in: query, required: false, description: Stable administrative-area identifier. Omit it for country-wide statistics., schema: {type: string, format: uuid}}
         - {name: from, in: query, required: true, schema: {type: string, format: date}}
         - {name: to, in: query, required: true, schema: {type: string, format: date}}
       responses:
@@ -241,23 +235,6 @@ paths:
               schema:
                 type: array
                 items: {$ref: '#/components/schemas/HistoricalPricePointResponse'}
-
-  /statistics/fuel-prices/provinces:
-    get:
-      tags: [Fuel Price Statistics]
-      operationId: getProvinceFuelPriceStatistics
-      deprecated: true
-      parameters:
-        - {name: countryCode, in: query, required: true, schema: {type: string}}
-        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-      responses:
-        '200':
-          description: Ranked province aggregates
-          content:
-            application/json:
-              schema:
-                type: array
-                items: {$ref: '#/components/schemas/RankedAreaStatisticsResponse'}
 
   /statistics/fuel-prices/administrative-areas:
     get:
@@ -415,20 +392,14 @@ components:
         tankLiters: {type: number, default: 55}
         savingPerTank: {type: number}
 
-    GeographicLevel:
-      type: string
-      enum: [NATIONAL, PROVINCE, MUNICIPALITY]
-
     GeographicScopeResponse:
       type: object
       properties:
         areaId: {type: string, format: uuid, nullable: true}
         areaType: {type: string, nullable: true}
-        level:
-          nullable: true
-          allOf: [{$ref: '#/components/schemas/GeographicLevel'}]
         name: {type: string, nullable: true}
-        province: {type: string, nullable: true}
+        parentAreaId: {type: string, format: uuid, nullable: true}
+        parentAreaName: {type: string, nullable: true}
 
     StationPricePointResponse:
       type: object
@@ -451,8 +422,8 @@ components:
         stationCount: {type: integer, format: int64}
         cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
         mostExpensiveStation: {$ref: '#/components/schemas/StationPricePointResponse'}
-        nationalAverageDifference: {type: number, nullable: true}
-        provincialAverageDifference: {type: number, nullable: true}
+        countryAverageDifference: {type: number, nullable: true}
+        parentAreaAverageDifference: {type: number, nullable: true}
         updatedAt: {type: string, format: date-time}
 
     HistoricalPricePointResponse:
@@ -485,7 +456,7 @@ components:
         maximumPrice: {type: number}
         stationCount: {type: integer, format: int64}
         cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
-        nationalAverageDifference: {type: number}
+        countryAverageDifference: {type: number}
         cheapestRank: {type: integer}
         mostExpensiveRank: {type: integer}
 

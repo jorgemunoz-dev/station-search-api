@@ -13,6 +13,6 @@ public record RankedAreaStatistics(
         BigDecimal maximumPrice,
         long stationCount,
         StationPricePoint cheapestStation,
-        BigDecimal nationalAverageDifference,
+        BigDecimal countryAverageDifference,
         int cheapestRank,
         int mostExpensiveRank) {}
