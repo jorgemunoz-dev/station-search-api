@@ -94,6 +94,58 @@ curl --silent --show-error --get "${BASE_URL}/administrative-areas" \
   --data-urlencode 'areaType=PROVINCE'
 ```
 
+### Ejemplo completo: obtener el `areaId` de Ardales (Málaga)
+
+La jerarquía se recorre por IDs: primero se obtiene Málaga entre las áreas de primer nivel y después
+se busca Ardales entre sus hijas. Este ejemplo requiere `jq`:
+
+```bash
+export MALAGA_AREA_ID="$(
+  curl --silent --show-error --get "${BASE_URL}/administrative-areas" \
+    --data-urlencode "countryCode=${COUNTRY_CODE}" \
+    --data-urlencode 'areaType=PROVINCE' |
+  jq --raw-output --exit-status '.[] | select(.name == "Málaga" or .name == "MÁLAGA") | .id' |
+  head -n 1
+)"
+
+export ARDALES_AREA_ID="$(
+  curl --silent --show-error --get "${BASE_URL}/administrative-areas" \
+    --data-urlencode "countryCode=${COUNTRY_CODE}" \
+    --data-urlencode "parentAreaId=${MALAGA_AREA_ID}" \
+    --data-urlencode 'areaType=MUNICIPALITY' |
+  jq --raw-output --exit-status '.[] | select(.name == "Ardales" or .name == "ARDALES") | .id' |
+  head -n 1
+)"
+
+printf 'Málaga: %s\nArdales: %s\n' "${MALAGA_AREA_ID}" "${ARDALES_AREA_ID}"
+```
+
+Con el ID descubierto, esta petición devuelve las estadísticas actuales de Ardales:
+
+```bash
+curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/current" \
+  --header 'Accept: application/json' \
+  --data-urlencode "countryCode=${COUNTRY_CODE}" \
+  --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode "areaId=${ARDALES_AREA_ID}"
+```
+
+Y esta devuelve su histórico para un intervalo de fechas:
+
+```bash
+curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/history" \
+  --header 'Accept: application/json' \
+  --data-urlencode "countryCode=${COUNTRY_CODE}" \
+  --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode "areaId=${ARDALES_AREA_ID}" \
+  --data-urlencode 'from=2026-09-01' \
+  --data-urlencode 'to=2026-09-24'
+```
+
+El área solo aparecerá cuando exista al menos una estación clasificada en Ardales dentro de un
+snapshot calculado. El catálogo actual se construye a partir de las áreas presentes en estaciones;
+no es todavía un padrón completo de todos los municipios del país.
+
 ## Estadísticas actuales
 
 ### Nacionales
