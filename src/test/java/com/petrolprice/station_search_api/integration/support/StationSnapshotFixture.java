@@ -32,7 +32,7 @@ public final class StationSnapshotFixture {
     private String brand = "BRAND-" + UUID.randomUUID().toString().substring(0, 8);
     private BigDecimal latitude = randomCoordinate(37, 42);
     private BigDecimal longitude = randomCoordinate(-7, 2);
-    private final Address address = randomAddress();
+    private Address address = randomAddress();
     private List<ProductPrice> prices = List.of(price(ProductType.DIESEL_A, "1.599"));
     private List<OpeningPeriod> openingPeriods =
             List.of(openingPeriod(List.of(Day.MON, Day.TUE, Day.WED), LocalTime.of(7, 0), LocalTime.of(22, 0)));
@@ -60,6 +60,17 @@ public final class StationSnapshotFixture {
 
     public StationSnapshotFixture withBrand(String brand) {
         this.brand = brand;
+        return this;
+    }
+
+    public StationSnapshotFixture withLocality(String locality) {
+        this.address = Address.builder()
+                .street(address.getStreet())
+                .postalCode(address.getPostalCode())
+                .locality(locality)
+                .municipality(locality)
+                .province(address.getProvince())
+                .build();
         return this;
     }
 

@@ -5,6 +5,7 @@ import com.petrolprice.station_search_api.platform.rest.exception.InvalidStation
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsPageRequest;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsQuery;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsSort;
+import com.petrolprice.station_search_api.station.search.application.searcharea.LocalitySearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.RadiusSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.StationSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.ViewportSearchArea;
@@ -26,6 +27,7 @@ public class FindStationsQueryFactory {
                 switch (parameters.searchMode()) {
                     case RADIUS -> createRadiusSearchArea(parameters);
                     case VIEWPORT -> createViewportSearchArea(parameters);
+                    case LOCALITY -> createLocalitySearchArea(parameters);
                 };
 
         return FindStationsQuery.builder()
@@ -46,6 +48,7 @@ public class FindStationsQueryFactory {
     private RadiusSearchArea createRadiusSearchArea(StationSearchParameters parameters) {
         requireRadiusParameters(parameters);
         rejectViewportParameters(parameters);
+        rejectLocalityParameters(parameters);
 
         return new RadiusSearchArea(parameters.latitude(), parameters.longitude(), parameters.radiusMeters());
     }
@@ -53,8 +56,43 @@ public class FindStationsQueryFactory {
     private ViewportSearchArea createViewportSearchArea(StationSearchParameters parameters) {
         requireViewportParameters(parameters);
         rejectRadiusParameters(parameters);
+        rejectLocalityParameters(parameters);
 
         return new ViewportSearchArea(parameters.north(), parameters.south(), parameters.east(), parameters.west());
+    }
+
+    private LocalitySearchArea createLocalitySearchArea(StationSearchParameters parameters) {
+        rejectGeographicalParameters(parameters);
+        if (parameters.countryCode() == null || parameters.locality() == null) {
+            throw new InvalidStationSearchRequestException("LOCALITY search requires countryCode and locality");
+        }
+        if (!parameters.countryCode().matches("[A-Za-z]{2}")) {
+            throw new InvalidStationSearchRequestException("countryCode must be a two-letter ISO country code");
+        }
+        if (parameters.locality().isBlank()) {
+            throw new InvalidStationSearchRequestException("locality must not be blank");
+        }
+        return new LocalitySearchArea(parameters.countryCode(), parameters.locality());
+    }
+
+    private void rejectGeographicalParameters(StationSearchParameters parameters) {
+        if (parameters.latitude() != null
+                || parameters.longitude() != null
+                || parameters.radiusMeters() != null
+                || parameters.north() != null
+                || parameters.south() != null
+                || parameters.east() != null
+                || parameters.west() != null) {
+            throw new InvalidStationSearchRequestException(
+                    "LOCALITY search must not contain radius or viewport parameters");
+        }
+    }
+
+    private void rejectLocalityParameters(StationSearchParameters parameters) {
+        if (parameters.countryCode() != null || parameters.locality() != null) {
+            throw new InvalidStationSearchRequestException(
+                    "RADIUS and VIEWPORT searches must not contain countryCode or locality");
+        }
     }
 
     private void requireRadiusParameters(StationSearchParameters parameters) {

@@ -21,6 +21,7 @@ import com.petrolprice.station_search_api.station.search.application.query.FindS
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsSort;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
+import com.petrolprice.station_search_api.station.search.application.searcharea.LocalitySearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.RadiusSearchArea;
 import java.math.BigDecimal;
 import java.time.LocalTime;
@@ -128,6 +129,24 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
             assertThat(period.getOpen()).isEqualTo(LocalTime.of(8, 0));
             assertThat(period.getClose()).isEqualTo(LocalTime.of(22, 0));
         });
+    }
+
+    @Test
+    void shouldFilterStationsByExactNormalizedLocality() {
+        StationSnapshotFixture malaga = aStationSnapshot().withLocality("Málaga");
+        StationSnapshotFixture neighboringLocality = aStationSnapshot().withLocality("Málaga del Fresno");
+        snapshotService.consume(malaga.processCommand());
+        snapshotService.consume(neighboringLocality.processCommand());
+
+        FindStationsQuery query = FindStationsQuery.builder()
+                .searchArea(new LocalitySearchArea("es", "malaga"))
+                .sortBy(FindStationsSort.PRICE)
+                .pageRequest(FindStationsPageRequest.builder().size(10).build())
+                .build();
+
+        assertThat(externalIds(adapter.search(query)))
+                .containsExactly(malaga.externalId())
+                .doesNotContain(neighboringLocality.externalId());
     }
 
     private StationSnapshotFixture nearby(String offset) {
