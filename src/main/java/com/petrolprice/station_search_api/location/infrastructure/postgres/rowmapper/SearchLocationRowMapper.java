@@ -16,6 +16,13 @@ public class SearchLocationRowMapper implements RowMapper<SearchLocationProjecti
                 resultSet.getString("secondary_text"),
                 resultSet.getString("country_code"),
                 resultSet.getString("postal_code"),
+                resultSet.getString("normalized_locality_name"),
+                resultSet.getString("admin_area_1_name"),
+                resultSet.getString("admin_area_1_code"),
+                resultSet.getString("admin_area_2_name"),
+                resultSet.getString("admin_area_2_code"),
+                resultSet.getString("admin_area_3_name"),
+                resultSet.getString("admin_area_3_code"),
                 resultSet.getDouble("latitude"),
                 resultSet.getDouble("longitude"));
     }

@@ -28,10 +28,10 @@ public class GetFuelPriceSummaryService implements GetFuelPriceSummaryUseCase {
             throw new IllegalArgumentException("days must be between 1 and 365");
         }
         CurrentPriceStatistics current = statistics.current(
-            new CurrentStatisticsQuery(countryCode, productType, GeographicScope.national()));
+            new CurrentStatisticsQuery(countryCode, productType, GeographicScope.country()));
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         List<HistoricalPricePoint> history = statistics.history(new HistoricalStatisticsQuery(
-            countryCode, productType, GeographicScope.national(), today.minusDays(periodDays), today));
+            countryCode, productType, GeographicScope.country(), today.minusDays(periodDays), today));
         BigDecimal previous = history.isEmpty() ? null : history.getFirst().averagePrice();
         BigDecimal variation = previous == null ? null : current.averagePrice().subtract(previous);
         Double percentage = previous == null || previous.signum() == 0

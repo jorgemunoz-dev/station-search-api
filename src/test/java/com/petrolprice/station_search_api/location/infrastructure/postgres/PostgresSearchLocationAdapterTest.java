@@ -33,7 +33,20 @@ class PostgresSearchLocationAdapterTest {
         SearchLocationQuery query = new SearchLocationQuery("mal", "ES", 10);
 
         SearchLocationResult expected = new SearchLocationResult(
-                SearchLocationType.LOCALITY, "Málaga", "Málaga, Andalucía", "ES", null, 36.7213, -4.4214);
+                SearchLocationType.LOCALITY,
+                "Málaga",
+                "Málaga, Andalucía",
+                "ES",
+                null,
+                "malaga",
+                "Andalucía",
+                "AN",
+                "Málaga",
+                "MA",
+                null,
+                null,
+                36.7213,
+                -4.4214);
 
         when(searchLocationPort.search(query)).thenReturn(List.of(expected));
 

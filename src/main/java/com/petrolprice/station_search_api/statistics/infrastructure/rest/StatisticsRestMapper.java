@@ -2,10 +2,10 @@ package com.petrolprice.station_search_api.statistics.infrastructure.rest;
 
 import com.petrolprice.station_search_api.contract.rest.model.*;
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
+import com.petrolprice.station_search_api.statistics.application.result.FuelPriceSummaryResult;
 import com.petrolprice.station_search_api.statistics.application.result.FuelSaving;
 import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
-import com.petrolprice.station_search_api.statistics.application.result.RankedAreaStatistics;
-import com.petrolprice.station_search_api.statistics.application.result.FuelPriceSummaryResult;
+import com.petrolprice.station_search_api.statistics.application.result.RankedLocalityStatistics;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -22,7 +22,7 @@ public interface StatisticsRestMapper {
 
     HistoricalPricePointResponse toResponse(HistoricalPricePoint result);
 
-    RankedAreaStatisticsResponse toResponse(RankedAreaStatistics result);
+    RankedLocalityStatisticsResponse toResponse(RankedLocalityStatistics result);
 
     default OffsetDateTime map(Instant value) {
         return value == null ? null : value.atOffset(ZoneOffset.UTC);
@@ -32,7 +32,7 @@ public interface StatisticsRestMapper {
         return results.stream().map(this::toResponse).toList();
     }
 
-    default List<RankedAreaStatisticsResponse> toRankingResponse(List<RankedAreaStatistics> results) {
+    default List<RankedLocalityStatisticsResponse> toRankingResponse(List<RankedLocalityStatistics> results) {
         return results.stream().map(this::toResponse).toList();
     }
 }

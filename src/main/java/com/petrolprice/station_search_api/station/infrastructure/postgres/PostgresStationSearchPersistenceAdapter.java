@@ -16,6 +16,7 @@ import com.petrolprice.station_search_api.station.search.application.query.FindS
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsPage;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
+import com.petrolprice.station_search_api.station.search.application.searcharea.LocalitySearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.RadiusSearchArea;
 import com.petrolprice.station_search_api.station.search.application.searcharea.ViewportSearchArea;
 import java.time.LocalTime;
@@ -75,10 +76,34 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
 
     private List<StationRankingProjection> findRankedStations(FindStationsQuery query) {
         return switch (query.searchArea()) {
+            case LocalitySearchArea locality -> findRankedStationsByLocality(query, locality);
             case RadiusSearchArea radius -> findRankedStationsByRadius(query, radius);
 
             case ViewportSearchArea viewport -> findRankedStationsByViewport(query, viewport);
         };
+    }
+
+    private List<StationRankingProjection> findRankedStationsByLocality(
+            FindStationsQuery query, LocalitySearchArea locality) {
+        String candidateStationsSql =
+                """
+            SELECT
+                s.id, s.external_id, s.country, s.brand, s.normalized_brand, s.street,
+                s.postal_code, s.locality, s.municipality, s.province, s.location,
+                NULL::double precision AS distance_meters
+            FROM station s
+            WHERE s.country = :countryCode
+              AND BTRIM(LOWER(REGEXP_REPLACE(
+                    TRANSLATE(COALESCE(s.municipality, s.locality, ''),
+                              'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
+                    '[^[:alnum:]]+', ' ', 'g'))) = :locality
+            """;
+
+        MapSqlParameterSource parameters = createCommonParameters(query)
+                .addValue("countryCode", locality.countryCode())
+                .addValue("locality", locality.normalizedLocality());
+
+        return executeRankingQuery(query, candidateStationsSql, localityOrderBy(query.sortBy()), parameters);
     }
 
     /*
@@ -345,6 +370,13 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
             station_min_price ASC NULLS LAST,
             id ASC
             """;
+    }
+
+    private String localityOrderBy(FindStationsSort sort) {
+        if (sort != FindStationsSort.PRICE) {
+            throw new IllegalArgumentException("DISTANCE sorting is not supported for LOCALITY searches");
+        }
+        return "station_min_price ASC NULLS LAST, id ASC";
     }
 
     /*

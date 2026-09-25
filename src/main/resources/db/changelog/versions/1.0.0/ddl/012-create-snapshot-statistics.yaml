@@ -6,15 +6,11 @@ databaseChangeLog:
         - addColumn:
             tableName: station_import
             columns:
-              - column:
-                  name: country
-                  type: varchar(2)
+              - column: {name: country, type: varchar(2)}
         - addColumn:
             tableName: historical_product_price
             columns:
-              - column:
-                  name: snapshot_id
-                  type: uuid
+              - column: {name: snapshot_id, type: uuid}
         - addForeignKeyConstraint:
             baseTableName: historical_product_price
             baseColumnNames: snapshot_id
@@ -35,89 +31,53 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-
+                  constraints: {primaryKey: true, nullable: false}
               - column:
                   name: snapshot_id
                   type: uuid
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
                   name: country
                   type: varchar(2)
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
                   name: product_type
                   type: varchar(50)
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
-                  name: geographic_level
-                  type: varchar(20)
-                  constraints:
-                    nullable: false
-
-              - column:
-                  name: scope_key
-                  type: varchar(500)
-                  constraints:
-                    nullable: false
-
-              - column:
-                  name: area_name
-                  type: varchar(255)
-
-              - column:
-                  name: province
-                  type: varchar(255)
-
+                  name: normalized_locality_name
+                  type: varchar(150)
+              - column: {name: admin_area_1_name, type: varchar(150)}
+              - column: {name: admin_area_2_name, type: varchar(150)}
+              - column: {name: admin_area_3_name, type: varchar(150)}
               - column:
                   name: average_price
                   type: "numeric(12,6)"
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
                   name: minimum_price
                   type: "numeric(10,3)"
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
                   name: maximum_price
                   type: "numeric(10,3)"
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
                   name: station_count
                   type: bigint
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
                   name: cheapest_station_id
                   type: uuid
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
                   name: most_expensive_station_id
                   type: uuid
-                  constraints:
-                    nullable: false
-
+                  constraints: {nullable: false}
               - column:
                   name: calculated_at
                   type: timestamptz
-                  constraints:
-                    nullable: false
+                  constraints: {nullable: false}
         - addForeignKeyConstraint:
             baseTableName: fuel_price_statistics
             baseColumnNames: snapshot_id
@@ -125,16 +85,40 @@ databaseChangeLog:
             referencedColumnNames: snapshot_id
             constraintName: fk_statistics_snapshot
             onDelete: CASCADE
-        - addUniqueConstraint:
-            tableName: fuel_price_statistics
-            columnNames: snapshot_id, country, product_type, geographic_level, scope_key
-            constraintName: uk_statistics_snapshot_scope
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_country
+              ON fuel_price_statistics (snapshot_id, country, product_type)
+              WHERE normalized_locality_name IS NULL
+                AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_locality
+              ON fuel_price_statistics (snapshot_id, country, product_type, normalized_locality_name)
+              WHERE normalized_locality_name IS NOT NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_1
+              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_1_name)
+              WHERE admin_area_1_name IS NOT NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_2
+              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_2_name)
+              WHERE admin_area_2_name IS NOT NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_3
+              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_3_name)
+              WHERE admin_area_3_name IS NOT NULL
         - createIndex:
             tableName: fuel_price_statistics
             indexName: idx_statistics_current_lookup
             columns:
               - column: {name: country}
               - column: {name: product_type}
-              - column: {name: geographic_level}
-              - column: {name: scope_key}
+              - column: {name: normalized_locality_name}
+              - column: {name: admin_area_1_name}
+              - column: {name: admin_area_2_name}
+              - column: {name: admin_area_3_name}
               - column: {name: calculated_at, descending: true}

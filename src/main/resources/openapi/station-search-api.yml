@@ -9,9 +9,16 @@ paths:
       tags:
         - Stations
       operationId: searchStations
-      summary: Search stations by radius and filters
+      summary: Search stations by locality or geographical area
       description: |
-        Searches stations using one of two mutually exclusive modes.
+        Searches stations using one of three mutually exclusive modes.
+
+        LOCALITY mode:
+        - Requires countryCode and locality.
+        - Must not include radius or viewport parameters.
+        - Returns stations whose municipality (or locality when municipality is absent) exactly
+          matches the normalized locality value.
+        - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:
         - Requires north, south, east and west.
@@ -54,6 +61,24 @@ paths:
           description: Defines how the geographical search area is specified.
           schema:
             $ref: "#/components/schemas/StationSearchMode"
+
+        # Locality filters
+        - name: countryCode
+          in: query
+          required: false
+          description: ISO 3166-1 alpha-2 country code. Required when searchMode is LOCALITY.
+          schema:
+            type: string
+            pattern: '^[A-Za-z]{2}$'
+            example: ES
+        - name: locality
+          in: query
+          required: false
+          description: Exact locality name or normalizedLocalityName returned by location search. Required when searchMode is LOCALITY.
+          schema:
+            type: string
+            minLength: 1
+          example: Málaga
 
         # Radius filters
         - name: lat
@@ -173,12 +198,11 @@ paths:
           example: Malaga
         - name: countryCode
           in: query
-          required: false
+          required: true
           description: ISO 3166-1 alpha-2 country code.
           schema:
             type: string
             pattern: '^[A-Z]{2}$'
-            default: ES
           example: ES
         - name: limit
           in: query
@@ -209,9 +233,10 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
-        - {name: area, in: query, required: false, schema: {type: string}}
-        - {name: province, in: query, required: false, description: Required for municipality scope, schema: {type: string}}
+        - {name: locality, in: query, required: false, description: Locality name returned by location search. Omit it for country-wide statistics., schema: {type: string}}
+        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Mutually exclusive with other scopes., schema: {type: string}}
       responses:
         '200':
           description: Current aggregate
@@ -226,9 +251,10 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: level, in: query, required: false, schema: {$ref: '#/components/schemas/GeographicLevel', default: NATIONAL}}
-        - {name: area, in: query, required: false, schema: {type: string}}
-        - {name: province, in: query, required: false, schema: {type: string}}
+        - {name: locality, in: query, required: false, description: Locality name returned by location search. Omit it for country-wide statistics., schema: {type: string}}
+        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Mutually exclusive with other scopes., schema: {type: string}}
         - {name: from, in: query, required: true, schema: {type: string, format: date}}
         - {name: to, in: query, required: true, schema: {type: string, format: date}}
       responses:
@@ -240,21 +266,30 @@ paths:
                 type: array
                 items: {$ref: '#/components/schemas/HistoricalPricePointResponse'}
 
-  /statistics/fuel-prices/provinces:
+  /statistics/fuel-prices/localities:
     get:
       tags: [Fuel Price Statistics]
-      operationId: getProvinceFuelPriceStatistics
+      operationId: getLocalityFuelPriceStatistics
+      description: >
+        Returns one aggregate per locality. Administrative-area parameters only filter the
+        localities included in the ranking; they do not select a locality and they do not change
+        the response granularity. Use GET /statistics/fuel-prices/current?locality=... to obtain
+        the aggregate for one exact town or city. The meaning of each adminArea position comes
+        from search_location and is country/source-specific.
       parameters:
-        - {name: countryCode, in: query, required: true, schema: {type: string}}
+        - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: adminArea1, in: query, required: false, description: Filters the locality ranking by the country-specific level 1 metadata., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Filters the locality ranking by the country-specific level 2 metadata., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Filters the locality ranking by the country-specific level 3 metadata. This is not an alias for locality., schema: {type: string}}
       responses:
         '200':
-          description: Ranked province aggregates
+          description: Ranked locality aggregates, optionally filtered by administrative context
           content:
             application/json:
               schema:
                 type: array
-                items: {$ref: '#/components/schemas/RankedAreaStatisticsResponse'}
+                items: {$ref: '#/components/schemas/RankedLocalityStatisticsResponse'}
 
   /statistics/fuel-prices/summary:
     get:
@@ -377,16 +412,14 @@ components:
         tankLiters: {type: number, default: 55}
         savingPerTank: {type: number}
 
-    GeographicLevel:
-      type: string
-      enum: [NATIONAL, PROVINCE, MUNICIPALITY]
-
     GeographicScopeResponse:
       type: object
       properties:
-        level: {$ref: '#/components/schemas/GeographicLevel'}
-        name: {type: string, nullable: true}
-        province: {type: string, nullable: true}
+        normalizedLocalityName: {type: string, nullable: true}
+        localityName: {type: string, nullable: true}
+        adminArea1Name: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
 
     StationPricePointResponse:
       type: object
@@ -409,8 +442,8 @@ components:
         stationCount: {type: integer, format: int64}
         cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
         mostExpensiveStation: {$ref: '#/components/schemas/StationPricePointResponse'}
-        nationalAverageDifference: {type: number, nullable: true}
-        provincialAverageDifference: {type: number, nullable: true}
+        countryAverageDifference: {type: number, nullable: true}
+        adminArea2AverageDifference: {type: number, nullable: true}
         updatedAt: {type: string, format: date-time}
 
     HistoricalPricePointResponse:
@@ -431,16 +464,20 @@ components:
         percentageFromSevenDaysAgo: {type: number, nullable: true}
         percentageFromThirtyDaysAgo: {type: number, nullable: true}
 
-    RankedAreaStatisticsResponse:
+    RankedLocalityStatisticsResponse:
       type: object
       properties:
-        area: {type: string}
+        normalizedLocalityName: {type: string}
+        localityName: {type: string}
+        adminArea1Name: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
         averagePrice: {type: number}
         minimumPrice: {type: number}
         maximumPrice: {type: number}
         stationCount: {type: integer, format: int64}
         cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
-        nationalAverageDifference: {type: number}
+        countryAverageDifference: {type: number}
         cheapestRank: {type: integer}
         mostExpensiveRank: {type: integer}
 
@@ -467,6 +504,7 @@ components:
         - primaryText
         - secondaryText
         - countryCode
+        - normalizedLocalityName
         - latitude
         - longitude
       properties:
@@ -496,6 +534,18 @@ components:
           description: Postal code when the suggestion represents a postal code.
           example: '29001'
 
+        normalizedLocalityName:
+          type: string
+          description: Stable normalized locality value accepted by statistics endpoints.
+          example: malaga
+
+        adminArea1Name: {type: string, nullable: true}
+        adminArea1Code: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea2Code: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
+        adminArea3Code: {type: string, nullable: true}
+
         latitude:
           type: number
           format: double
@@ -523,6 +573,7 @@ components:
       enum:
         - VIEWPORT
         - RADIUS
+        - LOCALITY
     ProductType:
       type: string
       enum:

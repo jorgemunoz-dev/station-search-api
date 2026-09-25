@@ -1,0 +1,39 @@
+@baseUrl = http://localhost:8080
+@countryCode = ES
+@productType = DIESEL_A
+
+### 1. Find a locality using the existing search_location catalogue
+GET {{baseUrl}}/locations/search?countryCode={{countryCode}}&query=Ardales&limit=10
+Accept: application/json
+
+> {%
+  client.global.set("locality", response.body[0].normalizedLocalityName);
+%}
+
+### 2. Country-wide current statistics (locality omitted)
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}
+Accept: application/json
+
+### 3. Current statistics for the selected locality
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}&locality={{locality}}
+Accept: application/json
+
+### 4. Historical statistics for the selected locality
+GET {{baseUrl}}/statistics/fuel-prices/history?countryCode={{countryCode}}&productType={{productType}}&locality={{locality}}&from=2026-09-01&to=2026-09-24
+Accept: application/json
+
+### 5. Rank all localities in the country
+GET {{baseUrl}}/statistics/fuel-prices/localities?countryCode={{countryCode}}&productType={{productType}}
+Accept: application/json
+
+### 6. Rank localities filtered by country-specific administrative metadata
+GET {{baseUrl}}/statistics/fuel-prices/localities?countryCode={{countryCode}}&productType={{productType}}&adminArea2=Málaga
+Accept: application/json
+
+### 7. Current statistics for an admin_area_2 (province in Spain)
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}&adminArea2=Málaga
+Accept: application/json
+
+### 8. Historical statistics for an admin_area_2
+GET {{baseUrl}}/statistics/fuel-prices/history?countryCode={{countryCode}}&productType={{productType}}&adminArea2=Málaga&from=2026-09-01&to=2026-09-24
+Accept: application/json

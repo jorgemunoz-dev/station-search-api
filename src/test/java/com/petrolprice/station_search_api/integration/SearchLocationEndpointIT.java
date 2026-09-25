@@ -75,6 +75,11 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$[0].type", is("LOCALITY")))
                 .andExpect(jsonPath("$[0].primaryText", is("Ardales")))
                 .andExpect(jsonPath("$[0].countryCode", is("ES")))
+                .andExpect(jsonPath("$[0].normalizedLocalityName", is("ardales")))
+                .andExpect(jsonPath("$[0].adminArea1Name", is("Andalucía")))
+                .andExpect(jsonPath("$[0].adminArea1Code", is("01")))
+                .andExpect(jsonPath("$[0].adminArea2Name", is("Málaga")))
+                .andExpect(jsonPath("$[0].adminArea2Code", is("29")))
                 .andExpect(jsonPath("$[0].latitude", is(36.8780)))
                 .andExpect(jsonPath("$[0].longitude", is(-4.8460)));
     }
@@ -93,6 +98,12 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
     @Test
     void shouldReturnBadRequestWhenQueryIsMissing() throws Exception {
         mockMvc.perform(get("/locations/search").queryParam("countryCode", "ES"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenCountryCodeIsMissing() throws Exception {
+        mockMvc.perform(get("/locations/search").queryParam("query", "ard"))
                 .andExpect(status().isBadRequest());
     }
 

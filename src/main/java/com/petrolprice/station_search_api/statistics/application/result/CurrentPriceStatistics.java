@@ -15,6 +15,6 @@ public record CurrentPriceStatistics(
         long stationCount,
         StationPricePoint cheapestStation,
         StationPricePoint mostExpensiveStation,
-        BigDecimal nationalAverageDifference,
-        BigDecimal provincialAverageDifference,
+        BigDecimal countryAverageDifference,
+        BigDecimal adminArea2AverageDifference,
         Instant updatedAt) {}

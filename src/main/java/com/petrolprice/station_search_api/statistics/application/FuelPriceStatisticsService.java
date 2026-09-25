@@ -7,7 +7,7 @@ import com.petrolprice.station_search_api.statistics.application.query.Historica
 import com.petrolprice.station_search_api.statistics.application.result.CurrentPriceStatistics;
 import com.petrolprice.station_search_api.statistics.application.result.FuelSaving;
 import com.petrolprice.station_search_api.statistics.application.result.HistoricalPricePoint;
-import com.petrolprice.station_search_api.statistics.application.result.RankedAreaStatistics;
+import com.petrolprice.station_search_api.statistics.application.result.RankedLocalityStatistics;
 import com.petrolprice.station_search_api.statistics.domain.ProductType;
 import java.math.BigDecimal;
 import java.util.List;
@@ -35,8 +35,13 @@ public class FuelPriceStatisticsService implements FuelPriceStatisticsUseCase {
     }
 
     @Override
-    public List<RankedAreaStatistics> provinceRanking(String countryCode, ProductType productType) {
-        return currentRepository.provinces(countryCode, productType);
+    public List<RankedLocalityStatistics> localityRanking(
+            String countryCode,
+            ProductType productType,
+            String adminArea1,
+            String adminArea2,
+            String adminArea3) {
+        return currentRepository.localities(countryCode, productType, adminArea1, adminArea2, adminArea3);
     }
 
     @Override

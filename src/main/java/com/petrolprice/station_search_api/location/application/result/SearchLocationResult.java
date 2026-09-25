@@ -8,5 +8,12 @@ public record SearchLocationResult(
         String secondaryText,
         String countryCode,
         String postalCode,
+        String normalizedLocalityName,
+        String adminArea1Name,
+        String adminArea1Code,
+        String adminArea2Name,
+        String adminArea2Code,
+        String adminArea3Name,
+        String adminArea3Code,
         double latitude,
         double longitude) {}

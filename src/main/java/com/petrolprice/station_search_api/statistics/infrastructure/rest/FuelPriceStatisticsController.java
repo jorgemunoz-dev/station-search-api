@@ -31,9 +31,15 @@ public class FuelPriceStatisticsController implements StatisticsApi {
 
     @Override
     public ResponseEntity<CurrentPriceStatisticsResponse> getCurrentFuelPriceStatistics(
-            String countryCode, ProductType productType, GeographicLevel level, String area, String province) {
+            String countryCode,
+            ProductType productType,
+            String locality,
+            String adminArea1,
+            String adminArea2,
+            String adminArea3) {
         CurrentPriceStatistics result = statistics.current(
-                new CurrentStatisticsQuery(countryCode, product(productType), scope(level, area, province)));
+                new CurrentStatisticsQuery(
+                        countryCode, product(productType), scope(locality, adminArea1, adminArea2, adminArea3)));
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
@@ -56,19 +62,29 @@ public class FuelPriceStatisticsController implements StatisticsApi {
             ProductType productType,
             LocalDate from,
             LocalDate to,
-            GeographicLevel level,
-            String area,
-            String province) {
+            String locality,
+            String adminArea1,
+            String adminArea2,
+            String adminArea3) {
         List<HistoricalPricePoint> result = statistics.history(new HistoricalStatisticsQuery(
-                countryCode, product(productType), scope(level, area, province), from, to));
+                countryCode,
+                product(productType),
+                scope(locality, adminArea1, adminArea2, adminArea3),
+                from,
+                to));
         return ResponseEntity.ok(mapper.toHistoryResponse(result));
     }
 
     @Override
-    public ResponseEntity<List<RankedAreaStatisticsResponse>> getProvinceFuelPriceStatistics(
-            String countryCode, ProductType productType) {
-        return ResponseEntity.ok(
-                mapper.toRankingResponse(statistics.provinceRanking(countryCode, product(productType))));
+    public ResponseEntity<List<RankedLocalityStatisticsResponse>> getLocalityFuelPriceStatistics(
+            String countryCode,
+            ProductType productType,
+            String adminArea1,
+            String adminArea2,
+            String adminArea3) {
+        return ResponseEntity.ok(mapper.toRankingResponse(
+                statistics.localityRanking(
+                        countryCode, product(productType), adminArea1, adminArea2, adminArea3)));
     }
 
     @ExceptionHandler(StatisticsNotFoundException.class)
@@ -91,12 +107,26 @@ public class FuelPriceStatisticsController implements StatisticsApi {
         return com.petrolprice.station_search_api.statistics.domain.ProductType.valueOf(productType.name());
     }
 
-    private GeographicScope scope(GeographicLevel level, String area, String province) {
-        GeographicLevel effectiveLevel = level == null ? GeographicLevel.NATIONAL : level;
-        return switch (effectiveLevel) {
-            case NATIONAL -> GeographicScope.national();
-            case PROVINCE -> GeographicScope.province(province);
-            case MUNICIPALITY -> GeographicScope.municipality(province, area);
-        };
+    private GeographicScope scope(String locality, String adminArea1, String adminArea2, String adminArea3) {
+        long supplied = java.util.stream.Stream.of(locality, adminArea1, adminArea2, adminArea3)
+                .filter(value -> value != null && !value.isBlank())
+                .count();
+        if (supplied > 1) {
+            throw new IllegalArgumentException(
+                    "Only one of locality, adminArea1, adminArea2 or adminArea3 can be selected");
+        }
+        if (locality != null && !locality.isBlank()) {
+            return GeographicScope.locality(locality);
+        }
+        if (adminArea1 != null && !adminArea1.isBlank()) {
+            return GeographicScope.adminArea1(adminArea1);
+        }
+        if (adminArea2 != null && !adminArea2.isBlank()) {
+            return GeographicScope.adminArea2(adminArea2);
+        }
+        if (adminArea3 != null && !adminArea3.isBlank()) {
+            return GeographicScope.adminArea3(adminArea3);
+        }
+        return GeographicScope.country();
     }
 }
