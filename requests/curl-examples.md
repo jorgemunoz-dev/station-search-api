@@ -19,6 +19,25 @@ curl --silent --show-error --get "${BASE_URL}/stations" \
   --data-urlencode 'sortBy=PRICE'
 ```
 
+Para recuperar únicamente las estaciones de una localidad no hacen falta coordenadas. El modo
+`LOCALITY` realiza una coincidencia exacta del nombre normalizado dentro del país indicado:
+
+```bash
+curl --silent --show-error --get "${BASE_URL}/stations" \
+  --header 'Accept: application/json' \
+  --data-urlencode 'searchMode=LOCALITY' \
+  --data-urlencode "countryCode=${COUNTRY_CODE}" \
+  --data-urlencode 'locality=Ardales' \
+  --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode 'sortBy=PRICE'
+```
+
+También se puede enviar como `locality` el `normalizedLocalityName` devuelto por
+`/locations/search`. El resultado contiene los precios actuales almacenados en `productPrices`; no
+contiene la fecha de actualización de cada precio y, por tanto, no confirma que se haya observado
+hoy. Si solo se necesita el agregado actual (mínimo, máximo, media y estación más barata), debe
+usarse `/statistics/fuel-prices/current?locality=...` como se muestra a continuación.
+
 ## Buscar una localidad y consultar sus estadísticas
 
 `/locations/search` devuelve `normalizedLocalityName`, el valor que comparten `search_location` y

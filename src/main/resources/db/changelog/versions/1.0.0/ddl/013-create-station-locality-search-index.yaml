@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-create-station-locality-search-index
+      author: codex
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX idx_station_country_locality_search
+              ON station (
+                country,
+                BTRIM(LOWER(REGEXP_REPLACE(
+                  TRANSLATE(COALESCE(municipality, locality, ''),
+                            'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
+                  '[^[:alnum:]]+', ' ', 'g')))
+              );

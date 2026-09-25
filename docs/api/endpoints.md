@@ -7,13 +7,20 @@ La API expone siete operaciones de consulta. `countryCode` utiliza el código IS
 
 ### `GET /stations`
 
-Busca estaciones para mostrarlas en un mapa o listado. Tiene dos modos excluyentes:
+Busca estaciones para mostrarlas en un mapa o listado. Tiene tres modos excluyentes:
 
 - `RADIUS`: recibe `lat`, `lng` y `radiusMeters`; permite ordenar por precio o distancia.
 - `VIEWPORT`: recibe `north`, `south`, `east` y `west`; devuelve las estaciones visibles en el mapa.
+- `LOCALITY`: recibe `countryCode` y `locality`; devuelve únicamente las estaciones cuya localidad
+  coincide exactamente y permite ordenar por precio.
 
 Admite paginación y un filtro opcional por `productType`. Devuelve estaciones individuales; este es
 el endpoint apropiado cuando se necesita una lista de estaciones, no un agregado estadístico.
+
+En modo `LOCALITY` puede enviarse el nombre directamente o el `normalizedLocalityName` obtenido de
+`GET /locations/search`. La respuesta incluye `productPrices`, es decir, los precios actuales
+almacenados para cada estación, pero no expone la fecha de actualización de cada precio. Por ello no
+puede garantizar por sí sola que un precio se haya observado durante el día natural en curso.
 
 ### `GET /locations/search`
 
@@ -67,6 +74,7 @@ actual del `productType` y lo multiplica por `tankLiters` (55 litros por defecto
 | Necesidad | Endpoint |
 | --- | --- |
 | Ver estaciones individuales cercanas o visibles | `GET /stations` |
+| Ver las estaciones de una localidad exacta | `GET /stations?searchMode=LOCALITY&countryCode=...&locality=...` |
 | Autocompletar una localidad o código postal | `GET /locations/search` |
 | Estadística nacional actual | `GET /statistics/fuel-prices/current` sin scope opcional |
 | Estadística actual de Málaga capital | `GET /statistics/fuel-prices/current?locality=Málaga` |
@@ -75,4 +83,3 @@ actual del `productType` y lo multiplica por `tankLiters` (55 litros por defecto
 | Comparar o clasificar localidades | `GET /statistics/fuel-prices/localities` |
 | Mostrar un indicador nacional resumido | `GET /statistics/fuel-prices/summary` |
 | Calcular ahorro para una estación y depósito | `GET /statistics/fuel-prices/savings` |
-

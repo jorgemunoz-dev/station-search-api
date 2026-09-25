@@ -9,9 +9,16 @@ paths:
       tags:
         - Stations
       operationId: searchStations
-      summary: Search stations by radius and filters
+      summary: Search stations by locality or geographical area
       description: |
-        Searches stations using one of two mutually exclusive modes.
+        Searches stations using one of three mutually exclusive modes.
+
+        LOCALITY mode:
+        - Requires countryCode and locality.
+        - Must not include radius or viewport parameters.
+        - Returns stations whose municipality (or locality when municipality is absent) exactly
+          matches the normalized locality value.
+        - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:
         - Requires north, south, east and west.
@@ -54,6 +61,24 @@ paths:
           description: Defines how the geographical search area is specified.
           schema:
             $ref: "#/components/schemas/StationSearchMode"
+
+        # Locality filters
+        - name: countryCode
+          in: query
+          required: false
+          description: ISO 3166-1 alpha-2 country code. Required when searchMode is LOCALITY.
+          schema:
+            type: string
+            pattern: '^[A-Za-z]{2}$'
+            example: ES
+        - name: locality
+          in: query
+          required: false
+          description: Exact locality name or normalizedLocalityName returned by location search. Required when searchMode is LOCALITY.
+          schema:
+            type: string
+            minLength: 1
+          example: Málaga
 
         # Radius filters
         - name: lat
@@ -548,6 +573,7 @@ components:
       enum:
         - VIEWPORT
         - RADIUS
+        - LOCALITY
     ProductType:
       type: string
       enum:

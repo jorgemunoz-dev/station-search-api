@@ -29,6 +29,8 @@ public class StationController implements StationsApi {
             StationSearchMode searchMode,
             Integer page,
             Integer size,
+            String countryCode,
+            String locality,
             Double lat,
             Double lng,
             Integer radiusMeters,
@@ -40,6 +42,8 @@ public class StationController implements StationsApi {
             StationSearchSortBy sortBy) {
         StationSearchParameters parameters = StationSearchParameters.builder()
                 .searchMode(searchMode)
+                .countryCode(countryCode)
+                .locality(locality)
                 .latitude(lat == null ? null : BigDecimal.valueOf(lat)) // TODO: fix this
                 .longitude(lng == null ? null : BigDecimal.valueOf(lng))
                 .radiusMeters(radiusMeters)
