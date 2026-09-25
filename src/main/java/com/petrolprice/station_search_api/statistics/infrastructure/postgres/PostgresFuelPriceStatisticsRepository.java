@@ -222,29 +222,31 @@ public class PostgresFuelPriceStatisticsRepository
                 """
             WITH source AS (
                 SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
-                       s.province, s.municipality, s.locality
+                       s.province, s.municipality, s.locality,
+                       COALESCE(si.publishing_completed_at, si.completed_at, si.created_at) observed_at
                 FROM historical_product_price hp
                 JOIN station s ON s.id = hp.station_id
+                JOIN station_import si ON si.snapshot_id = hp.snapshot_id
                 WHERE hp.snapshot_id = :snapshotId AND hp.price > 0
             ), scopes AS (
                 SELECT snapshot_id, country, product_type, 'NATIONAL' geographic_level,
                        'NATIONAL' scope_key, NULL::varchar area_name, NULL::varchar province,
-                       station_id, price FROM source
+                       station_id, price, observed_at FROM source
                 UNION ALL
                 SELECT snapshot_id, country, product_type, 'PROVINCE',
-                       'PROVINCE:' || LOWER(province), province, province, station_id, price
+                       'PROVINCE:' || LOWER(province), province, province, station_id, price, observed_at
                 FROM source WHERE province IS NOT NULL AND BTRIM(province) <> ''
                 UNION ALL
                 SELECT snapshot_id, country, product_type, 'MUNICIPALITY',
                        'MUNICIPALITY:' || LOWER(province) || ':' || LOWER(municipality),
-                       municipality, province, station_id, price
+                       municipality, province, station_id, price, observed_at
                 FROM source
                 WHERE province IS NOT NULL AND BTRIM(province) <> ''
                   AND municipality IS NOT NULL AND BTRIM(municipality) <> ''
                 UNION ALL
                 SELECT snapshot_id, country, product_type, 'LOCALITY',
                        'LOCALITY:' || LOWER(province) || ':' || LOWER(locality),
-                       locality, province, station_id, price
+                       locality, province, station_id, price, observed_at
                 FROM source
                 WHERE province IS NOT NULL AND BTRIM(province) <> ''
                   AND locality IS NOT NULL AND BTRIM(locality) <> ''
@@ -257,7 +259,7 @@ public class PostgresFuelPriceStatisticsRepository
             SELECT gen_random_uuid(), snapshot_id, country, product_type, geographic_level, scope_key,
                    MAX(area_name), MAX(province), AVG(price), MIN(price), MAX(price), COUNT(*),
                    (ARRAY_AGG(station_id ORDER BY price, station_id))[1],
-                   (ARRAY_AGG(station_id ORDER BY price DESC, station_id))[1], NOW()
+                   (ARRAY_AGG(station_id ORDER BY price DESC, station_id))[1], MAX(observed_at)
             FROM scopes
             GROUP BY snapshot_id, country, product_type, geographic_level, scope_key
             """;
