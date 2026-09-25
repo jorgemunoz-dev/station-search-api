@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-align-statistics-observation-time
+      author: codex
+      changes:
+        - sql:
+            sql: >
+              UPDATE fuel_price_statistics statistics
+              SET calculated_at = COALESCE(
+                station_import.publishing_completed_at,
+                station_import.completed_at,
+                station_import.created_at
+              )
+              FROM station_import
+              WHERE station_import.snapshot_id = statistics.snapshot_id

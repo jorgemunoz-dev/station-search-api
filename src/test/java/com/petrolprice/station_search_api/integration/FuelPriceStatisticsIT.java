@@ -136,10 +136,11 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
                 """
                 INSERT INTO station_import (
                     snapshot_id, country, status, published_stations, processed_stations,
-                    publishing_completed, created_at, updated_at, completed_at
-                ) VALUES (?, 'ES', 'COMPLETED', 1, 1, TRUE, ?, ?, ?)
+                    publishing_completed, publishing_completed_at, created_at, updated_at, completed_at
+                ) VALUES (?, 'ES', 'COMPLETED', 1, 1, TRUE, ?, ?, ?, ?)
                 """,
                 snapshotId,
+                Timestamp.from(observedAt),
                 Timestamp.from(observedAt),
                 Timestamp.from(observedAt),
                 Timestamp.from(observedAt));
@@ -155,9 +156,5 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
                 new BigDecimal(value),
                 Timestamp.from(observedAt));
         calculationRepository.replaceForSnapshot(snapshotId);
-        jdbcTemplate.update(
-                "UPDATE fuel_price_statistics SET calculated_at = ? WHERE snapshot_id = ?",
-                Timestamp.from(observedAt),
-                snapshotId);
     }
 }
