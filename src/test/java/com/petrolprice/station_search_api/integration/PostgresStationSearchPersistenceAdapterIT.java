@@ -149,6 +149,24 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
                 .doesNotContain(neighboringLocality.externalId());
     }
 
+    @Test
+    void shouldMatchLocalityWhenMunicipalityUsesABilingualCompositeName() {
+        StationSnapshotFixture castellon = aStationSnapshot()
+                .withLocalityAndMunicipality(
+                        "CASTELLON DE LA PLANA", "Castellón de la Plana/Castelló de la Plana")
+                .withPrices(price(GASOLINE_95_E5, "1.819"));
+        snapshotService.consume(castellon.processCommand());
+
+        FindStationsQuery query = FindStationsQuery.builder()
+                .searchArea(new LocalitySearchArea("ES", "Castellón de la Plana"))
+                .productType(GASOLINE_95_E5)
+                .sortBy(FindStationsSort.PRICE)
+                .pageRequest(FindStationsPageRequest.builder().size(100).build())
+                .build();
+
+        assertThat(externalIds(adapter.search(query))).containsExactly(castellon.externalId());
+    }
+
     private StationSnapshotFixture nearby(String offset) {
         BigDecimal delta = new BigDecimal(offset);
         return aStationSnapshot().withLocation(latitude.add(delta), longitude.add(delta));

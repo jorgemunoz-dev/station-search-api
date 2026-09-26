@@ -30,7 +30,9 @@ autocompletado y para obtener coordenadas, `normalizedLocalityName` y el context
 endpoints estadísticos. Para buscar estaciones debe usarse `stationLocalityName`: cuando el código
 postal corresponde a una sola localidad en `station`, contiene el nombre empleado por esas
 estaciones; si no hay estaciones o el código postal es ambiguo, conserva de forma segura el nombre
-de GeoNames.
+de GeoNames. La búsqueda `LOCALITY` contrasta el valor exacto normalizado tanto con `municipality`
+como con `locality`, de modo que también admite el nombre local de la dirección cuando el municipio
+contiene una denominación bilingüe compuesta.
 
 ## Estadísticas de combustible
 

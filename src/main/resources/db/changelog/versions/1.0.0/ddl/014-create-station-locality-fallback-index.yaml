@@ -1,0 +1,16 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 014-create-station-locality-fallback-index
+      author: codex
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX idx_station_country_address_locality_search
+              ON station (
+                country,
+                BTRIM(LOWER(REGEXP_REPLACE(
+                  TRANSLATE(COALESCE(locality, ''),
+                            'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
+                  '[^[:alnum:]]+', ' ', 'g')))
+              );

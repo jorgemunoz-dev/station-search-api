@@ -93,10 +93,16 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 NULL::double precision AS distance_meters
             FROM station s
             WHERE s.country = :countryCode
-              AND BTRIM(LOWER(REGEXP_REPLACE(
-                    TRANSLATE(COALESCE(s.municipality, s.locality, ''),
-                              'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
-                    '[^[:alnum:]]+', ' ', 'g'))) = :locality
+              AND (
+                  BTRIM(LOWER(REGEXP_REPLACE(
+                        TRANSLATE(COALESCE(s.municipality, s.locality, ''),
+                                  'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
+                        '[^[:alnum:]]+', ' ', 'g'))) = :locality
+                  OR BTRIM(LOWER(REGEXP_REPLACE(
+                        TRANSLATE(COALESCE(s.locality, ''),
+                                  'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
+                        '[^[:alnum:]]+', ' ', 'g'))) = :locality
+              )
             """;
 
         MapSqlParameterSource parameters = createCommonParameters(query)

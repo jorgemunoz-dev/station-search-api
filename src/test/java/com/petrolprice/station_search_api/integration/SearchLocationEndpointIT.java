@@ -102,6 +102,7 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
     void shouldResolveStationLocalityFromAnUnambiguousPostalCode() throws Exception {
         insertStation("22222222-2222-2222-2222-222222222222", "29550", "ARDales pueblo", "Ardales (El)");
         insertStation("33333333-3333-3333-3333-333333333333", "29550", "Another locality", "Ardales (El)");
+        insertSearchLocationWithoutStations();
 
         mockMvc.perform(get("/locations/search")
                         .queryParam("query", "ard")
@@ -175,5 +176,23 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 postalCode,
                 locality,
                 municipality);
+    }
+
+    private void insertSearchLocationWithoutStations() {
+        jdbcTemplate.update(
+                """
+            INSERT INTO search_location (
+                id, country_code, postal_code, normalized_postal_code,
+                locality_name, normalized_locality_name,
+                admin_area_1_name, admin_area_1_code, admin_area_2_name, admin_area_2_code,
+                location, accuracy, source
+            ) VALUES (
+                '44444444-4444-4444-4444-444444444444', 'ES', '29551', '29551',
+                'Ardales', 'ardales',
+                'Andalucía', '01', 'Málaga', '29',
+                ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography,
+                10, 'GEONAMES'
+            )
+            """);
     }
 }

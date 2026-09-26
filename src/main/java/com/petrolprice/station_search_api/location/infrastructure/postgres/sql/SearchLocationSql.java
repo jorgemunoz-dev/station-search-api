@@ -93,7 +93,10 @@ public class SearchLocationSql {
                         COALESCE(admin_area_1_code, ''),
                         COALESCE(admin_area_2_code, ''),
                         COALESCE(admin_area_3_code, '')
-                    ORDER BY accuracy DESC NULLS LAST
+                    ORDER BY
+                        (station_locality_name IS NOT NULL) DESC,
+                        accuracy DESC NULLS LAST,
+                        postal_code
                 ) AS duplicate_position
             FROM search_location
             LEFT JOIN unambiguous_station_localities
