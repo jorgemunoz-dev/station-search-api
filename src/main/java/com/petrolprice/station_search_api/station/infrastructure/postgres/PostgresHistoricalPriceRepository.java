@@ -5,6 +5,7 @@ import com.petrolprice.station_search_api.station.infrastructure.postgres.entity
 import com.petrolprice.station_search_api.station.infrastructure.postgres.jpa.JPAHistoricalFuelPriceRepository;
 import com.petrolprice.station_search_api.station.infrastructure.postgres.mapper.HistoricalFuelPriceEntityMapper;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.HistoricalPriceRepositoryPort;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -17,13 +18,14 @@ public class PostgresHistoricalPriceRepository implements HistoricalPriceReposit
     private final HistoricalFuelPriceEntityMapper mapper;
 
     @Override
-    public void insertSnapshot(UUID snapshotId, UUID stationId, List<ProductPrice> productPrices) {
+    public void insertSnapshot(
+            UUID snapshotId, UUID stationId, Instant observedAt, List<ProductPrice> productPrices) {
         if (productPrices == null || productPrices.isEmpty()) {
             return;
         }
 
         List<HistoricalFuelPriceEntity> historicalPrices = productPrices.stream()
-                .map(fuelPrice -> mapper.toEntity(snapshotId, stationId, fuelPrice))
+                .map(fuelPrice -> mapper.toEntity(snapshotId, stationId, observedAt, fuelPrice))
                 .toList();
 
         // The final station event can trigger JDBC aggregation in the same transaction.

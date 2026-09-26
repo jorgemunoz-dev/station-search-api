@@ -13,6 +13,8 @@ import com.petrolprice.station_search_api.station.ingestion.application.port.out
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationRepositoryPort;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
@@ -79,13 +81,43 @@ class ProcessStationSnapshotServiceTest {
                     .replaceCurrentPrices(persistedStation.getId(), stationSnapshot.getProductPrices());
 
             inOrder.verify(historicalPriceRepositoryPort)
-                    .insertSnapshot(command.snapshotId(), persistedStation.getId(), stationSnapshot.getProductPrices());
+                    .insertSnapshot(
+                            command.snapshotId(),
+                            persistedStation.getId(),
+                            command.observedAt(),
+                            stationSnapshot.getProductPrices());
 
             inOrder.verify(stationImportRepositoryPort).incrementProcessedStations(command.snapshotId());
 
             inOrder.verify(stationImportFinalizer).tryFinalize(command.snapshotId());
 
             inOrder.verifyNoMoreInteractions();
+        }
+
+        @Test
+        void shouldKeepPastSnapshotOutOfCurrentPrices() {
+            Station stationSnapshot = createStationSnapshot();
+            Station persistedStation = createPersistedStation(stationSnapshot);
+            ProcessStationSnapshotCommand command = ProcessStationSnapshotCommand.builder()
+                    .snapshotId(UUID.randomUUID())
+                    .eventId(UUID.randomUUID())
+                    .observedAt(Instant.now().minus(2, ChronoUnit.DAYS))
+                    .station(stationSnapshot)
+                    .build();
+
+            when(stationImportRepositoryPort.claimEvent(command.snapshotId(), command.eventId()))
+                    .thenReturn(true);
+            when(stationRepositoryPort.upsertFromSnapshot(stationSnapshot)).thenReturn(persistedStation);
+
+            service.consume(command);
+
+            verifyNoInteractions(currentFuelPriceRepositoryPort);
+            verify(historicalPriceRepositoryPort)
+                    .insertSnapshot(
+                            command.snapshotId(),
+                            persistedStation.getId(),
+                            command.observedAt(),
+                            stationSnapshot.getProductPrices());
         }
 
         @Test
@@ -148,7 +180,11 @@ class ProcessStationSnapshotServiceTest {
 
             doThrow(new RuntimeException("Historical price persistence failed"))
                     .when(historicalPriceRepositoryPort)
-                    .insertSnapshot(command.snapshotId(), persistedStation.getId(), stationSnapshot.getProductPrices());
+                    .insertSnapshot(
+                            command.snapshotId(),
+                            persistedStation.getId(),
+                            command.observedAt(),
+                            stationSnapshot.getProductPrices());
 
             assertThatThrownBy(() -> service.consume(command))
                     .isInstanceOf(RuntimeException.class)
@@ -234,6 +270,7 @@ class ProcessStationSnapshotServiceTest {
         return ProcessStationSnapshotCommand.builder()
                 .snapshotId(UUID.randomUUID())
                 .eventId(UUID.randomUUID())
+                .observedAt(Instant.now())
                 .station(station)
                 .build();
     }

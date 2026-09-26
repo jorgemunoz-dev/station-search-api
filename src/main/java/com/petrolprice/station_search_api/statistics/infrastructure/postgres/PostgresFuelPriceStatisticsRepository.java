@@ -279,6 +279,7 @@ public class PostgresFuelPriceStatisticsRepository
                 """
                 WITH source AS (
                     SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
+                           hp.observed_at,
                            location.normalized_locality_name, location.admin_area_1_name,
                            location.admin_area_2_name, location.admin_area_3_name
                     FROM historical_product_price hp
@@ -299,21 +300,21 @@ public class PostgresFuelPriceStatisticsRepository
                 ), scopes AS (
                     SELECT snapshot_id, country, product_type, NULL::varchar normalized_locality_name,
                            NULL::varchar admin_area_1_name, NULL::varchar admin_area_2_name,
-                           NULL::varchar admin_area_3_name, station_id, price
+                           NULL::varchar admin_area_3_name, station_id, price, observed_at
                     FROM source
                     UNION ALL
                     SELECT snapshot_id, country, product_type, normalized_locality_name,
-                           NULL, NULL, NULL, station_id, price
+                           NULL, NULL, NULL, station_id, price, observed_at
                     FROM source WHERE normalized_locality_name IS NOT NULL
                     UNION ALL
                     SELECT snapshot_id, country, product_type, NULL, admin_area_1_name, NULL, NULL,
-                           station_id, price FROM source WHERE admin_area_1_name IS NOT NULL
+                           station_id, price, observed_at FROM source WHERE admin_area_1_name IS NOT NULL
                     UNION ALL
                     SELECT snapshot_id, country, product_type, NULL, NULL, admin_area_2_name, NULL,
-                           station_id, price FROM source WHERE admin_area_2_name IS NOT NULL
+                           station_id, price, observed_at FROM source WHERE admin_area_2_name IS NOT NULL
                     UNION ALL
                     SELECT snapshot_id, country, product_type, NULL, NULL, NULL, admin_area_3_name,
-                           station_id, price FROM source WHERE admin_area_3_name IS NOT NULL
+                           station_id, price, observed_at FROM source WHERE admin_area_3_name IS NOT NULL
                 )
                 INSERT INTO fuel_price_statistics (
                     id, snapshot_id, country, product_type, normalized_locality_name,
@@ -325,7 +326,7 @@ public class PostgresFuelPriceStatisticsRepository
                        admin_area_1_name, admin_area_2_name, admin_area_3_name,
                        AVG(price), MIN(price), MAX(price), COUNT(*),
                        (ARRAY_AGG(station_id ORDER BY price, station_id))[1],
-                       (ARRAY_AGG(station_id ORDER BY price DESC, station_id))[1], NOW()
+                       (ARRAY_AGG(station_id ORDER BY price DESC, station_id))[1], MAX(observed_at)
                 FROM scopes
                 GROUP BY snapshot_id, country, product_type, normalized_locality_name,
                          admin_area_1_name, admin_area_2_name, admin_area_3_name
