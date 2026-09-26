@@ -38,6 +38,7 @@ class PostgresSearchLocationAdapterTest {
                 "Málaga, Andalucía",
                 "ES",
                 null,
+                "Málaga",
                 "malaga",
                 "Andalucía",
                 "AN",

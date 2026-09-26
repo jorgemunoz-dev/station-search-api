@@ -5,7 +5,27 @@ public class SearchLocationSql {
 
     public static final String SEARCH =
             """
-        WITH postal_suggestions AS (
+        WITH unambiguous_station_localities AS (
+            SELECT
+                country AS station_country,
+                postal_code AS station_postal_code,
+                MIN(COALESCE(
+                    NULLIF(BTRIM(municipality), ''),
+                    NULLIF(BTRIM(locality), '')
+                )) AS station_locality_name
+            FROM station
+            WHERE postal_code IS NOT NULL
+              AND COALESCE(
+                    NULLIF(BTRIM(municipality), ''),
+                    NULLIF(BTRIM(locality), '')
+                  ) IS NOT NULL
+            GROUP BY country, postal_code
+            HAVING COUNT(DISTINCT COALESCE(
+                       NULLIF(BTRIM(municipality), ''),
+                       NULLIF(BTRIM(locality), '')
+                   )) = 1
+        ),
+        postal_suggestions AS (
             SELECT
                 'POSTAL_CODE' AS suggestion_type,
                 postal_code AS primary_text,
@@ -17,6 +37,7 @@ public class SearchLocationSql {
                 ) AS secondary_text,
                 country_code,
                 postal_code,
+                COALESCE(station_locality_name, locality_name) AS station_locality_name,
                 normalized_locality_name,
                 admin_area_1_name,
                 admin_area_1_code,
@@ -33,6 +54,9 @@ public class SearchLocationSql {
                 END AS match_priority,
                 1.0::real AS similarity_score
             FROM search_location
+            LEFT JOIN unambiguous_station_localities
+              ON station_country = country_code
+             AND station_postal_code = search_location.postal_code
             WHERE country_code = :countryCode
               AND normalized_postal_code LIKE :normalizedPostalQuery || '%%'
         ),
@@ -47,8 +71,10 @@ public class SearchLocationSql {
                 admin_area_3_name,
                 admin_area_3_code,
                 country_code,
+                postal_code,
                 location,
                 accuracy,
+                COALESCE(station_locality_name, locality_name) AS station_locality_name,
                 CASE
                     WHEN normalized_locality_name = :normalizedTextQuery
                         THEN 2
@@ -70,6 +96,9 @@ public class SearchLocationSql {
                     ORDER BY accuracy DESC NULLS LAST
                 ) AS duplicate_position
             FROM search_location
+            LEFT JOIN unambiguous_station_localities
+              ON station_country = country_code
+             AND station_postal_code = search_location.postal_code
             WHERE country_code = :countryCode
               AND (
                   normalized_locality_name LIKE :normalizedTextQuery || '%%'
@@ -86,7 +115,8 @@ public class SearchLocationSql {
                     admin_area_1_name
                 ) AS secondary_text,
                 country_code,
-                NULL::varchar AS postal_code,
+                postal_code,
+                station_locality_name,
                 normalized_locality_name,
                 admin_area_1_name,
                 admin_area_1_code,
@@ -116,6 +146,7 @@ public class SearchLocationSql {
             secondary_text,
             country_code,
             postal_code,
+            station_locality_name,
             normalized_locality_name,
             admin_area_1_name,
             admin_area_1_code,

@@ -504,6 +504,7 @@ components:
         - primaryText
         - secondaryText
         - countryCode
+        - stationLocalityName
         - normalizedLocalityName
         - latitude
         - longitude
@@ -531,8 +532,16 @@ components:
         postalCode:
           type: string
           nullable: true
-          description: Postal code when the suggestion represents a postal code.
+          description: Postal code associated with the GeoNames suggestion, when available.
           example: '29001'
+
+        stationLocalityName:
+          type: string
+          description: >
+            Locality value to send to station searches. It is resolved from station data when the
+            postal code maps unambiguously to one station locality; otherwise it falls back to the
+            GeoNames locality name.
+          example: Coruña (A)
 
         normalizedLocalityName:
           type: string

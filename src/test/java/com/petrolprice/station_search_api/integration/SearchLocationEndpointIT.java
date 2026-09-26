@@ -75,6 +75,8 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$[0].type", is("LOCALITY")))
                 .andExpect(jsonPath("$[0].primaryText", is("Ardales")))
                 .andExpect(jsonPath("$[0].countryCode", is("ES")))
+                .andExpect(jsonPath("$[0].postalCode", is("29550")))
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")))
                 .andExpect(jsonPath("$[0].normalizedLocalityName", is("ardales")))
                 .andExpect(jsonPath("$[0].adminArea1Name", is("Andalucía")))
                 .andExpect(jsonPath("$[0].adminArea1Code", is("01")))
@@ -92,7 +94,35 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                         .queryParam("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].type", is("POSTAL_CODE")))
-                .andExpect(jsonPath("$[0].postalCode", is("29550")));
+                .andExpect(jsonPath("$[0].postalCode", is("29550")))
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")));
+    }
+
+    @Test
+    void shouldResolveStationLocalityFromAnUnambiguousPostalCode() throws Exception {
+        insertStation("22222222-2222-2222-2222-222222222222", "29550", "ARDales pueblo", "Ardales (El)");
+        insertStation("33333333-3333-3333-3333-333333333333", "29550", "Another locality", "Ardales (El)");
+
+        mockMvc.perform(get("/locations/search")
+                        .queryParam("query", "ard")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].primaryText", is("Ardales")))
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales (El)")));
+    }
+
+    @Test
+    void shouldKeepGeoNamesLocalityWhenPostalCodeIsAmbiguous() throws Exception {
+        insertStation("22222222-2222-2222-2222-222222222222", "29550", "Ardales", "Ardales (El)");
+        insertStation("33333333-3333-3333-3333-333333333333", "29550", "Carratraca", "Carratraca");
+
+        mockMvc.perform(get("/locations/search")
+                        .queryParam("query", "ard")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")));
     }
 
     @Test
@@ -126,5 +156,24 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                         .queryParam("countryCode", "ES")
                         .queryParam("limit", "21"))
                 .andExpect(status().isBadRequest());
+    }
+
+    private void insertStation(String id, String postalCode, String locality, String municipality) {
+        jdbcTemplate.update(
+                """
+            INSERT INTO station (
+                id, external_id, country, postal_code, locality, municipality,
+                location, created_at, updated_at
+            ) VALUES (
+                ?::uuid, ?, 'ES', ?, ?, ?,
+                ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography,
+                NOW(), NOW()
+            )
+            """,
+                id,
+                id,
+                postalCode,
+                locality,
+                municipality);
     }
 }
