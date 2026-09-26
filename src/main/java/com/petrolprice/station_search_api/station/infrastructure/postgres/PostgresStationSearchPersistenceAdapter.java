@@ -102,6 +102,24 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                         TRANSLATE(COALESCE(s.locality, ''),
                                   'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
                         '[^[:alnum:]]+', ' ', 'g'))) = :locality
+                  OR s.postal_code IN (
+                      SELECT sl.postal_code
+                      FROM search_location sl
+                      INNER JOIN station postal_station
+                        ON postal_station.country = sl.country_code
+                       AND postal_station.postal_code = sl.postal_code
+                      WHERE sl.country_code = :countryCode
+                        AND sl.normalized_locality_name = :locality
+                      GROUP BY sl.country_code, sl.postal_code
+                      HAVING COUNT(DISTINCT COALESCE(
+                                 NULLIF(BTRIM(postal_station.municipality), ''),
+                                 NULLIF(BTRIM(postal_station.locality), '')
+                             )) = 1
+                         AND COUNT(*) FILTER (WHERE COALESCE(
+                                 NULLIF(BTRIM(postal_station.municipality), ''),
+                                 NULLIF(BTRIM(postal_station.locality), '')
+                             ) IS NULL) = 0
+                  )
               )
             """;
 

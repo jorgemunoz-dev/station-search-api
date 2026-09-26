@@ -85,6 +85,17 @@ public final class StationSnapshotFixture {
         return this;
     }
 
+    public StationSnapshotFixture withPostalCode(String postalCode) {
+        this.address = Address.builder()
+                .street(address.getStreet())
+                .postalCode(postalCode)
+                .locality(address.getLocality())
+                .municipality(address.getMunicipality())
+                .province(address.getProvince())
+                .build();
+        return this;
+    }
+
     public StationSnapshotFixture withLocation(String latitude, String longitude) {
         this.latitude = new BigDecimal(latitude);
         this.longitude = new BigDecimal(longitude);

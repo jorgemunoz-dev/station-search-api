@@ -27,12 +27,16 @@ puede garantizar por sí sola que un precio se haya observado durante el día na
 Busca localidades o códigos postales dentro del `countryCode` obligatorio. Se utiliza para el
 autocompletado y para obtener coordenadas, `normalizedLocalityName` y el contexto
 `adminArea1/2/3`. El `normalizedLocalityName` devuelto puede reutilizarse como `locality` en los
-endpoints estadísticos. Para buscar estaciones debe usarse `stationLocalityName`: cuando el código
-postal corresponde a una sola localidad en `station`, contiene el nombre empleado por esas
-estaciones; si no hay estaciones o el código postal es ambiguo, conserva de forma segura el nombre
-de GeoNames. La búsqueda `LOCALITY` contrasta el valor exacto normalizado tanto con `municipality`
-como con `locality`, de modo que también admite el nombre local de la dirección cuando el municipio
-contiene una denominación bilingüe compuesta.
+endpoints estadísticos y como `locality` en la búsqueda de estaciones. En este último caso, el
+backend obtiene todos sus códigos postales desde `search_location` y busca las estaciones por
+`country + postal_code`. Los códigos asociados a varias localidades de `station` se descartan para
+no introducir correspondencias arbitrarias. Como compatibilidad con nombres directos, la búsqueda
+`LOCALITY` también contrasta el valor exacto normalizado con `municipality` y `locality`.
+
+`stationLocalityName` sigue disponible como nombre de presentación compatible con los datos de
+estaciones, pero el cliente no necesita encadenar nombres: `normalizedLocalityName` permite que la
+resolución postal se realice de forma centralizada en el backend y cubre localidades con varios
+códigos postales.
 
 ## Estadísticas de combustible
 

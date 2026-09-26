@@ -16,8 +16,8 @@ paths:
         LOCALITY mode:
         - Requires countryCode and locality.
         - Must not include radius or viewport parameters.
-        - Returns stations whose municipality (or locality when municipality is absent) exactly
-          matches the normalized locality value.
+        - Resolves normalizedLocalityName values through all unambiguous country/postal-code pairs
+          in search_location, while retaining exact municipality/locality matching as a fallback.
         - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:
@@ -74,7 +74,10 @@ paths:
         - name: locality
           in: query
           required: false
-          description: Exact locality name or normalizedLocalityName returned by location search. Required when searchMode is LOCALITY.
+          description: >
+            Exact locality name or normalizedLocalityName returned by location search. When the
+            normalized value is supplied, station search resolves all unambiguous postal codes for
+            that GeoNames locality. Required when searchMode is LOCALITY.
           schema:
             type: string
             minLength: 1
