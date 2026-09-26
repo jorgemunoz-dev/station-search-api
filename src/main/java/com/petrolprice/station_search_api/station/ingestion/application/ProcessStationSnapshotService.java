@@ -7,6 +7,8 @@ import com.petrolprice.station_search_api.station.ingestion.application.port.out
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationRepositoryPort;
 import jakarta.transaction.Transactional;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,12 +36,22 @@ public class ProcessStationSnapshotService {
             return;
         }
 
-        Station persitedStation = stationRepositoryPort.upsertFromSnapshot(command.station());
-        currentFuelPriceRepositoryPort.replaceCurrentPrices(
-                persitedStation.getId(), command.station().getProductPrices());
+        Station persistedStation = stationRepositoryPort.upsertFromSnapshot(command.station());
+        if (isObservedToday(command)) {
+            currentFuelPriceRepositoryPort.replaceCurrentPrices(
+                    persistedStation.getId(), command.station().getProductPrices());
+        }
         historicalPriceRepositoryPort.insertSnapshot(
-                command.snapshotId(), persitedStation.getId(), command.station().getProductPrices());
+                command.snapshotId(),
+                persistedStation.getId(),
+                command.observedAt(),
+                command.station().getProductPrices());
         stationImportRepositoryPort.incrementProcessedStations(command.snapshotId());
         stationImportFinalizer.tryFinalize(command.snapshotId());
+    }
+
+    private boolean isObservedToday(ProcessStationSnapshotCommand command) {
+        LocalDate observedDate = command.observedAt().atZone(ZoneOffset.UTC).toLocalDate();
+        return observedDate.equals(LocalDate.now(ZoneOffset.UTC));
     }
 }

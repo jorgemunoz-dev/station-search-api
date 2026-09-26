@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "historical_product_price")
@@ -33,7 +32,6 @@ public class HistoricalFuelPriceEntity {
     @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal price;
 
-    @CreationTimestamp
     @Column(name = "observed_at", nullable = false)
     private Instant observedAt;
 }

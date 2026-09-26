@@ -14,6 +14,7 @@ import org.mapstruct.Mapping;
 public interface StationSnapshotMapper {
 
     @Mapping(target = "snapshotId", source = "batchId")
+    @Mapping(target = "observedAt", source = "occurredAt")
     @Mapping(target = "station", source = "payload")
     ProcessStationSnapshotCommand toCommand(StationSnapshotMessage message);
 

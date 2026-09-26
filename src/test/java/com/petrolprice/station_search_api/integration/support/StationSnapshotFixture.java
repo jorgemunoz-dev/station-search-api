@@ -117,7 +117,7 @@ public final class StationSnapshotFixture {
     }
 
     public ProcessStationSnapshotCommand processCommand() {
-        return new ProcessStationSnapshotCommand(eventId, snapshotId, station());
+        return new ProcessStationSnapshotCommand(eventId, snapshotId, Instant.now(), station());
     }
 
     public CompleteStationPublishingCommand completionCommand(int publishedStations) {
