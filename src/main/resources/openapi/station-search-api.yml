@@ -17,6 +17,8 @@ paths:
         - Requires countryCode, adminArea1, adminArea2 and adminArea3.
         - Must not include radius or viewport parameters.
         - Uses the administrative hierarchy as the locality identifier; names are matched accent-insensitively.
+        - Resolves the hierarchy through search_location by country and normalized postal code when
+          legacy station rows do not yet contain administrative-area values.
         - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:

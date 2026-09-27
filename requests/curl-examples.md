@@ -36,7 +36,8 @@ curl --silent --show-error --get "${BASE_URL}/stations" \
 ```
 
 Los valores `adminArea1Name`, `adminArea2Name` y `adminArea3Name` se pueden obtener de
-`/locations/search`. El resultado contiene los precios actuales almacenados en `productPrices`; no
+`/locations/search`. La búsqueda también usa ese catálogo por código postal cuando una estación
+todavía no tiene las áreas administrativas informadas. El resultado contiene los precios actuales almacenados en `productPrices`; no
 contiene la fecha de actualización de cada precio y, por tanto, no confirma que se haya observado
 hoy. Si solo se necesita el agregado actual (mínimo, máximo, media y estación más barata), debe
 usarse `/statistics/fuel-prices/current?locality=...` como se muestra a continuación.

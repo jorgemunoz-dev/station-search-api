@@ -93,15 +93,33 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 NULL::double precision AS distance_meters
             FROM station s
             WHERE s.country = :countryCode
-              AND %s = :adminArea1
-              AND %s = :adminArea2
-              AND %s = :adminArea3
+              AND (
+                  (
+                      %s = :adminArea1
+                      AND %s = :adminArea2
+                      AND %s = :adminArea3
+                  )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM search_location sl
+                      WHERE sl.country_code = s.country
+                        AND sl.normalized_postal_code = UPPER(
+                            REGEXP_REPLACE(COALESCE(s.postal_code, ''), '[^A-Za-z0-9]', '', 'g')
+                        )
+                        AND %s = :adminArea1
+                        AND %s = :adminArea2
+                        AND %s = :adminArea3
+                  )
+              )
             """;
 
         candidateStationsSql = candidateStationsSql.formatted(
                 normalizedSql("s.admin_area_1_name"),
                 normalizedSql("s.admin_area_2_name"),
-                normalizedSql("s.admin_area_3_name"));
+                normalizedSql("s.admin_area_3_name"),
+                normalizedSql("sl.admin_area_1_name"),
+                normalizedSql("sl.admin_area_2_name"),
+                normalizedSql("sl.admin_area_3_name"));
 
         MapSqlParameterSource parameters = createCommonParameters(query)
                 .addValue("countryCode", locality.countryCode())

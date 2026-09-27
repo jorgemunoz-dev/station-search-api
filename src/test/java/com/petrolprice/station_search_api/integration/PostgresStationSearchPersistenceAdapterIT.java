@@ -29,6 +29,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
     @Autowired
@@ -39,6 +40,9 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
 
     @Autowired
     private StationImportProbe probe;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private BigDecimal latitude;
     private BigDecimal longitude;
@@ -187,6 +191,47 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         assertThat(externalIds(adapter.search(query)))
                 .containsExactly(ardales.externalId())
                 .doesNotContain(homonym.externalId());
+    }
+
+    @Test
+    void shouldResolveAdministrativeHierarchyFromPostalLocationCatalogue() {
+        StationSnapshotFixture ardales = aStationSnapshot()
+                .withPostalCode("29550")
+                .withAdministrativeAreas(null, null, null);
+        snapshotService.consume(ardales.processCommand());
+        insertSearchLocation("29550", "Ardales", "Andalucía", "Málaga", "Ardales");
+
+        FindStationsQuery query = FindStationsQuery.builder()
+                .searchArea(new LocalitySearchArea("ES", "Andalucia", "Málaga", "Ardales"))
+                .sortBy(FindStationsSort.PRICE)
+                .pageRequest(FindStationsPageRequest.builder().size(10).build())
+                .build();
+
+        assertThat(externalIds(adapter.search(query))).containsExactly(ardales.externalId());
+    }
+
+    private void insertSearchLocation(
+            String postalCode, String locality, String adminArea1, String adminArea2, String adminArea3) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO search_location (
+                    id, country_code, postal_code, normalized_postal_code,
+                    locality_name, normalized_locality_name,
+                    admin_area_1_name, admin_area_2_name, admin_area_3_name,
+                    location, source
+                ) VALUES (
+                    gen_random_uuid(), 'ES', ?, ?, ?, LOWER(?), ?, ?, ?,
+                    ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography,
+                    'GEONAMES'
+                )
+                """,
+                postalCode,
+                postalCode,
+                locality,
+                locality,
+                adminArea1,
+                adminArea2,
+                adminArea3);
     }
 
     private StationSnapshotFixture nearby(String offset) {
