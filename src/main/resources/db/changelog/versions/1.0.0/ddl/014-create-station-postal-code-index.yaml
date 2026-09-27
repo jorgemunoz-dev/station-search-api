@@ -1,0 +1,10 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 014-create-station-postal-code-index
+      author: codex
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX idx_station_country_postal_code
+              ON station (country, postal_code);

@@ -47,16 +47,24 @@ databaseChangeLog:
                   type: varchar(20)
 
               - column:
-                  name: locality
-                  type: varchar(100)
+                  name: locality_name
+                  type: varchar(150)
 
               - column:
-                  name: municipality
-                  type: varchar(100)
+                  name: normalized_locality_name
+                  type: varchar(150)
 
               - column:
-                  name: province
-                  type: varchar(100)
+                  name: admin_area_1_name
+                  type: varchar(150)
+
+              - column:
+                  name: admin_area_2_name
+                  type: varchar(150)
+
+              - column:
+                  name: admin_area_3_name
+                  type: varchar(150)
 
               - column:
                   name: location
