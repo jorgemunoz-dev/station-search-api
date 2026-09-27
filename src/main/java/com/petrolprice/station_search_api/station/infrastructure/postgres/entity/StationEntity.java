@@ -38,11 +38,15 @@ public class StationEntity {
     @Column(name = "postal_code")
     private String postalCode;
 
-    private String locality;
+    private String localityName;
 
-    private String municipality;
+    private String normalizedLocalityName;
 
-    private String province;
+    private String adminArea1Name;
+
+    private String adminArea2Name;
+
+    private String adminArea3Name;
 
     @Column(nullable = false, columnDefinition = "geography(Point,4326)")
     private Point location;

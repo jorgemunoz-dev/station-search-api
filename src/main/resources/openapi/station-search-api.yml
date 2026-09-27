@@ -14,10 +14,9 @@ paths:
         Searches stations using one of three mutually exclusive modes.
 
         LOCALITY mode:
-        - Requires countryCode and locality.
+        - Requires countryCode, locality, adminArea1 and adminArea2 so same-named localities are unambiguous.
         - Must not include radius or viewport parameters.
-        - Resolves normalizedLocalityName values through all unambiguous country/postal-code pairs
-          in search_location, while retaining exact municipality/locality matching as a fallback.
+        - Matches the normalized locality and its country-neutral administrative hierarchy exactly.
         - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:
@@ -82,6 +81,23 @@ paths:
             type: string
             minLength: 1
           example: Málaga
+        - name: adminArea1
+          in: query
+          required: false
+          description: First-level administrative area. Required when searchMode is LOCALITY.
+          schema: {type: string, minLength: 1}
+          example: Andalucía
+        - name: adminArea2
+          in: query
+          required: false
+          description: Second-level administrative area. Required when searchMode is LOCALITY.
+          schema: {type: string, minLength: 1}
+          example: Málaga
+        - name: adminArea3
+          in: query
+          required: false
+          description: Third-level administrative area, when the country provides one.
+          schema: {type: string, minLength: 1}
 
         # Radius filters
         - name: lat
@@ -736,11 +752,15 @@ components:
           type: string
         postalCode:
           type: string
-        locality:
+        localityName:
           type: string
-        municipality:
+        normalizedLocalityName:
           type: string
-        province:
+        adminArea1Name:
+          type: string
+        adminArea2Name:
+          type: string
+        adminArea3Name:
           type: string
 
     ProductPriceResponse:

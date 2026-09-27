@@ -63,8 +63,12 @@ public class FindStationsQueryFactory {
 
     private LocalitySearchArea createLocalitySearchArea(StationSearchParameters parameters) {
         rejectGeographicalParameters(parameters);
-        if (parameters.countryCode() == null || parameters.locality() == null) {
-            throw new InvalidStationSearchRequestException("LOCALITY search requires countryCode and locality");
+        if (parameters.countryCode() == null
+                || parameters.locality() == null
+                || parameters.adminArea1() == null
+                || parameters.adminArea2() == null) {
+            throw new InvalidStationSearchRequestException(
+                    "LOCALITY search requires countryCode, locality, adminArea1 and adminArea2");
         }
         if (!parameters.countryCode().matches("[A-Za-z]{2}")) {
             throw new InvalidStationSearchRequestException("countryCode must be a two-letter ISO country code");
@@ -72,7 +76,15 @@ public class FindStationsQueryFactory {
         if (parameters.locality().isBlank()) {
             throw new InvalidStationSearchRequestException("locality must not be blank");
         }
-        return new LocalitySearchArea(parameters.countryCode(), parameters.locality());
+        if (parameters.adminArea1().isBlank() || parameters.adminArea2().isBlank()) {
+            throw new InvalidStationSearchRequestException("adminArea1 and adminArea2 must not be blank");
+        }
+        return new LocalitySearchArea(
+                parameters.countryCode(),
+                parameters.locality(),
+                parameters.adminArea1(),
+                parameters.adminArea2(),
+                parameters.adminArea3());
     }
 
     private void rejectGeographicalParameters(StationSearchParameters parameters) {
@@ -89,9 +101,13 @@ public class FindStationsQueryFactory {
     }
 
     private void rejectLocalityParameters(StationSearchParameters parameters) {
-        if (parameters.countryCode() != null || parameters.locality() != null) {
+        if (parameters.countryCode() != null
+                || parameters.locality() != null
+                || parameters.adminArea1() != null
+                || parameters.adminArea2() != null
+                || parameters.adminArea3() != null) {
             throw new InvalidStationSearchRequestException(
-                    "RADIUS and VIEWPORT searches must not contain countryCode or locality");
+                    "RADIUS and VIEWPORT searches must not contain locality filters");
         }
     }
 

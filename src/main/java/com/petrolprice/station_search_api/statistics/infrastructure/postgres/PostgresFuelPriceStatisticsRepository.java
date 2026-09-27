@@ -280,22 +280,10 @@ public class PostgresFuelPriceStatisticsRepository
                 WITH source AS (
                     SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
                            hp.observed_at,
-                           location.normalized_locality_name, location.admin_area_1_name,
-                           location.admin_area_2_name, location.admin_area_3_name
+                           s.normalized_locality_name, s.admin_area_1_name,
+                           s.admin_area_2_name, s.admin_area_3_name
                     FROM historical_product_price hp
                     JOIN station s ON s.id = hp.station_id
-                    LEFT JOIN LATERAL (
-                        SELECT sl.normalized_locality_name, sl.admin_area_1_name,
-                               sl.admin_area_2_name, sl.admin_area_3_name
-                        FROM search_location sl
-                        WHERE sl.country_code = s.country
-                          AND sl.normalized_postal_code = UPPER(REGEXP_REPLACE(s.postal_code, '[^A-Za-z0-9]', '', 'g'))
-                        ORDER BY similarity(
-                            sl.normalized_locality_name,
-                            LOWER(COALESCE(s.municipality, s.locality, ''))
-                        ) DESC, sl.accuracy DESC NULLS LAST
-                        LIMIT 1
-                    ) location ON TRUE
                     WHERE hp.snapshot_id = :snapshotId AND hp.price > 0
                 ), scopes AS (
                     SELECT snapshot_id, country, product_type, NULL::varchar normalized_locality_name,

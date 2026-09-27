@@ -20,7 +20,9 @@ curl --silent --show-error --get "${BASE_URL}/stations" \
 ```
 
 Para recuperar únicamente las estaciones de una localidad no hacen falta coordenadas. El modo
-`LOCALITY` realiza una coincidencia exacta del nombre normalizado dentro del país indicado:
+`LOCALITY` realiza una coincidencia exacta del nombre normalizado y de su jerarquía administrativa.
+`adminArea1` y `adminArea2` son obligatorios para distinguir localidades homónimas; `adminArea3`
+se puede añadir en países que expongan ese nivel:
 
 ```bash
 curl --silent --show-error --get "${BASE_URL}/stations" \
@@ -28,6 +30,8 @@ curl --silent --show-error --get "${BASE_URL}/stations" \
   --data-urlencode 'searchMode=LOCALITY' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
   --data-urlencode 'locality=Ardales' \
+  --data-urlencode 'adminArea1=Andalucía' \
+  --data-urlencode 'adminArea2=Málaga' \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
   --data-urlencode 'sortBy=PRICE'
 ```

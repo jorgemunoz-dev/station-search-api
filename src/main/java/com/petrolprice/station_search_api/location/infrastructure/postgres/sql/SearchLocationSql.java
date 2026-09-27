@@ -9,21 +9,12 @@ public class SearchLocationSql {
             SELECT
                 country AS station_country,
                 postal_code AS station_postal_code,
-                MIN(COALESCE(
-                    NULLIF(BTRIM(municipality), ''),
-                    NULLIF(BTRIM(locality), '')
-                )) AS station_locality_name
+                MIN(NULLIF(BTRIM(locality_name), '')) AS station_locality_name
             FROM station
             WHERE postal_code IS NOT NULL
-              AND COALESCE(
-                    NULLIF(BTRIM(municipality), ''),
-                    NULLIF(BTRIM(locality), '')
-                  ) IS NOT NULL
+              AND NULLIF(BTRIM(locality_name), '') IS NOT NULL
             GROUP BY country, postal_code
-            HAVING COUNT(DISTINCT COALESCE(
-                       NULLIF(BTRIM(municipality), ''),
-                       NULLIF(BTRIM(locality), '')
-                   )) = 1
+            HAVING COUNT(DISTINCT NULLIF(BTRIM(locality_name), '')) = 1
         ),
         postal_suggestions AS (
             SELECT

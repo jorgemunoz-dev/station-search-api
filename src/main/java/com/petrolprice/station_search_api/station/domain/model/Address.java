@@ -12,7 +12,9 @@ import lombok.NoArgsConstructor;
 public class Address {
     private String street;
     private String postalCode;
-    private String locality;
-    private String municipality;
-    private String province;
+    private String localityName;
+    private String normalizedLocalityName;
+    private String adminArea1Name;
+    private String adminArea2Name;
+    private String adminArea3Name;
 }

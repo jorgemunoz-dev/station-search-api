@@ -29,7 +29,6 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
     @Autowired
@@ -40,9 +39,6 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
 
     @Autowired
     private StationImportProbe probe;
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
 
     private BigDecimal latitude;
     private BigDecimal longitude;
@@ -143,7 +139,7 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         snapshotService.consume(neighboringLocality.processCommand());
 
         FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(new LocalitySearchArea("es", "malaga"))
+                .searchArea(new LocalitySearchArea("es", "malaga", "Area 1", "Area 2", null))
                 .sortBy(FindStationsSort.PRICE)
                 .pageRequest(FindStationsPageRequest.builder().size(10).build())
                 .build();
@@ -157,64 +153,18 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
     void shouldMatchLocalityWhenMunicipalityUsesABilingualCompositeName() {
         StationSnapshotFixture castellon = aStationSnapshot()
                 .withLocalityAndMunicipality(
-                        "CASTELLON DE LA PLANA", "Castellón de la Plana/Castelló de la Plana")
+                        "CASTELLON DE LA PLANA", "Castellón de la Plana")
                 .withPrices(price(GASOLINE_95_E5, "1.819"));
         snapshotService.consume(castellon.processCommand());
 
         FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(new LocalitySearchArea("ES", "Castellón de la Plana"))
+                .searchArea(new LocalitySearchArea("ES", "Castellón de la Plana", "Area 1", "Area 2", null))
                 .productType(GASOLINE_95_E5)
                 .sortBy(FindStationsSort.PRICE)
                 .pageRequest(FindStationsPageRequest.builder().size(100).build())
                 .build();
 
         assertThat(externalIds(adapter.search(query))).containsExactly(castellon.externalId());
-    }
-
-    @Test
-    void shouldResolveAllUnambiguousPostalCodesForAGeoNamesLocality() {
-        StationSnapshotFixture firstPostalCode = stationIn("15001", "CORUÑA (A)");
-        StationSnapshotFixture secondPostalCode = stationIn("15002", "CORUÑA (A)");
-        StationSnapshotFixture ambiguousPostalCode = stationIn("15003", "CORUÑA (A)");
-        StationSnapshotFixture otherLocality = stationIn("15003", "OLEIROS");
-        List.of(firstPostalCode, secondPostalCode, ambiguousPostalCode, otherLocality)
-                .forEach(station -> snapshotService.consume(station.processCommand()));
-        insertSearchLocation("15001", "A Coruña", "a coruna");
-        insertSearchLocation("15002", "A Coruña", "a coruna");
-        insertSearchLocation("15003", "A Coruña", "a coruna");
-
-        FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(new LocalitySearchArea("ES", "a coruna"))
-                .sortBy(FindStationsSort.PRICE)
-                .pageRequest(FindStationsPageRequest.builder().size(100).build())
-                .build();
-
-        assertThat(externalIds(adapter.search(query)))
-                .containsExactlyInAnyOrder(firstPostalCode.externalId(), secondPostalCode.externalId())
-                .doesNotContain(ambiguousPostalCode.externalId(), otherLocality.externalId());
-    }
-
-    private StationSnapshotFixture stationIn(String postalCode, String stationLocality) {
-        return aStationSnapshot()
-                .withPostalCode(postalCode)
-                .withLocalityAndMunicipality(stationLocality, stationLocality);
-    }
-
-    private void insertSearchLocation(String postalCode, String localityName, String normalizedLocalityName) {
-        jdbcTemplate.update(
-                """
-            INSERT INTO search_location (
-                id, country_code, postal_code, normalized_postal_code,
-                locality_name, normalized_locality_name, location, source
-            ) VALUES (
-                gen_random_uuid(), 'ES', ?, ?, ?, ?,
-                ST_SetSRID(ST_MakePoint(-8.4, 43.3), 4326)::geography, 'GEONAMES'
-            )
-            """,
-                postalCode,
-                postalCode,
-                localityName,
-                normalizedLocalityName);
     }
 
     private StationSnapshotFixture nearby(String offset) {

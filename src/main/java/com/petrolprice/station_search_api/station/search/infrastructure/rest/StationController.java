@@ -31,6 +31,9 @@ public class StationController implements StationsApi {
             Integer size,
             String countryCode,
             String locality,
+            String adminArea1,
+            String adminArea2,
+            String adminArea3,
             Double lat,
             Double lng,
             Integer radiusMeters,
@@ -44,6 +47,9 @@ public class StationController implements StationsApi {
                 .searchMode(searchMode)
                 .countryCode(countryCode)
                 .locality(locality)
+                .adminArea1(adminArea1)
+                .adminArea2(adminArea2)
+                .adminArea3(adminArea3)
                 .latitude(lat == null ? null : BigDecimal.valueOf(lat)) // TODO: fix this
                 .longitude(lng == null ? null : BigDecimal.valueOf(lng))
                 .radiusMeters(radiusMeters)

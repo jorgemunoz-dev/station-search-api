@@ -67,9 +67,11 @@ public final class StationSnapshotFixture {
         this.address = Address.builder()
                 .street(address.getStreet())
                 .postalCode(address.getPostalCode())
-                .locality(locality)
-                .municipality(locality)
-                .province(address.getProvince())
+                .localityName(locality)
+                .normalizedLocalityName(normalize(locality))
+                .adminArea1Name(address.getAdminArea1Name())
+                .adminArea2Name(address.getAdminArea2Name())
+                .adminArea3Name(address.getAdminArea3Name())
                 .build();
         return this;
     }
@@ -78,9 +80,11 @@ public final class StationSnapshotFixture {
         this.address = Address.builder()
                 .street(address.getStreet())
                 .postalCode(address.getPostalCode())
-                .locality(locality)
-                .municipality(municipality)
-                .province(address.getProvince())
+                .localityName(locality)
+                .normalizedLocalityName(normalize(municipality))
+                .adminArea1Name(address.getAdminArea1Name())
+                .adminArea2Name(address.getAdminArea2Name())
+                .adminArea3Name(address.getAdminArea3Name())
                 .build();
         return this;
     }
@@ -89,9 +93,11 @@ public final class StationSnapshotFixture {
         this.address = Address.builder()
                 .street(address.getStreet())
                 .postalCode(postalCode)
-                .locality(address.getLocality())
-                .municipality(address.getMunicipality())
-                .province(address.getProvince())
+                .localityName(address.getLocalityName())
+                .normalizedLocalityName(address.getNormalizedLocalityName())
+                .adminArea1Name(address.getAdminArea1Name())
+                .adminArea2Name(address.getAdminArea2Name())
+                .adminArea3Name(address.getAdminArea3Name())
                 .build();
         return this;
     }
@@ -169,9 +175,11 @@ public final class StationSnapshotFixture {
                         new AddressMessage(
                                 address.getStreet(),
                                 address.getPostalCode(),
-                                address.getLocality(),
-                                address.getMunicipality(),
-                                address.getProvince()),
+                                address.getLocalityName(),
+                                address.getNormalizedLocalityName(),
+                                address.getAdminArea1Name(),
+                                address.getAdminArea2Name(),
+                                address.getAdminArea3Name()),
                         new LocationMessage(latitude.doubleValue(), longitude.doubleValue()),
                         prices.stream()
                                 .map(price -> new FuelPriceMessage(
@@ -217,10 +225,19 @@ public final class StationSnapshotFixture {
         return Address.builder()
                 .street("Street " + suffix)
                 .postalCode("%05d".formatted(ThreadLocalRandom.current().nextInt(100_000)))
-                .locality("Locality " + suffix)
-                .municipality("Municipality " + suffix)
-                .province("Province " + suffix)
+                .localityName("Locality " + suffix)
+                .normalizedLocalityName("Municipality " + suffix)
+                .adminArea1Name("Area 1")
+                .adminArea2Name("Area 2")
                 .build();
+    }
+
+    private static String normalize(String value) {
+        return java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFKD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^\\p{L}\\p{N}]+", " ")
+                .trim();
     }
 
     private static BigDecimal randomCoordinate(double minimum, double maximum) {
