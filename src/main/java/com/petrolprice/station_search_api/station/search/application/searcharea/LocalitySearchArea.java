@@ -4,18 +4,14 @@ import java.text.Normalizer;
 import java.util.Locale;
 
 public record LocalitySearchArea(
-        String countryCode,
-        String normalizedLocality,
-        String adminArea1Name,
-        String adminArea2Name,
-        String adminArea3Name)
+        String countryCode, String normalizedAdminArea1, String normalizedAdminArea2, String normalizedAdminArea3)
         implements StationSearchArea {
 
     public LocalitySearchArea {
         countryCode = validateCountryCode(countryCode);
-        normalizedLocality = normalizeLocality(normalizedLocality);
-        adminArea1Name = requireAdministrativeArea(adminArea1Name, "adminArea1");
-        adminArea2Name = requireAdministrativeArea(adminArea2Name, "adminArea2");
+        normalizedAdminArea1 = normalizeAdministrativeArea(normalizedAdminArea1, "adminArea1");
+        normalizedAdminArea2 = normalizeAdministrativeArea(normalizedAdminArea2, "adminArea2");
+        normalizedAdminArea3 = normalizeAdministrativeArea(normalizedAdminArea3, "adminArea3");
     }
 
     private static String validateCountryCode(String countryCode) {
@@ -25,22 +21,15 @@ public record LocalitySearchArea(
         return countryCode.toUpperCase(Locale.ROOT);
     }
 
-    private static String normalizeLocality(String locality) {
-        if (locality == null || locality.isBlank()) {
-            throw new IllegalArgumentException("locality is required");
+    private static String normalizeAdministrativeArea(String value, String parameter) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(parameter + " is required");
         }
-        return Normalizer.normalize(locality, Normalizer.Form.NFKD)
+        return Normalizer.normalize(value, Normalizer.Form.NFKD)
                 .replaceAll("\\p{M}+", "")
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("[^\\p{L}\\p{N}]+", " ")
                 .trim()
                 .replaceAll("\\s+", " ");
-    }
-
-    private static String requireAdministrativeArea(String value, String parameter) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(parameter + " is required");
-        }
-        return value.trim();
     }
 }

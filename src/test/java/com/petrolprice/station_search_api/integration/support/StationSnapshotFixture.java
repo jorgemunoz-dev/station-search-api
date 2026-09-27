@@ -71,7 +71,7 @@ public final class StationSnapshotFixture {
                 .normalizedLocalityName(normalize(locality))
                 .adminArea1Name(address.getAdminArea1Name())
                 .adminArea2Name(address.getAdminArea2Name())
-                .adminArea3Name(address.getAdminArea3Name())
+                .adminArea3Name(locality)
                 .build();
         return this;
     }
@@ -84,7 +84,7 @@ public final class StationSnapshotFixture {
                 .normalizedLocalityName(normalize(municipality))
                 .adminArea1Name(address.getAdminArea1Name())
                 .adminArea2Name(address.getAdminArea2Name())
-                .adminArea3Name(address.getAdminArea3Name())
+                .adminArea3Name(locality)
                 .build();
         return this;
     }
@@ -98,6 +98,19 @@ public final class StationSnapshotFixture {
                 .adminArea1Name(address.getAdminArea1Name())
                 .adminArea2Name(address.getAdminArea2Name())
                 .adminArea3Name(address.getAdminArea3Name())
+                .build();
+        return this;
+    }
+
+    public StationSnapshotFixture withAdministrativeAreas(String adminArea1, String adminArea2, String adminArea3) {
+        this.address = Address.builder()
+                .street(address.getStreet())
+                .postalCode(address.getPostalCode())
+                .localityName(address.getLocalityName())
+                .normalizedLocalityName(address.getNormalizedLocalityName())
+                .adminArea1Name(adminArea1)
+                .adminArea2Name(adminArea2)
+                .adminArea3Name(adminArea3)
                 .build();
         return this;
     }

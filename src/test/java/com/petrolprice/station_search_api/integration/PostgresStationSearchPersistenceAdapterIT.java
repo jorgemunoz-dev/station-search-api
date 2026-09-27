@@ -139,7 +139,7 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         snapshotService.consume(neighboringLocality.processCommand());
 
         FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(new LocalitySearchArea("es", "malaga", "Area 1", "Area 2", null))
+                .searchArea(new LocalitySearchArea("es", "Area 1", "Area 2", "Málaga"))
                 .sortBy(FindStationsSort.PRICE)
                 .pageRequest(FindStationsPageRequest.builder().size(10).build())
                 .build();
@@ -158,13 +158,35 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         snapshotService.consume(castellon.processCommand());
 
         FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(new LocalitySearchArea("ES", "Castellón de la Plana", "Area 1", "Area 2", null))
+                .searchArea(new LocalitySearchArea("ES", "Area 1", "Area 2", "CASTELLON DE LA PLANA"))
                 .productType(GASOLINE_95_E5)
                 .sortBy(FindStationsSort.PRICE)
                 .pageRequest(FindStationsPageRequest.builder().size(100).build())
                 .build();
 
         assertThat(externalIds(adapter.search(query))).containsExactly(castellon.externalId());
+    }
+
+    @Test
+    void shouldDisambiguateHomonymousLocalitiesUsingAdministrativeAreas() {
+        StationSnapshotFixture ardales = aStationSnapshot()
+                .withLocality("Ardales")
+                .withAdministrativeAreas("Andalucía", "Málaga", "Ardales");
+        StationSnapshotFixture homonym = aStationSnapshot()
+                .withLocality("Ardales")
+                .withAdministrativeAreas("Otra región", "Otra provincia", "Ardales");
+        snapshotService.consume(ardales.processCommand());
+        snapshotService.consume(homonym.processCommand());
+
+        FindStationsQuery query = FindStationsQuery.builder()
+                .searchArea(new LocalitySearchArea("ES", "Andalucia", "Málaga", "Ardales"))
+                .sortBy(FindStationsSort.PRICE)
+                .pageRequest(FindStationsPageRequest.builder().size(10).build())
+                .build();
+
+        assertThat(externalIds(adapter.search(query)))
+                .containsExactly(ardales.externalId())
+                .doesNotContain(homonym.externalId());
     }
 
     private StationSnapshotFixture nearby(String offset) {

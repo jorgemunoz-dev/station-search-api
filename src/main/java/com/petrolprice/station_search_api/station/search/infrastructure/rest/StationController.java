@@ -30,7 +30,6 @@ public class StationController implements StationsApi {
             Integer page,
             Integer size,
             String countryCode,
-            String locality,
             String adminArea1,
             String adminArea2,
             String adminArea3,
@@ -46,7 +45,6 @@ public class StationController implements StationsApi {
         StationSearchParameters parameters = StationSearchParameters.builder()
                 .searchMode(searchMode)
                 .countryCode(countryCode)
-                .locality(locality)
                 .adminArea1(adminArea1)
                 .adminArea2(adminArea2)
                 .adminArea3(adminArea3)

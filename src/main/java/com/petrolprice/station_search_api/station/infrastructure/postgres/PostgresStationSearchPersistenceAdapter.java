@@ -93,20 +93,28 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 NULL::double precision AS distance_meters
             FROM station s
             WHERE s.country = :countryCode
-              AND s.normalized_locality_name = :locality
-              AND s.admin_area_1_name = :adminArea1
-              AND s.admin_area_2_name = :adminArea2
-              AND (:adminArea3 IS NULL OR s.admin_area_3_name = :adminArea3)
+              AND %s = :adminArea1
+              AND %s = :adminArea2
+              AND %s = :adminArea3
             """;
+
+        candidateStationsSql = candidateStationsSql.formatted(
+                normalizedSql("s.admin_area_1_name"),
+                normalizedSql("s.admin_area_2_name"),
+                normalizedSql("s.admin_area_3_name"));
 
         MapSqlParameterSource parameters = createCommonParameters(query)
                 .addValue("countryCode", locality.countryCode())
-                .addValue("locality", locality.normalizedLocality())
-                .addValue("adminArea1", locality.adminArea1Name())
-                .addValue("adminArea2", locality.adminArea2Name())
-                .addValue("adminArea3", locality.adminArea3Name());
+                .addValue("adminArea1", locality.normalizedAdminArea1())
+                .addValue("adminArea2", locality.normalizedAdminArea2())
+                .addValue("adminArea3", locality.normalizedAdminArea3());
 
         return executeRankingQuery(query, candidateStationsSql, localityOrderBy(query.sortBy()), parameters);
+    }
+
+    private String normalizedSql(String column) {
+        return "BTRIM(LOWER(REGEXP_REPLACE(TRANSLATE(COALESCE(" + column
+                + ", ''), 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'), '[^[:alnum:]]+', ' ', 'g')))";
     }
 
     /*

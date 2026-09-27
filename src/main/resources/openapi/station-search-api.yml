@@ -14,9 +14,9 @@ paths:
         Searches stations using one of three mutually exclusive modes.
 
         LOCALITY mode:
-        - Requires countryCode, locality, adminArea1 and adminArea2 so same-named localities are unambiguous.
+        - Requires countryCode, adminArea1, adminArea2 and adminArea3.
         - Must not include radius or viewport parameters.
-        - Matches the normalized locality and its country-neutral administrative hierarchy exactly.
+        - Uses the administrative hierarchy as the locality identifier; names are matched accent-insensitively.
         - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:
@@ -70,17 +70,6 @@ paths:
             type: string
             pattern: '^[A-Za-z]{2}$'
             example: ES
-        - name: locality
-          in: query
-          required: false
-          description: >
-            Exact locality name or normalizedLocalityName returned by location search. When the
-            normalized value is supplied, station search resolves all unambiguous postal codes for
-            that GeoNames locality. Required when searchMode is LOCALITY.
-          schema:
-            type: string
-            minLength: 1
-          example: Málaga
         - name: adminArea1
           in: query
           required: false
@@ -96,8 +85,9 @@ paths:
         - name: adminArea3
           in: query
           required: false
-          description: Third-level administrative area, when the country provides one.
+          description: Local administrative area identifying the locality. Required when searchMode is LOCALITY.
           schema: {type: string, minLength: 1}
+          example: Ardales
 
         # Radius filters
         - name: lat

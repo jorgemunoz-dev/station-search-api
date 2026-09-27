@@ -20,23 +20,22 @@ curl --silent --show-error --get "${BASE_URL}/stations" \
 ```
 
 Para recuperar únicamente las estaciones de una localidad no hacen falta coordenadas. El modo
-`LOCALITY` realiza una coincidencia exacta del nombre normalizado y de su jerarquía administrativa.
-`adminArea1` y `adminArea2` son obligatorios para distinguir localidades homónimas; `adminArea3`
-se puede añadir en países que expongan ese nivel:
+`LOCALITY` identifica la localidad mediante su jerarquía administrativa. `adminArea1`, `adminArea2`
+y `adminArea3` son obligatorios; no hay que repetir el nombre en un parámetro `locality` adicional:
 
 ```bash
 curl --silent --show-error --get "${BASE_URL}/stations" \
   --header 'Accept: application/json' \
   --data-urlencode 'searchMode=LOCALITY' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
-  --data-urlencode 'locality=Ardales' \
   --data-urlencode 'adminArea1=Andalucía' \
   --data-urlencode 'adminArea2=Málaga' \
+  --data-urlencode 'adminArea3=Ardales' \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
   --data-urlencode 'sortBy=PRICE'
 ```
 
-También se puede enviar como `locality` el `normalizedLocalityName` devuelto por
+Los valores `adminArea1Name`, `adminArea2Name` y `adminArea3Name` se pueden obtener de
 `/locations/search`. El resultado contiene los precios actuales almacenados en `productPrices`; no
 contiene la fecha de actualización de cada precio y, por tanto, no confirma que se haya observado
 hoy. Si solo se necesita el agregado actual (mínimo, máximo, media y estación más barata), debe

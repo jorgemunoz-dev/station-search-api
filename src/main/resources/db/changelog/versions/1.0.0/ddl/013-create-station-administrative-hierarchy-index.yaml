@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-create-station-administrative-hierarchy-index
+      author: codex
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX idx_station_administrative_hierarchy
+              ON station (
+                country,
+                BTRIM(LOWER(REGEXP_REPLACE(
+                  TRANSLATE(COALESCE(admin_area_1_name, ''),
+                            'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
+                  '[^[:alnum:]]+', ' ', 'g'))),
+                BTRIM(LOWER(REGEXP_REPLACE(
+                  TRANSLATE(COALESCE(admin_area_2_name, ''),
+                            'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
+                  '[^[:alnum:]]+', ' ', 'g'))),
+                BTRIM(LOWER(REGEXP_REPLACE(
+                  TRANSLATE(COALESCE(admin_area_3_name, ''),
+                            'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
+                  '[^[:alnum:]]+', ' ', 'g')))
+              );
