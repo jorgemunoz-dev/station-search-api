@@ -103,11 +103,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-        - addUniqueConstraint:
-            tableName: search_location
-            columnNames: country_code, normalized_postal_code, normalized_locality_name
-            constraintName: uk_search_location
-
         - createIndex:
             tableName: search_location
             indexName: idx_search_location_country_postal_code
