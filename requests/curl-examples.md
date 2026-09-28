@@ -29,6 +29,7 @@ curl --silent --show-error --get "${BASE_URL}/stations" \
   --data-urlencode 'searchMode=LOCALITY' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
   --data-urlencode 'adminArea1=Andalucía' \
+  --data-urlencode 'adminArea1=Andalucía' \
   --data-urlencode 'adminArea2=Málaga' \
   --data-urlencode 'adminArea3=Ardales' \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
@@ -40,27 +41,28 @@ Los valores `adminArea1Name`, `adminArea2Name` y `adminArea3Name` se pueden obte
 todavía no tiene las áreas administrativas informadas. El resultado contiene los precios actuales almacenados en `productPrices`; no
 contiene la fecha de actualización de cada precio y, por tanto, no confirma que se haya observado
 hoy. Si solo se necesita el agregado actual (mínimo, máximo, media y estación más barata), debe
-usarse `/statistics/fuel-prices/current?locality=...` como se muestra a continuación.
+usarse `/statistics/fuel-prices/current` con la misma jerarquía administrativa.
 
 ## Buscar una localidad y consultar sus estadísticas
 
-`/locations/search` devuelve `normalizedLocalityName`, el valor que comparten `search_location` y
-las estadísticas. No hay que obtener UUIDs ni alimentar otro catálogo.
+`/locations/search` devuelve `adminArea1Name`, `adminArea2Name` y `adminArea3Name`, los valores
+necesarios para consultar estadísticas sin utilizar un parámetro `locality`.
 
 ### Ejemplo completo para Ardales
 
 ```bash
-export LOCALITY="$({
+LOCATION="$({
   curl --silent --show-error --get "${BASE_URL}/locations/search" \
     --header 'Accept: application/json' \
     --data-urlencode "countryCode=${COUNTRY_CODE}" \
     --data-urlencode 'query=Ardales' \
     --data-urlencode 'limit=10'
-} | jq --raw-output --exit-status \
-    '.[] | select(.primaryText == "Ardales" or .primaryText == "ARDALES") | .normalizedLocalityName' |
+} | jq --compact-output --exit-status \
+    '.[] | select(.primaryText == "Ardales" or .primaryText == "ARDALES")' |
     head -n 1)"
-
-printf 'Localidad normalizada: %s\n' "${LOCALITY}"
+export ADMIN_AREA_1="$(jq -r '.adminArea1Name' <<<"${LOCATION}")"
+export ADMIN_AREA_2="$(jq -r '.adminArea2Name' <<<"${LOCATION}")"
+export ADMIN_AREA_3="$(jq -r '.adminArea3Name' <<<"${LOCATION}")"
 ```
 
 Estadísticas actuales de Ardales:
@@ -70,7 +72,9 @@ curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/current" \
   --header 'Accept: application/json' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
-  --data-urlencode "locality=${LOCALITY}"
+  --data-urlencode "adminArea1=${ADMIN_AREA_1}" \
+  --data-urlencode "adminArea2=${ADMIN_AREA_2}" \
+  --data-urlencode "adminArea3=${ADMIN_AREA_3}"
 ```
 
 Histórico de Ardales:
@@ -80,12 +84,13 @@ curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/history" \
   --header 'Accept: application/json' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
-  --data-urlencode "locality=${LOCALITY}" \
+  --data-urlencode "adminArea1=${ADMIN_AREA_1}" \
+  --data-urlencode "adminArea2=${ADMIN_AREA_2}" \
+  --data-urlencode "adminArea3=${ADMIN_AREA_3}" \
   --data-urlencode 'from=2026-09-01' \
   --data-urlencode 'to=2026-09-24'
 ```
 
-También se puede enviar directamente `locality=Ardales`; el backend aplica la misma normalización.
 
 ## Estadísticas de un área administrativa
 
@@ -97,6 +102,7 @@ curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/current" \
   --header 'Accept: application/json' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode 'adminArea1=Andalucía' \
   --data-urlencode 'adminArea2=Málaga'
 ```
 
@@ -107,16 +113,17 @@ curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/history" \
   --header 'Accept: application/json' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode 'adminArea1=Andalucía' \
   --data-urlencode 'adminArea2=Málaga' \
   --data-urlencode 'from=2026-09-01' \
   --data-urlencode 'to=2026-09-24'
 ```
 
-Solo se puede seleccionar un scope cada vez: `locality`, `adminArea1`, `adminArea2` o `adminArea3`.
+Los niveles se proporcionan en orden: `adminArea2` requiere `adminArea1`, y `adminArea3` requiere ambos.
 
 ## Estadísticas del país completo
 
-Omitir `locality` selecciona todo el país:
+Omitir todos los parámetros `adminArea` selecciona todo el país:
 
 ```bash
 curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/current" \
@@ -148,20 +155,22 @@ curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/localities"
   --header 'Accept: application/json' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
+  --data-urlencode 'adminArea1=Andalucía' \
   --data-urlencode 'adminArea2=Málaga'
 ```
 
 Por ejemplo, `adminArea2=Málaga&adminArea3=Málaga` puede devolver Torremolinos, Cuevas del Becerro
 y La Cala del Moral si las tres localidades tienen esos valores administrativos en
-`search_location`. Para consultar **la localidad exacta de Málaga**, se usa `locality` en el endpoint
-de estadísticas actuales (o históricas), no `adminArea3`:
+`search_location`. Para consultar **la localidad exacta de Málaga**, se proporciona la jerarquía completa:
 
 ```bash
 curl --silent --show-error --get "${BASE_URL}/statistics/fuel-prices/current" \
   --header 'Accept: application/json' \
   --data-urlencode "countryCode=${COUNTRY_CODE}" \
   --data-urlencode "productType=${PRODUCT_TYPE}" \
-  --data-urlencode 'locality=Málaga'
+  --data-urlencode 'adminArea1=Andalucía' \
+  --data-urlencode 'adminArea2=Málaga' \
+  --data-urlencode 'adminArea3=Málaga'
 ```
 
 El campo `stationCount` de esa respuesta es el número de estaciones incluidas en el agregado. El

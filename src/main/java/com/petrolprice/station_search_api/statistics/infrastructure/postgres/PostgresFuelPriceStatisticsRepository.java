@@ -40,13 +40,8 @@ public class PostgresFuelPriceStatisticsRepository
                 WITH selected AS (
                     SELECT * FROM fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
-                      AND normalized_locality_name IS NOT DISTINCT FROM :locality
-                      AND ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
-                           OR LOWER(admin_area_1_name) = LOWER(CAST(:adminArea1 AS varchar)))
-                      AND ((CAST(:adminArea2 AS varchar) IS NULL AND admin_area_2_name IS NULL)
-                           OR LOWER(admin_area_2_name) = LOWER(CAST(:adminArea2 AS varchar)))
-                      AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
-                           OR LOWER(admin_area_3_name) = LOWER(CAST(:adminArea3 AS varchar)))
+                      AND normalized_locality_name IS NULL
+                      AND %s
                     ORDER BY calculated_at DESC LIMIT 1
                 ), country_statistics AS (
                     SELECT average_price FROM fuel_price_statistics
@@ -91,7 +86,7 @@ public class PostgresFuelPriceStatisticsRepository
                 LEFT JOIN admin_area_2_statistics ON TRUE
                 JOIN station cheap ON cheap.id = selected.cheapest_station_id
                 JOIN station expensive ON expensive.id = selected.most_expensive_station_id
-                """;
+                """.formatted(administrativeScopeFilter());
         return jdbcTemplate.query(sql, parameters, rs -> {
             if (!rs.next() || rs.getLong("station_count") == 0) {
                 return Optional.empty();
@@ -128,13 +123,8 @@ public class PostgresFuelPriceStatisticsRepository
                            maximum_price, station_count
                     FROM fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
-                      AND normalized_locality_name IS NOT DISTINCT FROM :locality
-                      AND ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
-                           OR LOWER(admin_area_1_name) = LOWER(CAST(:adminArea1 AS varchar)))
-                      AND ((CAST(:adminArea2 AS varchar) IS NULL AND admin_area_2_name IS NULL)
-                           OR LOWER(admin_area_2_name) = LOWER(CAST(:adminArea2 AS varchar)))
-                      AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
-                           OR LOWER(admin_area_3_name) = LOWER(CAST(:adminArea3 AS varchar)))
+                      AND normalized_locality_name IS NULL
+                      AND %s
                       AND calculated_at >= CAST(:historyFrom AS date)
                       AND calculated_at < (CAST(:to AS date) + INTERVAL '1 day')
                     ORDER BY calculated_at::date, calculated_at DESC
@@ -155,7 +145,7 @@ public class PostgresFuelPriceStatisticsRepository
                 LEFT JOIN daily d30 ON d30.observed_date = d.observed_date - 30
                 WHERE d.observed_date BETWEEN CAST(:from AS date) AND CAST(:to AS date)
                 ORDER BY d.observed_date
-                """;
+                """.formatted(administrativeScopeFilter());
         return jdbcTemplate.query(
                 sql,
                 parameters,
@@ -280,10 +270,24 @@ public class PostgresFuelPriceStatisticsRepository
                 WITH source AS (
                     SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
                            hp.observed_at,
-                           s.normalized_locality_name, s.admin_area_1_name,
-                           s.admin_area_2_name, s.admin_area_3_name
+                           COALESCE(s.normalized_locality_name, location.normalized_locality_name)
+                               AS normalized_locality_name,
+                           COALESCE(s.admin_area_1_name, location.admin_area_1_name) AS admin_area_1_name,
+                           COALESCE(s.admin_area_2_name, location.admin_area_2_name) AS admin_area_2_name,
+                           COALESCE(s.admin_area_3_name, location.admin_area_3_name) AS admin_area_3_name
                     FROM historical_product_price hp
                     JOIN station s ON s.id = hp.station_id
+                    LEFT JOIN LATERAL (
+                        SELECT sl.normalized_locality_name, sl.admin_area_1_name,
+                               sl.admin_area_2_name, sl.admin_area_3_name
+                        FROM search_location sl
+                        WHERE sl.country_code = s.country
+                          AND sl.normalized_postal_code = UPPER(
+                              REGEXP_REPLACE(COALESCE(s.postal_code, ''), '[^A-Za-z0-9]', '', 'g')
+                          )
+                        ORDER BY sl.accuracy DESC NULLS LAST, sl.id
+                        LIMIT 1
+                    ) location ON TRUE
                     WHERE hp.snapshot_id = :snapshotId AND hp.price > 0
                 ), scopes AS (
                     SELECT snapshot_id, country, product_type, NULL::varchar normalized_locality_name,
@@ -298,11 +302,14 @@ public class PostgresFuelPriceStatisticsRepository
                     SELECT snapshot_id, country, product_type, NULL, admin_area_1_name, NULL, NULL,
                            station_id, price, observed_at FROM source WHERE admin_area_1_name IS NOT NULL
                     UNION ALL
-                    SELECT snapshot_id, country, product_type, NULL, NULL, admin_area_2_name, NULL,
-                           station_id, price, observed_at FROM source WHERE admin_area_2_name IS NOT NULL
+                    SELECT snapshot_id, country, product_type, NULL, admin_area_1_name, admin_area_2_name, NULL,
+                           station_id, price, observed_at
+                    FROM source WHERE admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL
                     UNION ALL
-                    SELECT snapshot_id, country, product_type, NULL, NULL, NULL, admin_area_3_name,
-                           station_id, price, observed_at FROM source WHERE admin_area_3_name IS NOT NULL
+                    SELECT snapshot_id, country, product_type, NULL, admin_area_1_name,
+                           admin_area_2_name, admin_area_3_name, station_id, price, observed_at
+                    FROM source WHERE admin_area_1_name IS NOT NULL
+                      AND admin_area_2_name IS NOT NULL AND admin_area_3_name IS NOT NULL
                 )
                 INSERT INTO fuel_price_statistics (
                     id, snapshot_id, country, product_type, normalized_locality_name,
@@ -322,6 +329,26 @@ public class PostgresFuelPriceStatisticsRepository
         jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
     }
 
+
+    private String administrativeScopeFilter() {
+        return """
+                ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
+                    OR %s = %s)
+                AND ((CAST(:adminArea2 AS varchar) IS NULL AND admin_area_2_name IS NULL)
+                    OR %s = %s)
+                AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
+                    OR %s = %s)
+                """.formatted(
+                normalizedSql("admin_area_1_name"), normalizedSql("CAST(:adminArea1 AS varchar)"),
+                normalizedSql("admin_area_2_name"), normalizedSql("CAST(:adminArea2 AS varchar)"),
+                normalizedSql("admin_area_3_name"), normalizedSql("CAST(:adminArea3 AS varchar)"));
+    }
+
+    private String normalizedSql(String expression) {
+        return "BTRIM(LOWER(REGEXP_REPLACE(TRANSLATE(COALESCE(" + expression
+                + ", ''), 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'), '[^[:alnum:]]+', ' ', 'g')))";
+    }
+
     private MapSqlParameterSource baseParameters(String countryCode, ProductType productType) {
         return new MapSqlParameterSource()
                 .addValue("country", countryCode.toUpperCase())
@@ -330,19 +357,9 @@ public class PostgresFuelPriceStatisticsRepository
 
     private MapSqlParameterSource scopeParameters(MapSqlParameterSource parameters, GeographicScope scope) {
         return parameters
-                .addValue("locality", scope.normalizedLocalityName(), Types.VARCHAR)
-                .addValue(
-                        "adminArea1",
-                        scope.normalizedLocalityName() == null ? scope.adminArea1Name() : null,
-                        Types.VARCHAR)
-                .addValue(
-                        "adminArea2",
-                        scope.normalizedLocalityName() == null ? scope.adminArea2Name() : null,
-                        Types.VARCHAR)
-                .addValue(
-                        "adminArea3",
-                        scope.normalizedLocalityName() == null ? scope.adminArea3Name() : null,
-                        Types.VARCHAR);
+                .addValue("adminArea1", scope.adminArea1Name(), Types.VARCHAR)
+                .addValue("adminArea2", scope.adminArea2Name(), Types.VARCHAR)
+                .addValue("adminArea3", scope.adminArea3Name(), Types.VARCHAR);
     }
 
     private String blankToNull(String value) {
@@ -350,18 +367,7 @@ public class PostgresFuelPriceStatisticsRepository
     }
 
     private GeographicScope resolvedScope(ResultSet rs) throws SQLException {
-        String normalizedName = rs.getString("normalized_locality_name");
-        if (normalizedName != null) {
-            return GeographicScope.resolvedLocality(
-                        normalizedName,
-                        rs.getString("locality_name"),
-                        rs.getString("locality_admin_area_1_name"),
-                        rs.getString("locality_admin_area_2_name"),
-                        rs.getString("locality_admin_area_3_name"));
-        }
         return new GeographicScope(
-                null,
-                null,
                 rs.getString("admin_area_1_name"),
                 rs.getString("admin_area_2_name"),
                 rs.getString("admin_area_3_name"));

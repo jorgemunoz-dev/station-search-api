@@ -7,24 +7,23 @@ import org.junit.jupiter.api.Test;
 
 class GeographicScopeTest {
     @Test
-    void shouldNormalizeLocalityNamesLikeLocationSearch() {
-        GeographicScope scope = GeographicScope.locality("  Vélez-Málaga  ");
+    void shouldSelectACompleteAdministrativeHierarchy() {
+        GeographicScope scope = GeographicScope.administrativeHierarchy(" Andalucía ", " Málaga ", " Ardales ");
 
-        assertThat(scope.normalizedLocalityName()).isEqualTo("velez malaga");
-    }
-
-    @Test
-    void shouldRejectAnEmptyLocality() {
-        assertThatThrownBy(() -> GeographicScope.locality("  "))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("locality is required");
-    }
-
-    @Test
-    void shouldSelectCountrySpecificAdministrativePositionsWithoutEnums() {
-        GeographicScope scope = GeographicScope.adminArea2("  Málaga  ");
-
+        assertThat(scope.adminArea1Name()).isEqualTo("Andalucía");
         assertThat(scope.adminArea2Name()).isEqualTo("Málaga");
-        assertThat(scope.normalizedLocalityName()).isNull();
+        assertThat(scope.adminArea3Name()).isEqualTo("Ardales");
+    }
+
+    @Test
+    void shouldSelectCountryWhenNoAdministrativeAreaIsProvided() {
+        assertThat(GeographicScope.administrativeHierarchy(null, " ", null)).isEqualTo(GeographicScope.country());
+    }
+
+    @Test
+    void shouldRejectAdministrativeHierarchyGaps() {
+        assertThatThrownBy(() -> GeographicScope.administrativeHierarchy(null, "Málaga", "Ardales"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Administrative areas must be supplied in order: adminArea1, adminArea2, adminArea3");
     }
 }
