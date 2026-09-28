@@ -67,6 +67,9 @@ logging:
       console: logstash
 
 app:
+  seo:
+    sitemap:
+      cache-ttl: ${SITEMAP_CACHE_TTL:PT1H}
   observability:
     search:
       paths:
