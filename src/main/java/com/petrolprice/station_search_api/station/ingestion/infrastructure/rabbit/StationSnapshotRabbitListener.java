@@ -20,7 +20,9 @@ public class StationSnapshotRabbitListener {
     private final ProcessStationSnapshotService processStationSnapshotService;
     private final CompleteStationPublishingUseCase completeStationPublishingUseCase;
 
-    @RabbitListener(queues = "station.snapshot.ingestion.queue")
+    @RabbitListener(
+            queues = "station.snapshot.ingestion.queue",
+            containerFactory = "stationSnapshotListenerContainerFactory")
     public void onSnapshotCreated(StationSnapshotMessage event) {
         ProcessStationSnapshotCommand command = mapper.toCommand(event);
         processStationSnapshotService.consume(command);

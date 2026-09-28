@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(RabbitRetryProperties.class)
+@EnableConfigurationProperties({RabbitRetryProperties.class, RabbitConsumerProperties.class})
 public class RabbitConsumerConfig {
 
     /**
@@ -62,6 +62,27 @@ public class RabbitConsumerConfig {
                 .recoverer(recoverer)
                 .build());
 
+        return factory;
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory stationSnapshotListenerContainerFactory(
+            SimpleRabbitListenerContainerFactoryConfigurer configurer,
+            ConnectionFactory connectionFactory,
+            JacksonJsonMessageConverter converter,
+            RabbitMessageRecoverer recoverer,
+            RabbitRetryProperties retryProperties,
+            RabbitConsumerProperties consumerProperties) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        configurer.configure(factory, connectionFactory);
+        factory.setMessageConverter(converter);
+        factory.setConcurrentConsumers(consumerProperties.concurrency());
+        factory.setMaxConcurrentConsumers(consumerProperties.maxConcurrency());
+        factory.setPrefetchCount(consumerProperties.prefetch());
+        factory.setAdviceChain(RetryInterceptorBuilder.stateless()
+                .maxRetries(retryProperties.maxRetries())
+                .recoverer(recoverer)
+                .build());
         return factory;
     }
 }

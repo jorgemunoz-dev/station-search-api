@@ -68,6 +68,24 @@ The rationale, dependency rules, target tree, and incremental migration sequence
 The country/locality model shared by location search and statistics is documented in
 [ADR-002: Country and locality statistics](docs/architecture/adr-002-country-locality-statistics.md).
 
+### Snapshot ingestion throughput
+
+Snapshot events use a dedicated RabbitMQ listener pool so ingestion can scale without creating
+extra consumers for the low-volume completion queue. Defaults are 8 consumers, automatic growth
+up to 16, a prefetch of 100, and a 20-connection database pool. They can be tuned per deployment:
+
+```bash
+RABBITMQ_SNAPSHOT_CONCURRENCY=8
+RABBITMQ_SNAPSHOT_MAX_CONCURRENCY=16
+RABBITMQ_SNAPSHOT_PREFETCH=100
+DB_POOL_MAX_SIZE=20
+DB_POOL_MIN_IDLE=4
+HIBERNATE_JDBC_BATCH_SIZE=50
+```
+
+Keep the maximum snapshot concurrency below the database pool size so HTTP requests and snapshot
+completion retain available connections.
+
 Runnable HTTP examples for discovering administrative areas and querying national or area-level
 statistics are available in
 [`requests/locality-statistics.http`](requests/locality-statistics.http).

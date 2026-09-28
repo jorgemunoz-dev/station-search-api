@@ -14,10 +14,11 @@ paths:
         Searches stations using one of three mutually exclusive modes.
 
         LOCALITY mode:
-        - Requires countryCode and locality.
+        - Requires countryCode, adminArea1, adminArea2 and adminArea3.
         - Must not include radius or viewport parameters.
-        - Resolves normalizedLocalityName values through all unambiguous country/postal-code pairs
-          in search_location, while retaining exact municipality/locality matching as a fallback.
+        - Uses the administrative hierarchy as the locality identifier; names are matched accent-insensitively.
+        - Resolves the hierarchy through search_location by country and normalized postal code when
+          legacy station rows do not yet contain administrative-area values.
         - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:
@@ -71,17 +72,24 @@ paths:
             type: string
             pattern: '^[A-Za-z]{2}$'
             example: ES
-        - name: locality
+        - name: adminArea1
           in: query
           required: false
-          description: >
-            Exact locality name or normalizedLocalityName returned by location search. When the
-            normalized value is supplied, station search resolves all unambiguous postal codes for
-            that GeoNames locality. Required when searchMode is LOCALITY.
-          schema:
-            type: string
-            minLength: 1
+          description: First-level administrative area. Required when searchMode is LOCALITY.
+          schema: {type: string, minLength: 1}
+          example: Andalucía
+        - name: adminArea2
+          in: query
+          required: false
+          description: Second-level administrative area. Required when searchMode is LOCALITY.
+          schema: {type: string, minLength: 1}
           example: Málaga
+        - name: adminArea3
+          in: query
+          required: false
+          description: Local administrative area identifying the locality. Required when searchMode is LOCALITY.
+          schema: {type: string, minLength: 1}
+          example: Ardales
 
         # Radius filters
         - name: lat
@@ -236,10 +244,9 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: locality, in: query, required: false, description: Locality name returned by location search. Omit it for country-wide statistics., schema: {type: string}}
-        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area. Mutually exclusive with other scopes., schema: {type: string}}
-        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Mutually exclusive with other scopes., schema: {type: string}}
-        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Requires adminArea1., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Requires adminArea1 and adminArea2., schema: {type: string}}
       responses:
         '200':
           description: Current aggregate
@@ -254,10 +261,9 @@ paths:
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string}}
         - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
-        - {name: locality, in: query, required: false, description: Locality name returned by location search. Omit it for country-wide statistics., schema: {type: string}}
-        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area. Mutually exclusive with other scopes., schema: {type: string}}
-        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Mutually exclusive with other scopes., schema: {type: string}}
-        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Mutually exclusive with other scopes., schema: {type: string}}
+        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Requires adminArea1., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Requires adminArea1 and adminArea2., schema: {type: string}}
         - {name: from, in: query, required: true, schema: {type: string, format: date}}
         - {name: to, in: query, required: true, schema: {type: string, format: date}}
       responses:
@@ -276,8 +282,8 @@ paths:
       description: >
         Returns one aggregate per locality. Administrative-area parameters only filter the
         localities included in the ranking; they do not select a locality and they do not change
-        the response granularity. Use GET /statistics/fuel-prices/current?locality=... to obtain
-        the aggregate for one exact town or city. The meaning of each adminArea position comes
+        the response granularity. Use the complete adminArea hierarchy on the current or history
+        endpoint to obtain the aggregate for one exact town or city. The meaning of each position comes
         from search_location and is country/source-specific.
       parameters:
         - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
@@ -418,8 +424,6 @@ components:
     GeographicScopeResponse:
       type: object
       properties:
-        normalizedLocalityName: {type: string, nullable: true}
-        localityName: {type: string, nullable: true}
         adminArea1Name: {type: string, nullable: true}
         adminArea2Name: {type: string, nullable: true}
         adminArea3Name: {type: string, nullable: true}
@@ -736,11 +740,15 @@ components:
           type: string
         postalCode:
           type: string
-        locality:
+        localityName:
           type: string
-        municipality:
+        normalizedLocalityName:
           type: string
-        province:
+        adminArea1Name:
+          type: string
+        adminArea2Name:
+          type: string
+        adminArea3Name:
           type: string
 
     ProductPriceResponse:

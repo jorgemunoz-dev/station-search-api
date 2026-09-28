@@ -87,17 +87,9 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         var country = currentStatistics
                 .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.country()))
                 .orElseThrow();
-        var alpha = currentStatistics
-                .current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.locality("Álpha")))
-                .orElseThrow();
-        var beta = currentStatistics
-                .current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.locality("Beta")))
-                .orElseThrow();
         var south = currentStatistics
                 .current(new CurrentStatisticsQuery(
-                        "ES", ProductType.DIESEL_A, GeographicScope.adminArea2("south")))
+                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeHierarchy("Area 1", "south", null)))
                 .orElseThrow();
 
         assertThat(country.averagePrice()).isEqualByComparingTo("1.600");
@@ -106,9 +98,6 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         assertThat(country.stationCount()).isEqualTo(2);
         assertThat(country.cheapestStation().externalId()).isEqualTo(cheap.externalId());
         assertThat(country.mostExpensiveStation().externalId()).isEqualTo(expensive.externalId());
-        assertThat(alpha.countryAverageDifference()).isEqualByComparingTo("-0.200");
-        assertThat(beta.scope().adminArea2Name()).isEqualTo("South");
-        assertThat(beta.adminArea2AverageDifference()).isEqualByComparingTo("0.000");
         assertThat(south.averagePrice()).isEqualByComparingTo("1.800");
     }
 
@@ -133,15 +122,16 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         mockMvc.perform(get("/statistics/fuel-prices/current")
                         .queryParam("countryCode", "ES")
                         .queryParam("productType", "DIESEL_A")
-                        .queryParam("locality", "Béta"))
+                        .queryParam("adminArea1", "Area 1")
+                        .queryParam("adminArea2", "South"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stationCount", is(1)))
-                .andExpect(jsonPath("$.scope.normalizedLocalityName", is("beta")))
                 .andExpect(jsonPath("$.scope.adminArea2Name", is("South")));
 
         mockMvc.perform(get("/statistics/fuel-prices/current")
                         .queryParam("countryCode", "ES")
                         .queryParam("productType", "DIESEL_A")
+                        .queryParam("adminArea1", "Area 1")
                         .queryParam("adminArea2", "south"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stationCount", is(1)))
@@ -171,7 +161,9 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         mockMvc.perform(get("/statistics/fuel-prices/history")
                         .queryParam("countryCode", "ES")
                         .queryParam("productType", "DIESEL_A")
+                        .queryParam("adminArea1", "Area 1")
                         .queryParam("adminArea2", "South")
+                        .queryParam("adminArea3", "Beta")
                         .queryParam("from", today.toString())
                         .queryParam("to", today.toString()))
                 .andExpect(status().isOk())
@@ -181,7 +173,6 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         mockMvc.perform(get("/statistics/fuel-prices/current")
                         .queryParam("countryCode", "ES")
                         .queryParam("productType", "DIESEL_A")
-                        .queryParam("locality", "Beta")
                         .queryParam("adminArea2", "South"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("INVALID_STATISTICS_QUERY")));
@@ -207,7 +198,7 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
         var adminAreaHistory = historicalStatistics.history(new HistoricalStatisticsQuery(
                 "ES",
                 ProductType.DIESEL_A,
-                GeographicScope.adminArea2("North"),
+                GeographicScope.administrativeHierarchy("Area 1", "North", null),
                 today.minusDays(8),
                 today.minusDays(1)));
         assertThat(adminAreaHistory).hasSize(2);
@@ -221,27 +212,31 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
             String locality,
             String normalizedLocality) {
         jdbcTemplate.update(
-                "UPDATE station SET postal_code = ?, province = ?, municipality = ? WHERE external_id = ?",
+                "UPDATE station SET postal_code = ?, admin_area_1_name = NULL, admin_area_2_name = NULL, "
+                        + "admin_area_3_name = NULL, locality_name = ?, normalized_locality_name = LOWER(?) "
+                        + "WHERE external_id = ?",
                 postalCode,
-                adminArea2,
                 locality,
+                normalizedLocality,
                 station.externalId());
         jdbcTemplate.update(
                 """
                 INSERT INTO search_location (
                     id, country_code, postal_code, normalized_postal_code,
-                    locality_name, normalized_locality_name, admin_area_2_name,
+                    locality_name, normalized_locality_name,
+                    admin_area_1_name, admin_area_2_name, admin_area_3_name,
                     location, accuracy, source, created_at, updated_at
-                ) VALUES (?, 'ES', ?, ?, ?, ?, ?, ST_GeogFromText('SRID=4326;POINT(-3 40)'),
+                ) VALUES (?, 'ES', ?, ?, ?, ?, 'Area 1', ?, ?, ST_GeogFromText('SRID=4326;POINT(-3 40)'),
                           10, 'TEST', NOW(), NOW())
-                ON CONFLICT (country_code, normalized_postal_code, normalized_locality_name) DO NOTHING
+                ON CONFLICT DO NOTHING
                 """,
                 UUID.randomUUID(),
                 postalCode,
                 postalCode,
                 locality,
                 normalizedLocality,
-                adminArea2);
+                adminArea2,
+                locality);
     }
 
     private UUID stationId(String externalId) {

@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Python tooling
+__pycache__/
+*.py[cod]

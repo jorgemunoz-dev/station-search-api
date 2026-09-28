@@ -48,7 +48,7 @@ class PostgresHistoricalPriceRepositoryTest {
         // Then
         verify(mapper).toEntity(snapshotId, stationId, observedAt, diesel);
         verify(mapper).toEntity(snapshotId, stationId, observedAt, gasoline);
-        verify(jpaRepository).saveAllAndFlush(List.of(dieselEntity, gasolineEntity));
+        verify(jpaRepository).saveAll(List.of(dieselEntity, gasolineEntity));
     }
 
     @Test

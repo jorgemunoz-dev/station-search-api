@@ -33,13 +33,12 @@ public class FuelPriceStatisticsController implements StatisticsApi {
     public ResponseEntity<CurrentPriceStatisticsResponse> getCurrentFuelPriceStatistics(
             String countryCode,
             ProductType productType,
-            String locality,
             String adminArea1,
             String adminArea2,
             String adminArea3) {
         CurrentPriceStatistics result = statistics.current(
                 new CurrentStatisticsQuery(
-                        countryCode, product(productType), scope(locality, adminArea1, adminArea2, adminArea3)));
+                        countryCode, product(productType), scope(adminArea1, adminArea2, adminArea3)));
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
@@ -62,14 +61,13 @@ public class FuelPriceStatisticsController implements StatisticsApi {
             ProductType productType,
             LocalDate from,
             LocalDate to,
-            String locality,
             String adminArea1,
             String adminArea2,
             String adminArea3) {
         List<HistoricalPricePoint> result = statistics.history(new HistoricalStatisticsQuery(
                 countryCode,
                 product(productType),
-                scope(locality, adminArea1, adminArea2, adminArea3),
+                scope(adminArea1, adminArea2, adminArea3),
                 from,
                 to));
         return ResponseEntity.ok(mapper.toHistoryResponse(result));
@@ -107,26 +105,7 @@ public class FuelPriceStatisticsController implements StatisticsApi {
         return com.petrolprice.station_search_api.statistics.domain.ProductType.valueOf(productType.name());
     }
 
-    private GeographicScope scope(String locality, String adminArea1, String adminArea2, String adminArea3) {
-        long supplied = java.util.stream.Stream.of(locality, adminArea1, adminArea2, adminArea3)
-                .filter(value -> value != null && !value.isBlank())
-                .count();
-        if (supplied > 1) {
-            throw new IllegalArgumentException(
-                    "Only one of locality, adminArea1, adminArea2 or adminArea3 can be selected");
-        }
-        if (locality != null && !locality.isBlank()) {
-            return GeographicScope.locality(locality);
-        }
-        if (adminArea1 != null && !adminArea1.isBlank()) {
-            return GeographicScope.adminArea1(adminArea1);
-        }
-        if (adminArea2 != null && !adminArea2.isBlank()) {
-            return GeographicScope.adminArea2(adminArea2);
-        }
-        if (adminArea3 != null && !adminArea3.isBlank()) {
-            return GeographicScope.adminArea3(adminArea3);
-        }
-        return GeographicScope.country();
+    private GeographicScope scope(String adminArea1, String adminArea2, String adminArea3) {
+        return GeographicScope.administrativeHierarchy(adminArea1, adminArea2, adminArea3);
     }
 }

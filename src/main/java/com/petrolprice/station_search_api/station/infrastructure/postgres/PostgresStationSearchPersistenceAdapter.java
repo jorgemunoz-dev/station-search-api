@@ -89,45 +89,50 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 """
             SELECT
                 s.id, s.external_id, s.country, s.brand, s.normalized_brand, s.street,
-                s.postal_code, s.locality, s.municipality, s.province, s.location,
+                s.postal_code, s.locality_name, s.normalized_locality_name, s.admin_area_1_name, s.admin_area_2_name, s.admin_area_3_name, s.location,
                 NULL::double precision AS distance_meters
             FROM station s
             WHERE s.country = :countryCode
               AND (
-                  BTRIM(LOWER(REGEXP_REPLACE(
-                        TRANSLATE(COALESCE(s.municipality, s.locality, ''),
-                                  'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
-                        '[^[:alnum:]]+', ' ', 'g'))) = :locality
-                  OR BTRIM(LOWER(REGEXP_REPLACE(
-                        TRANSLATE(COALESCE(s.locality, ''),
-                                  'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
-                        '[^[:alnum:]]+', ' ', 'g'))) = :locality
-                  OR s.postal_code IN (
-                      SELECT sl.postal_code
+                  (
+                      %s = :adminArea1
+                      AND %s = :adminArea2
+                      AND %s = :adminArea3
+                  )
+                  OR EXISTS (
+                      SELECT 1
                       FROM search_location sl
-                      INNER JOIN station postal_station
-                        ON postal_station.country = sl.country_code
-                       AND postal_station.postal_code = sl.postal_code
-                      WHERE sl.country_code = :countryCode
-                        AND sl.normalized_locality_name = :locality
-                      GROUP BY sl.country_code, sl.postal_code
-                      HAVING COUNT(DISTINCT COALESCE(
-                                 NULLIF(BTRIM(postal_station.municipality), ''),
-                                 NULLIF(BTRIM(postal_station.locality), '')
-                             )) = 1
-                         AND COUNT(*) FILTER (WHERE COALESCE(
-                                 NULLIF(BTRIM(postal_station.municipality), ''),
-                                 NULLIF(BTRIM(postal_station.locality), '')
-                             ) IS NULL) = 0
+                      WHERE sl.country_code = s.country
+                        AND sl.normalized_postal_code = UPPER(
+                            REGEXP_REPLACE(COALESCE(s.postal_code, ''), '[^A-Za-z0-9]', '', 'g')
+                        )
+                        AND %s = :adminArea1
+                        AND %s = :adminArea2
+                        AND %s = :adminArea3
                   )
               )
             """;
 
+        candidateStationsSql = candidateStationsSql.formatted(
+                normalizedSql("s.admin_area_1_name"),
+                normalizedSql("s.admin_area_2_name"),
+                normalizedSql("s.admin_area_3_name"),
+                normalizedSql("sl.admin_area_1_name"),
+                normalizedSql("sl.admin_area_2_name"),
+                normalizedSql("sl.admin_area_3_name"));
+
         MapSqlParameterSource parameters = createCommonParameters(query)
                 .addValue("countryCode", locality.countryCode())
-                .addValue("locality", locality.normalizedLocality());
+                .addValue("adminArea1", locality.normalizedAdminArea1())
+                .addValue("adminArea2", locality.normalizedAdminArea2())
+                .addValue("adminArea3", locality.normalizedAdminArea3());
 
         return executeRankingQuery(query, candidateStationsSql, localityOrderBy(query.sortBy()), parameters);
+    }
+
+    private String normalizedSql(String column) {
+        return "BTRIM(LOWER(REGEXP_REPLACE(TRANSLATE(COALESCE(" + column
+                + ", ''), 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'), '[^[:alnum:]]+', ' ', 'g')))";
     }
 
     /*
@@ -149,9 +154,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 s.normalized_brand,
                 s.street,
                 s.postal_code,
-                s.locality,
-                s.municipality,
-                s.province,
+                s.locality_name,
+                s.normalized_locality_name,
+                s.admin_area_1_name,
+                s.admin_area_2_name,
+                s.admin_area_3_name,
                 s.location,
                 ST_Distance(
                     s.location,
@@ -199,9 +206,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 s.normalized_brand,
                 s.street,
                 s.postal_code,
-                s.locality,
-                s.municipality,
-                s.province,
+                s.locality_name,
+                s.normalized_locality_name,
+                s.admin_area_1_name,
+                s.admin_area_2_name,
+                s.admin_area_3_name,
                 s.location,
                 NULL::double precision AS distance_meters
             FROM station s
@@ -287,9 +296,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 cs.normalized_brand,
                 cs.street,
                 cs.postal_code,
-                cs.locality,
-                cs.municipality,
-                cs.province,
+                cs.locality_name,
+                cs.normalized_locality_name,
+                cs.admin_area_1_name,
+                cs.admin_area_2_name,
+                cs.admin_area_3_name,
                 cs.location,
                 cs.distance_meters,
                 MIN(fp.price) AS station_min_price
@@ -304,9 +315,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 cs.normalized_brand,
                 cs.street,
                 cs.postal_code,
-                cs.locality,
-                cs.municipality,
-                cs.province,
+                cs.locality_name,
+                cs.normalized_locality_name,
+                cs.admin_area_1_name,
+                cs.admin_area_2_name,
+                cs.admin_area_3_name,
                 cs.location,
                 cs.distance_meters
             ORDER BY %s
@@ -321,9 +334,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
             normalized_brand,
             street,
             postal_code,
-            locality,
-            municipality,
-            province,
+            locality_name,
+            normalized_locality_name,
+            admin_area_1_name,
+            admin_area_2_name,
+            admin_area_3_name,
             ST_Y(location::geometry) AS latitude,
             ST_X(location::geometry) AS longitude,
             distance_meters

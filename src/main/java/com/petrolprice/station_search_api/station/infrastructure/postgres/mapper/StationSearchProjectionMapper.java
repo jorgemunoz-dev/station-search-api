@@ -51,9 +51,11 @@ public interface StationSearchProjectionMapper {
         return Address.builder()
                 .street(projection.street())
                 .postalCode(projection.postalCode())
-                .locality(projection.locality())
-                .municipality(projection.municipality())
-                .province(projection.province())
+                .localityName(projection.localityName())
+                .normalizedLocalityName(projection.normalizedLocalityName())
+                .adminArea1Name(projection.adminArea1Name())
+                .adminArea2Name(projection.adminArea2Name())
+                .adminArea3Name(projection.adminArea3Name())
                 .build();
     }
 
