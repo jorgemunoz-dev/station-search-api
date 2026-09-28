@@ -28,8 +28,6 @@ public class PostgresHistoricalPriceRepository implements HistoricalPriceReposit
                 .map(fuelPrice -> mapper.toEntity(snapshotId, stationId, observedAt, fuelPrice))
                 .toList();
 
-        // The final station event can trigger JDBC aggregation in the same transaction.
-        // Flush here so the snapshot rows are visible to that calculation.
-        jpaRepository.saveAllAndFlush(historicalPrices);
+        jpaRepository.saveAll(historicalPrices);
     }
 }
