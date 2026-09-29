@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +28,7 @@ public class SitemapService {
     private final Clock clock;
     private volatile CachedSitemaps cache;
 
+    @Autowired
     public SitemapService(
             SitemapLocationPort locationPort,
             @Value("${app.seo.sitemap.cache-ttl:PT1H}") Duration cacheTtl) {

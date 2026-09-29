@@ -11,11 +11,29 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.env.MapPropertySource;
 
 class SitemapServiceTest {
     private static final Instant NOW = Instant.parse("2026-09-28T10:15:30Z");
+
+    @Test
+    void springCanInstantiateTheServiceWhenTheTestOnlyConstructorAlsoExists() {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.getEnvironment()
+                    .getPropertySources()
+                    .addFirst(new MapPropertySource("test", Map.of("app.seo.sitemap.cache-ttl", "PT5M")));
+            context.registerBean(SitemapLocationPort.class, () -> mock(SitemapLocationPort.class));
+            context.register(SitemapService.class);
+
+            context.refresh();
+
+            assertThat(context.getBean(SitemapService.class)).isNotNull();
+        }
+    }
 
     @Test
     void normalizesSegmentsAndIncludesStaticUrls() {
