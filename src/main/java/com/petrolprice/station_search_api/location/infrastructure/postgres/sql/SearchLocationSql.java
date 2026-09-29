@@ -8,22 +8,13 @@ public class SearchLocationSql {
         WITH unambiguous_station_localities AS (
             SELECT
                 country AS station_country,
-                postal_code AS station_postal_code,
-                MIN(COALESCE(
-                    NULLIF(BTRIM(municipality), ''),
-                    NULLIF(BTRIM(locality), '')
-                )) AS station_locality_name
+                UPPER(REGEXP_REPLACE(postal_code, '[^A-Za-z0-9]', '', 'g')) AS station_postal_code,
+                MIN(NULLIF(BTRIM(locality_name), '')) AS station_locality_name
             FROM station
             WHERE postal_code IS NOT NULL
-              AND COALESCE(
-                    NULLIF(BTRIM(municipality), ''),
-                    NULLIF(BTRIM(locality), '')
-                  ) IS NOT NULL
-            GROUP BY country, postal_code
-            HAVING COUNT(DISTINCT COALESCE(
-                       NULLIF(BTRIM(municipality), ''),
-                       NULLIF(BTRIM(locality), '')
-                   )) = 1
+              AND NULLIF(BTRIM(locality_name), '') IS NOT NULL
+            GROUP BY country, UPPER(REGEXP_REPLACE(postal_code, '[^A-Za-z0-9]', '', 'g'))
+            HAVING COUNT(DISTINCT NULLIF(BTRIM(locality_name), '')) = 1
         ),
         postal_suggestions AS (
             SELECT
@@ -56,7 +47,7 @@ public class SearchLocationSql {
             FROM search_location
             LEFT JOIN unambiguous_station_localities
               ON station_country = country_code
-             AND station_postal_code = search_location.postal_code
+             AND station_postal_code = search_location.normalized_postal_code
             WHERE country_code = :countryCode
               AND normalized_postal_code LIKE :normalizedPostalQuery || '%%'
         ),
@@ -101,7 +92,7 @@ public class SearchLocationSql {
             FROM search_location
             LEFT JOIN unambiguous_station_localities
               ON station_country = country_code
-             AND station_postal_code = search_location.postal_code
+             AND station_postal_code = search_location.normalized_postal_code
             WHERE country_code = :countryCode
               AND (
                   normalized_locality_name LIKE :normalizedTextQuery || '%%'

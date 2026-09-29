@@ -23,7 +23,7 @@
 - [X] STA-06 - Improve observability
 - [ ] STA-07 - Create endpoints to retrieve landing page info
   - I need a new endpoint to retrieve price evolution about the last days
-  - I need a new endpoint to retrieve the top cheapest provinces
+  - I need a new endpoint to retrieve the top cheapest administrative areas
   - I need a new endpoint to retrieve today prices vs yesterday prices
 - [ ] STA-08 - Implement best option scoring
 - [ ] STA-09 - Calculate estimated savings

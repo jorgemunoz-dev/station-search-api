@@ -88,7 +88,7 @@ class SitemapServiceTest {
     void createsAnIndexAndPagesWhenTheUrlLimitIsExceeded() {
         SitemapLocationPort port = mock(SitemapLocationPort.class);
         List<SitemapLocation> localities = IntStream.range(0, SitemapService.MAX_URLS - 2)
-                .mapToObj(number -> new SitemapLocation("ES", "Area", "Province", "town-" + number, NOW))
+                .mapToObj(number -> new SitemapLocation("ES", "Area", "District", "town-" + number, NOW))
                 .toList();
         when(port.findLocalitiesWithContent()).thenReturn(localities);
         SitemapService service = service(port);

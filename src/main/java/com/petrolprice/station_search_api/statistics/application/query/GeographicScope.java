@@ -1,63 +1,12 @@
 package com.petrolprice.station_search_api.statistics.application.query;
 
-import java.text.Normalizer;
-import java.util.Locale;
-
-public record GeographicScope(
-        String normalizedLocalityName,
-        String localityName,
-        String adminArea1Name,
-        String adminArea2Name,
-        String adminArea3Name) {
-
-    public static GeographicScope country() {
-        return new GeographicScope(null, null, null, null, null);
+public record GeographicScope(String adminArea1Name, String adminArea2Name, String adminArea3Name) {
+    public GeographicScope {
+        adminArea1Name=clean(adminArea1Name); adminArea2Name=clean(adminArea2Name); adminArea3Name=clean(adminArea3Name);
+        if(adminArea2Name!=null&&adminArea1Name==null) throw new IllegalArgumentException("adminArea2 requires adminArea1");
+        if(adminArea3Name!=null&&(adminArea1Name==null||adminArea2Name==null)) throw new IllegalArgumentException("adminArea3 requires adminArea1 and adminArea2");
     }
-
-    public static GeographicScope locality(String localityName) {
-        if (localityName == null || localityName.isBlank()) {
-            throw new IllegalArgumentException("locality is required");
-        }
-        String normalized = Normalizer.normalize(localityName, Normalizer.Form.NFKD)
-                .replaceAll("\\p{M}+", "")
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^\\p{L}\\p{N}]+", " ")
-                .trim()
-                .replaceAll("\\s+", " ");
-        return new GeographicScope(normalized, null, null, null, null);
-    }
-
-    public static GeographicScope adminArea1(String name) {
-        return administrativeArea(name, 1);
-    }
-
-    public static GeographicScope adminArea2(String name) {
-        return administrativeArea(name, 2);
-    }
-
-    public static GeographicScope adminArea3(String name) {
-        return administrativeArea(name, 3);
-    }
-
-    public static GeographicScope resolvedLocality(
-            String normalizedName,
-            String name,
-            String adminArea1Name,
-            String adminArea2Name,
-            String adminArea3Name) {
-        return new GeographicScope(normalizedName, name, adminArea1Name, adminArea2Name, adminArea3Name);
-    }
-
-    private static GeographicScope administrativeArea(String name, int position) {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("adminArea" + position + " is required");
-        }
-        String trimmedName = name.trim();
-        return switch (position) {
-            case 1 -> new GeographicScope(null, null, trimmedName, null, null);
-            case 2 -> new GeographicScope(null, null, null, trimmedName, null);
-            case 3 -> new GeographicScope(null, null, null, null, trimmedName);
-            default -> throw new IllegalArgumentException("Unsupported administrative area position");
-        };
-    }
+    public static GeographicScope country(){return new GeographicScope(null,null,null);}
+    public static GeographicScope administrativeHierarchy(String a1,String a2,String a3){return new GeographicScope(a1,a2,a3);}
+    private static String clean(String v){return v==null||v.isBlank()?null:v.trim();}
 }

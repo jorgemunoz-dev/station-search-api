@@ -40,3 +40,11 @@ Use `runConcurrently` for race scenarios and Awaitility only across asynchronous
 | Station geospatial ranking details | Search adapter -> PostGIS | `PostgresStationSearchPersistenceAdapterIT` |
 
 `GetFuelPriceSummaryService` and `FuelPriceStatisticsController` currently return `null`; they do not yet implement a behavior that an end-to-end test can assert. Their acceptance path should be added when statistics calculation and retrieval are implemented. Until then, the batch acceptance test verifies the available finalization behavior: the import reaches `COMPLETED` after all published stations are processed.
+
+
+## Administrative data setup
+
+Integration fixtures must populate the ordered administrative hierarchy or a matching
+`search_location` row keyed by country and normalized postal code. Recreate the test database after
+this schema change; old statistics must be regenerated from snapshots. Consumer concurrency must
+remain below the configured Hikari maximum pool size.

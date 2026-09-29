@@ -103,11 +103,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-        - addUniqueConstraint:
-            tableName: search_location
-            columnNames: country_code, normalized_postal_code, normalized_locality_name
-            constraintName: uk_search_location
-
         - createIndex:
             tableName: search_location
             indexName: idx_search_location_country_postal_code
@@ -137,3 +132,26 @@ databaseChangeLog:
               CREATE INDEX idx_search_location_location
               ON search_location
               USING GIST (location);
+
+  - changeSet:
+      id: 009-search-location-hierarchy-indexes
+      author: codex
+      changes:
+        - createIndex:
+            tableName: search_location
+            indexName: idx_search_location_hierarchy
+            columns:
+              - column: {name: country_code}
+              - column: {name: admin_area_1_name}
+              - column: {name: admin_area_2_name}
+              - column: {name: admin_area_3_name}
+        - createIndex:
+            tableName: search_location
+            indexName: idx_search_location_identity
+            columns:
+              - column: {name: country_code}
+              - column: {name: normalized_postal_code}
+              - column: {name: normalized_locality_name}
+              - column: {name: admin_area_1_code}
+              - column: {name: admin_area_2_code}
+              - column: {name: admin_area_3_code}

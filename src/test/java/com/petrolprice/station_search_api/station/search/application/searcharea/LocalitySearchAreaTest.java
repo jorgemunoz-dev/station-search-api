@@ -1,31 +1,8 @@
 package com.petrolprice.station_search_api.station.search.application.searcharea;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-
+import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.Test;
-
 class LocalitySearchAreaTest {
-
-    @Test
-    void shouldNormalizeCountryAndLocality() {
-        LocalitySearchArea area = new LocalitySearchArea("es", "  Málaga  ");
-
-        assertThat(area.countryCode()).isEqualTo("ES");
-        assertThat(area.normalizedLocality()).isEqualTo("malaga");
-    }
-
-    @Test
-    void shouldRejectInvalidCountryCode() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new LocalitySearchArea("ESP", "Málaga"))
-                .withMessage("countryCode must be a two-letter ISO country code");
-    }
-
-    @Test
-    void shouldRejectBlankLocality() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new LocalitySearchArea("ES", " "))
-                .withMessage("locality is required");
-    }
+ @Test void normalizesCountryAndHierarchy(){var a=new LocalitySearchArea("es","Andalucía","MÁLAGA","Ardales");assertThat(a).isEqualTo(new LocalitySearchArea("ES","andalucia","malaga","ardales"));}
+ @Test void requiresAllLevels(){assertThatThrownBy(()->new LocalitySearchArea("ES","Andalucía",null,"Ardales")).hasMessage("adminArea2 is required");}
+ @Test void validatesCountry(){assertThatThrownBy(()->new LocalitySearchArea("ESP","A","B","C")).hasMessageContaining("two-letter");}
 }

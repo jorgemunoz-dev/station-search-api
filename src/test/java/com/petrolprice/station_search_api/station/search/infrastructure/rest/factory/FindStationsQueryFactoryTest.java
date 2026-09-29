@@ -20,12 +20,14 @@ class FindStationsQueryFactoryTest {
         var query = factory.create(StationSearchParameters.builder()
                 .searchMode(StationSearchMode.LOCALITY)
                 .countryCode("es")
-                .locality("Málaga")
+                .adminArea1("Andalucía")
+                .adminArea2("Málaga")
+                .adminArea3("Ardales")
                 .sortBy(StationSearchSortBy.PRICE)
                 .size(50)
                 .build());
 
-        assertThat(query.searchArea()).isEqualTo(new LocalitySearchArea("ES", "malaga"));
+        assertThat(query.searchArea()).isEqualTo(new LocalitySearchArea("ES", "andalucia", "malaga", "ardales"));
         assertThat(query.sortBy()).isEqualTo(FindStationsSort.PRICE);
     }
 
@@ -34,7 +36,9 @@ class FindStationsQueryFactoryTest {
         StationSearchParameters parameters = StationSearchParameters.builder()
                 .searchMode(StationSearchMode.LOCALITY)
                 .countryCode("ES")
-                .locality("Málaga")
+                .adminArea1("Andalucía")
+                .adminArea2("Málaga")
+                .adminArea3("Ardales")
                 .latitude(BigDecimal.ONE)
                 .sortBy(StationSearchSortBy.PRICE)
                 .size(50)
@@ -50,7 +54,9 @@ class FindStationsQueryFactoryTest {
         StationSearchParameters parameters = StationSearchParameters.builder()
                 .searchMode(StationSearchMode.RADIUS)
                 .countryCode("ES")
-                .locality("Málaga")
+                .adminArea1("Andalucía")
+                .adminArea2("Málaga")
+                .adminArea3("Ardales")
                 .latitude(BigDecimal.ONE)
                 .longitude(BigDecimal.ONE)
                 .radiusMeters(1_000)
@@ -60,6 +66,6 @@ class FindStationsQueryFactoryTest {
 
         assertThatThrownBy(() -> factory.create(parameters))
                 .isInstanceOf(InvalidStationSearchRequestException.class)
-                .hasMessage("RADIUS and VIEWPORT searches must not contain countryCode or locality");
+                .hasMessage("RADIUS and VIEWPORT searches must not contain countryCode or administrative-area parameters");
     }
 }

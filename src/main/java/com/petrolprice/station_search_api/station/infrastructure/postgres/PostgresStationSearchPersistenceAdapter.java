@@ -84,50 +84,37 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
     }
 
     private List<StationRankingProjection> findRankedStationsByLocality(
-            FindStationsQuery query, LocalitySearchArea locality) {
-        String candidateStationsSql =
-                """
-            SELECT
-                s.id, s.external_id, s.country, s.brand, s.normalized_brand, s.street,
-                s.postal_code, s.locality, s.municipality, s.province, s.location,
-                NULL::double precision AS distance_meters
+            FindStationsQuery query, LocalitySearchArea area) {
+        String candidates = """
+            SELECT s.id, s.external_id, s.country, s.brand, s.normalized_brand, s.street,
+                   s.postal_code, COALESCE(s.locality_name, resolved.locality_name) locality_name,
+                   COALESCE(s.normalized_locality_name, resolved.normalized_locality_name) normalized_locality_name,
+                   COALESCE(s.admin_area_1_name, resolved.admin_area_1_name) admin_area_1_name,
+                   COALESCE(s.admin_area_2_name, resolved.admin_area_2_name) admin_area_2_name,
+                   COALESCE(s.admin_area_3_name, resolved.admin_area_3_name) admin_area_3_name,
+                   s.location, NULL::double precision distance_meters
             FROM station s
-            WHERE s.country = :countryCode
-              AND (
-                  BTRIM(LOWER(REGEXP_REPLACE(
-                        TRANSLATE(COALESCE(s.municipality, s.locality, ''),
-                                  'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
-                        '[^[:alnum:]]+', ' ', 'g'))) = :locality
-                  OR BTRIM(LOWER(REGEXP_REPLACE(
-                        TRANSLATE(COALESCE(s.locality, ''),
-                                  'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'),
-                        '[^[:alnum:]]+', ' ', 'g'))) = :locality
-                  OR s.postal_code IN (
-                      SELECT sl.postal_code
-                      FROM search_location sl
-                      INNER JOIN station postal_station
-                        ON postal_station.country = sl.country_code
-                       AND postal_station.postal_code = sl.postal_code
-                      WHERE sl.country_code = :countryCode
-                        AND sl.normalized_locality_name = :locality
-                      GROUP BY sl.country_code, sl.postal_code
-                      HAVING COUNT(DISTINCT COALESCE(
-                                 NULLIF(BTRIM(postal_station.municipality), ''),
-                                 NULLIF(BTRIM(postal_station.locality), '')
-                             )) = 1
-                         AND COUNT(*) FILTER (WHERE COALESCE(
-                                 NULLIF(BTRIM(postal_station.municipality), ''),
-                                 NULLIF(BTRIM(postal_station.locality), '')
-                             ) IS NULL) = 0
-                  )
-              )
+            LEFT JOIN LATERAL (
+                SELECT sl.locality_name, sl.normalized_locality_name, sl.admin_area_1_name,
+                       sl.admin_area_2_name, sl.admin_area_3_name
+                FROM search_location sl
+                WHERE sl.country_code=s.country
+                  AND sl.normalized_postal_code=UPPER(REGEXP_REPLACE(s.postal_code,'[^A-Za-z0-9]','','g'))
+                  AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(sl.admin_area_1_name),'[^[:alnum:]]+',' ','g')))=:adminArea1
+                  AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(sl.admin_area_2_name),'[^[:alnum:]]+',' ','g')))=:adminArea2
+                  AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(sl.admin_area_3_name),'[^[:alnum:]]+',' ','g')))=:adminArea3
+                ORDER BY sl.accuracy DESC NULLS LAST, sl.id LIMIT 1
+            ) resolved ON TRUE
+            WHERE s.country=:countryCode AND ((
+                BTRIM(LOWER(REGEXP_REPLACE(unaccent(s.admin_area_1_name),'[^[:alnum:]]+',' ','g')))=:adminArea1 AND
+                BTRIM(LOWER(REGEXP_REPLACE(unaccent(s.admin_area_2_name),'[^[:alnum:]]+',' ','g')))=:adminArea2 AND
+                BTRIM(LOWER(REGEXP_REPLACE(unaccent(s.admin_area_3_name),'[^[:alnum:]]+',' ','g')))=:adminArea3
+            ) OR resolved.admin_area_3_name IS NOT NULL)
             """;
-
-        MapSqlParameterSource parameters = createCommonParameters(query)
-                .addValue("countryCode", locality.countryCode())
-                .addValue("locality", locality.normalizedLocality());
-
-        return executeRankingQuery(query, candidateStationsSql, localityOrderBy(query.sortBy()), parameters);
+        MapSqlParameterSource parameters=createCommonParameters(query)
+                .addValue("countryCode",area.countryCode()).addValue("adminArea1",area.normalizedAdminArea1())
+                .addValue("adminArea2",area.normalizedAdminArea2()).addValue("adminArea3",area.normalizedAdminArea3());
+        return executeRankingQuery(query,candidates,localityOrderBy(query.sortBy()),parameters);
     }
 
     /*
@@ -149,9 +136,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 s.normalized_brand,
                 s.street,
                 s.postal_code,
-                s.locality,
-                s.municipality,
-                s.province,
+                s.locality_name,
+                s.normalized_locality_name,
+                s.admin_area_1_name,
+                s.admin_area_2_name,
+                s.admin_area_3_name,
                 s.location,
                 ST_Distance(
                     s.location,
@@ -199,9 +188,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 s.normalized_brand,
                 s.street,
                 s.postal_code,
-                s.locality,
-                s.municipality,
-                s.province,
+                s.locality_name,
+                s.normalized_locality_name,
+                s.admin_area_1_name,
+                s.admin_area_2_name,
+                s.admin_area_3_name,
                 s.location,
                 NULL::double precision AS distance_meters
             FROM station s
@@ -287,9 +278,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 cs.normalized_brand,
                 cs.street,
                 cs.postal_code,
-                cs.locality,
-                cs.municipality,
-                cs.province,
+                cs.locality_name,
+                cs.normalized_locality_name,
+                cs.admin_area_1_name,
+                cs.admin_area_2_name,
+                cs.admin_area_3_name,
                 cs.location,
                 cs.distance_meters,
                 MIN(fp.price) AS station_min_price
@@ -304,9 +297,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 cs.normalized_brand,
                 cs.street,
                 cs.postal_code,
-                cs.locality,
-                cs.municipality,
-                cs.province,
+                cs.locality_name,
+                cs.normalized_locality_name,
+                cs.admin_area_1_name,
+                cs.admin_area_2_name,
+                cs.admin_area_3_name,
                 cs.location,
                 cs.distance_meters
             ORDER BY %s
@@ -321,9 +316,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
             normalized_brand,
             street,
             postal_code,
-            locality,
-            municipality,
-            province,
+            locality_name,
+            normalized_locality_name,
+            admin_area_1_name,
+            admin_area_2_name,
+            admin_area_3_name,
             ST_Y(location::geometry) AS latitude,
             ST_X(location::geometry) AS longitude,
             distance_meters

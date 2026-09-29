@@ -40,13 +40,13 @@ public class PostgresFuelPriceStatisticsRepository
                 WITH selected AS (
                     SELECT * FROM fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
-                      AND normalized_locality_name IS NOT DISTINCT FROM :locality
+                      AND normalized_locality_name IS NULL
                       AND ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
-                           OR LOWER(admin_area_1_name) = LOWER(CAST(:adminArea1 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_1_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea1)
                       AND ((CAST(:adminArea2 AS varchar) IS NULL AND admin_area_2_name IS NULL)
-                           OR LOWER(admin_area_2_name) = LOWER(CAST(:adminArea2 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_2_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea2)
                       AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
-                           OR LOWER(admin_area_3_name) = LOWER(CAST(:adminArea3 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_3_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea3)
                     ORDER BY calculated_at DESC LIMIT 1
                 ), country_statistics AS (
                     SELECT average_price FROM fuel_price_statistics
@@ -54,30 +54,16 @@ public class PostgresFuelPriceStatisticsRepository
                       AND country = :country AND product_type = :productType
                       AND normalized_locality_name IS NULL
                       AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
-                ), locality AS (
-                    SELECT locality_name, normalized_locality_name,
-                           admin_area_1_name, admin_area_2_name, admin_area_3_name
-                    FROM search_location
-                    WHERE country_code = :country
-                      AND normalized_locality_name = (SELECT normalized_locality_name FROM selected)
-                    ORDER BY accuracy DESC NULLS LAST LIMIT 1
                 ), admin_area_2_statistics AS (
-                    SELECT SUM(f.average_price * f.station_count) / NULLIF(SUM(f.station_count), 0) average_price
-                    FROM fuel_price_statistics f
-                    JOIN (
-                        SELECT DISTINCT normalized_locality_name, admin_area_2_name
-                        FROM search_location WHERE country_code = :country
-                    ) metadata USING (normalized_locality_name)
-                    WHERE f.snapshot_id = (SELECT snapshot_id FROM selected)
-                      AND f.country = :country AND f.product_type = :productType
-                      AND LOWER(metadata.admin_area_2_name) = LOWER((SELECT admin_area_2_name FROM locality))
+                    SELECT average_price FROM fuel_price_statistics f
+                    WHERE f.snapshot_id=(SELECT snapshot_id FROM selected) AND f.country=:country
+                      AND f.product_type=:productType AND f.normalized_locality_name IS NULL
+                      AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(f.admin_area_1_name),'[^[:alnum:]]+',' ','g')))=:adminArea1
+                      AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(f.admin_area_2_name),'[^[:alnum:]]+',' ','g')))=:adminArea2
+                      AND f.admin_area_3_name IS NULL
                 )
                 SELECT selected.*, country_statistics.average_price country_average,
                        admin_area_2_statistics.average_price admin_area_2_average,
-                       locality.locality_name,
-                       locality.admin_area_1_name locality_admin_area_1_name,
-                       locality.admin_area_2_name locality_admin_area_2_name,
-                       locality.admin_area_3_name locality_admin_area_3_name,
                        selected.cheapest_station_id cheap_id, selected.minimum_price cheap_price,
                        cheap.external_id cheap_external_id, cheap.brand cheap_brand,
                        ST_Y(cheap.location::geometry) cheap_latitude,
@@ -87,7 +73,7 @@ public class PostgresFuelPriceStatisticsRepository
                        expensive.external_id expensive_external_id, expensive.brand expensive_brand,
                        ST_Y(expensive.location::geometry) expensive_latitude,
                        ST_X(expensive.location::geometry) expensive_longitude
-                FROM selected CROSS JOIN country_statistics LEFT JOIN locality ON TRUE
+                FROM selected CROSS JOIN country_statistics
                 LEFT JOIN admin_area_2_statistics ON TRUE
                 JOIN station cheap ON cheap.id = selected.cheapest_station_id
                 JOIN station expensive ON expensive.id = selected.most_expensive_station_id
@@ -128,13 +114,13 @@ public class PostgresFuelPriceStatisticsRepository
                            maximum_price, station_count
                     FROM fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
-                      AND normalized_locality_name IS NOT DISTINCT FROM :locality
+                      AND normalized_locality_name IS NULL
                       AND ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
-                           OR LOWER(admin_area_1_name) = LOWER(CAST(:adminArea1 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_1_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea1)
                       AND ((CAST(:adminArea2 AS varchar) IS NULL AND admin_area_2_name IS NULL)
-                           OR LOWER(admin_area_2_name) = LOWER(CAST(:adminArea2 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_2_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea2)
                       AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
-                           OR LOWER(admin_area_3_name) = LOWER(CAST(:adminArea3 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_3_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea3)
                       AND calculated_at >= CAST(:historyFrom AS date)
                       AND calculated_at < (CAST(:to AS date) + INTERVAL '1 day')
                     ORDER BY calculated_at::date, calculated_at DESC
@@ -197,12 +183,12 @@ public class PostgresFuelPriceStatisticsRepository
                       AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
                     ORDER BY calculated_at DESC LIMIT 1
                 ), locality_metadata AS (
-                    SELECT DISTINCT ON (normalized_locality_name)
+                    SELECT DISTINCT ON (normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name)
                            normalized_locality_name, locality_name,
                            admin_area_1_name, admin_area_2_name, admin_area_3_name
                     FROM search_location
                     WHERE country_code = :country
-                    ORDER BY normalized_locality_name, accuracy DESC NULLS LAST
+                    ORDER BY normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name, accuracy DESC NULLS LAST
                 ), ranked AS (
                     SELECT f.*, l.locality_name,
                            l.admin_area_1_name locality_admin_area_1_name,
@@ -211,15 +197,18 @@ public class PostgresFuelPriceStatisticsRepository
                            RANK() OVER (ORDER BY average_price, l.locality_name) cheapest_rank,
                            RANK() OVER (ORDER BY average_price DESC, l.locality_name) expensive_rank
                     FROM fuel_price_statistics f
-                    JOIN locality_metadata l USING (normalized_locality_name)
+                    JOIN locality_metadata l ON l.normalized_locality_name=f.normalized_locality_name
+                     AND l.admin_area_1_name IS NOT DISTINCT FROM f.admin_area_1_name
+                     AND l.admin_area_2_name IS NOT DISTINCT FROM f.admin_area_2_name
+                     AND l.admin_area_3_name IS NOT DISTINCT FROM f.admin_area_3_name
                     WHERE f.snapshot_id = (SELECT snapshot_id FROM latest_snapshot)
                       AND f.country = :country AND f.product_type = :productType
                       AND (CAST(:adminArea1 AS varchar) IS NULL
-                           OR LOWER(l.admin_area_1_name) = LOWER(CAST(:adminArea1 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(l.admin_area_1_name), '[^[:alnum:]]+', ' ', 'g'))) = BTRIM(LOWER(REGEXP_REPLACE(unaccent(CAST(:adminArea1 AS varchar)), '[^[:alnum:]]+', ' ', 'g'))))
                       AND (CAST(:adminArea2 AS varchar) IS NULL
-                           OR LOWER(l.admin_area_2_name) = LOWER(CAST(:adminArea2 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(l.admin_area_2_name), '[^[:alnum:]]+', ' ', 'g'))) = BTRIM(LOWER(REGEXP_REPLACE(unaccent(CAST(:adminArea2 AS varchar)), '[^[:alnum:]]+', ' ', 'g'))))
                       AND (CAST(:adminArea3 AS varchar) IS NULL
-                           OR LOWER(l.admin_area_3_name) = LOWER(CAST(:adminArea3 AS varchar)))
+                           OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(l.admin_area_3_name), '[^[:alnum:]]+', ' ', 'g'))) = BTRIM(LOWER(REGEXP_REPLACE(unaccent(CAST(:adminArea3 AS varchar)), '[^[:alnum:]]+', ' ', 'g'))))
                 )
                 SELECT ranked.*, latest_snapshot.country_average,
                        cheap.id cheap_id, cheap.external_id cheap_external_id,
@@ -280,8 +269,10 @@ public class PostgresFuelPriceStatisticsRepository
                 WITH source AS (
                     SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
                            hp.observed_at,
-                           location.normalized_locality_name, location.admin_area_1_name,
-                           location.admin_area_2_name, location.admin_area_3_name
+                           COALESCE(s.normalized_locality_name, location.normalized_locality_name) normalized_locality_name,
+                           COALESCE(s.admin_area_1_name, location.admin_area_1_name) admin_area_1_name,
+                           COALESCE(s.admin_area_2_name, location.admin_area_2_name) admin_area_2_name,
+                           COALESCE(s.admin_area_3_name, location.admin_area_3_name) admin_area_3_name
                     FROM historical_product_price hp
                     JOIN station s ON s.id = hp.station_id
                     LEFT JOIN LATERAL (
@@ -292,7 +283,7 @@ public class PostgresFuelPriceStatisticsRepository
                           AND sl.normalized_postal_code = UPPER(REGEXP_REPLACE(s.postal_code, '[^A-Za-z0-9]', '', 'g'))
                         ORDER BY similarity(
                             sl.normalized_locality_name,
-                            LOWER(COALESCE(s.municipality, s.locality, ''))
+                            COALESCE(s.normalized_locality_name, '')
                         ) DESC, sl.accuracy DESC NULLS LAST
                         LIMIT 1
                     ) location ON TRUE
@@ -304,17 +295,17 @@ public class PostgresFuelPriceStatisticsRepository
                     FROM source
                     UNION ALL
                     SELECT snapshot_id, country, product_type, normalized_locality_name,
-                           NULL, NULL, NULL, station_id, price, observed_at
+                           admin_area_1_name, admin_area_2_name, admin_area_3_name, station_id, price, observed_at
                     FROM source WHERE normalized_locality_name IS NOT NULL
                     UNION ALL
                     SELECT snapshot_id, country, product_type, NULL, admin_area_1_name, NULL, NULL,
                            station_id, price, observed_at FROM source WHERE admin_area_1_name IS NOT NULL
                     UNION ALL
-                    SELECT snapshot_id, country, product_type, NULL, NULL, admin_area_2_name, NULL,
-                           station_id, price, observed_at FROM source WHERE admin_area_2_name IS NOT NULL
+                    SELECT snapshot_id, country, product_type, NULL, admin_area_1_name, admin_area_2_name, NULL,
+                           station_id, price, observed_at FROM source WHERE admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL
                     UNION ALL
-                    SELECT snapshot_id, country, product_type, NULL, NULL, NULL, admin_area_3_name,
-                           station_id, price, observed_at FROM source WHERE admin_area_3_name IS NOT NULL
+                    SELECT snapshot_id, country, product_type, NULL, admin_area_1_name, admin_area_2_name, admin_area_3_name,
+                           station_id, price, observed_at FROM source WHERE admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL AND admin_area_3_name IS NOT NULL
                 )
                 INSERT INTO fuel_price_statistics (
                     id, snapshot_id, country, product_type, normalized_locality_name,
@@ -342,19 +333,9 @@ public class PostgresFuelPriceStatisticsRepository
 
     private MapSqlParameterSource scopeParameters(MapSqlParameterSource parameters, GeographicScope scope) {
         return parameters
-                .addValue("locality", scope.normalizedLocalityName(), Types.VARCHAR)
-                .addValue(
-                        "adminArea1",
-                        scope.normalizedLocalityName() == null ? scope.adminArea1Name() : null,
-                        Types.VARCHAR)
-                .addValue(
-                        "adminArea2",
-                        scope.normalizedLocalityName() == null ? scope.adminArea2Name() : null,
-                        Types.VARCHAR)
-                .addValue(
-                        "adminArea3",
-                        scope.normalizedLocalityName() == null ? scope.adminArea3Name() : null,
-                        Types.VARCHAR);
+                .addValue("adminArea1", normalize(scope.adminArea1Name()), Types.VARCHAR)
+                .addValue("adminArea2", normalize(scope.adminArea2Name()), Types.VARCHAR)
+                .addValue("adminArea3", normalize(scope.adminArea3Name()), Types.VARCHAR);
     }
 
     private String blankToNull(String value) {
@@ -362,21 +343,11 @@ public class PostgresFuelPriceStatisticsRepository
     }
 
     private GeographicScope resolvedScope(ResultSet rs) throws SQLException {
-        String normalizedName = rs.getString("normalized_locality_name");
-        if (normalizedName != null) {
-            return GeographicScope.resolvedLocality(
-                        normalizedName,
-                        rs.getString("locality_name"),
-                        rs.getString("locality_admin_area_1_name"),
-                        rs.getString("locality_admin_area_2_name"),
-                        rs.getString("locality_admin_area_3_name"));
-        }
-        return new GeographicScope(
-                null,
-                null,
-                rs.getString("admin_area_1_name"),
-                rs.getString("admin_area_2_name"),
-                rs.getString("admin_area_3_name"));
+        return new GeographicScope(rs.getString("admin_area_1_name"), rs.getString("admin_area_2_name"), rs.getString("admin_area_3_name"));
+    }
+
+    private String normalize(String value) {
+        return com.petrolprice.station_search_api.station.search.application.searcharea.AdministrativeHierarchyNormalizer.normalize(value);
     }
 
     private StationPricePoint station(ResultSet rs, String prefix, Double distance) throws SQLException {

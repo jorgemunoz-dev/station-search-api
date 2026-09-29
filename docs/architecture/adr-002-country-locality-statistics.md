@@ -6,7 +6,7 @@
 ## Context
 
 The first statistics design introduced overlapping concepts such as geographic level, scope key,
-area name, province, and municipality. Replacing those concepts with a separate administrative-area
+area names tied to one country. Replacing those concepts with a separate administrative-area
 catalogue would require another table and a new ingestion lifecycle even though `search_location`
 already contains normalized locality names and optional `admin_area_1`, `admin_area_2`, and
 `admin_area_3` metadata.
@@ -35,7 +35,7 @@ search, so both `Ardales` and an already normalized value work. Clients should n
 `normalizedLocalityName` returned by location search.
 
 `admin_area_1`, `admin_area_2`, and `admin_area_3` remain country-specific metadata. They are not
-global enums and the service does not assign universal meanings such as state, province, or county.
+global enums and the service does not assign universal meanings such as country-specific political meanings.
 Current and historical endpoints can select one of those values, and the locality ranking endpoint
 can use them as filters.
 
@@ -64,4 +64,4 @@ that must be populated independently.
 - Locality names are assumed to be unique within a country, as required by the product decision.
 - Stations that cannot be matched through country and postal code only contribute to country totals.
 - The meaning of each positional admin area depends on the source and country; clients must not assume
-  that `adminArea2` always means province outside Spain.
+  a universal political meaning for `adminArea2`.

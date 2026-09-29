@@ -67,21 +67,29 @@ public final class StationSnapshotFixture {
         this.address = Address.builder()
                 .street(address.getStreet())
                 .postalCode(address.getPostalCode())
-                .locality(locality)
-                .municipality(locality)
-                .province(address.getProvince())
+                .localityName(locality)
+                .normalizedLocalityName(locality)
+                .adminArea1Name(address.getAdminArea1Name())
                 .build();
         return this;
     }
 
-    public StationSnapshotFixture withLocalityAndMunicipality(String locality, String municipality) {
+    public StationSnapshotFixture withLocalityAndNormalizedName(String locality, String normalizedLocality) {
         this.address = Address.builder()
                 .street(address.getStreet())
                 .postalCode(address.getPostalCode())
-                .locality(locality)
-                .municipality(municipality)
-                .province(address.getProvince())
+                .localityName(locality)
+                .normalizedLocalityName(normalizedLocality)
+                .adminArea1Name(address.getAdminArea1Name())
                 .build();
+        return this;
+    }
+
+
+    public StationSnapshotFixture withAdministrativeHierarchy(String area1, String area2, String area3) {
+        this.address = Address.builder().street(address.getStreet()).postalCode(address.getPostalCode())
+                .localityName(address.getLocalityName()).normalizedLocalityName(address.getNormalizedLocalityName())
+                .adminArea1Name(area1).adminArea2Name(area2).adminArea3Name(area3).build();
         return this;
     }
 
@@ -89,9 +97,9 @@ public final class StationSnapshotFixture {
         this.address = Address.builder()
                 .street(address.getStreet())
                 .postalCode(postalCode)
-                .locality(address.getLocality())
-                .municipality(address.getMunicipality())
-                .province(address.getProvince())
+                .localityName(address.getLocalityName())
+                .normalizedLocalityName(address.getNormalizedLocalityName())
+                .adminArea1Name(address.getAdminArea1Name())
                 .build();
         return this;
     }
@@ -169,9 +177,8 @@ public final class StationSnapshotFixture {
                         new AddressMessage(
                                 address.getStreet(),
                                 address.getPostalCode(),
-                                address.getLocality(),
-                                address.getMunicipality(),
-                                address.getProvince()),
+                                address.getLocalityName(), address.getNormalizedLocalityName(),
+                                address.getAdminArea1Name(), address.getAdminArea2Name(), address.getAdminArea3Name()),
                         new LocationMessage(latitude.doubleValue(), longitude.doubleValue()),
                         prices.stream()
                                 .map(price -> new FuelPriceMessage(
@@ -217,9 +224,11 @@ public final class StationSnapshotFixture {
         return Address.builder()
                 .street("Street " + suffix)
                 .postalCode("%05d".formatted(ThreadLocalRandom.current().nextInt(100_000)))
-                .locality("Locality " + suffix)
-                .municipality("Municipality " + suffix)
-                .province("Province " + suffix)
+                .localityName("Locality " + suffix)
+                .normalizedLocalityName("Normalized locality " + suffix)
+                .adminArea1Name("Area 1 " + suffix)
+                .adminArea2Name("Area 2 " + suffix)
+                .adminArea3Name("Area 3 " + suffix)
                 .build();
     }
 

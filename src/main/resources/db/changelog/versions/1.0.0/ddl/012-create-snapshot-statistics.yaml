@@ -94,23 +94,23 @@ databaseChangeLog:
         - sql:
             sql: >-
               CREATE UNIQUE INDEX uk_statistics_snapshot_locality
-              ON fuel_price_statistics (snapshot_id, country, product_type, normalized_locality_name)
+              ON fuel_price_statistics (snapshot_id, country, product_type, normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name)
               WHERE normalized_locality_name IS NOT NULL
         - sql:
             sql: >-
               CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_1
               ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_1_name)
-              WHERE admin_area_1_name IS NOT NULL
+              WHERE admin_area_1_name IS NOT NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
         - sql:
             sql: >-
               CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_2
-              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_2_name)
-              WHERE admin_area_2_name IS NOT NULL
+              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_1_name, admin_area_2_name)
+              WHERE admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL AND admin_area_3_name IS NULL
         - sql:
             sql: >-
               CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_3
-              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_3_name)
-              WHERE admin_area_3_name IS NOT NULL
+              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_1_name, admin_area_2_name, admin_area_3_name)
+              WHERE admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL AND admin_area_3_name IS NOT NULL
         - createIndex:
             tableName: fuel_price_statistics
             indexName: idx_statistics_current_lookup

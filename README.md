@@ -211,3 +211,19 @@ This is the only place where providers and frameworks code should live.
 ## Roadmap
 
 See [ROADMAP.md](./ROADMAP.md)
+
+## Multi-country administrative hierarchy
+
+Stations use `locality_name`, `normalized_locality_name` and the generic `admin_area_1_name` through
+`admin_area_3_name` fields. Exact station/statistics selection uses the ordered administrative
+hierarchy. Missing station metadata is resolved from `search_location` using country and normalized
+postal code. Because this pre-production schema changed in-place, recreate the database and import
+GeoNames/reprocess snapshots.
+
+### Consumer and database tuning
+
+`SNAPSHOT_CONCURRENCY=8`, `SNAPSHOT_MAX_CONCURRENCY=16`, `SNAPSHOT_PREFETCH=100`,
+`COMPLETION_CONCURRENCY=1`, `COMPLETION_PREFETCH=1`, `DB_POOL_MAX_SIZE=20`,
+`DB_POOL_MIN_IDLE=4` and `HIBERNATE_JDBC_BATCH_SIZE=50` are configurable. Keep snapshot maximum
+concurrency below the JDBC pool maximum so the completion consumer and HTTP traffic retain a
+connection. `HIBERNATE_ORDER_INSERTS` and `HIBERNATE_ORDER_UPDATES` default to `true`.

@@ -19,7 +19,7 @@ public class PostgresSitemapLocationAdapter implements SitemapLocationPort {
                 FROM search_location sl
                 JOIN station s
                   ON s.country = sl.country_code
-                 AND s.postal_code = sl.postal_code
+                 AND UPPER(REGEXP_REPLACE(s.postal_code, '[^A-Za-z0-9]', '', 'g')) = sl.normalized_postal_code
                 GROUP BY sl.country_code, sl.admin_area_1_name, sl.admin_area_2_name,
                          sl.normalized_locality_name
 
@@ -31,6 +31,9 @@ public class PostgresSitemapLocationAdapter implements SitemapLocationPort {
                 JOIN fuel_price_statistics fps
                   ON fps.country = sl.country_code
                  AND fps.normalized_locality_name = sl.normalized_locality_name
+                 AND fps.admin_area_1_name IS NOT DISTINCT FROM sl.admin_area_1_name
+                 AND fps.admin_area_2_name IS NOT DISTINCT FROM sl.admin_area_2_name
+                 AND fps.admin_area_3_name IS NOT DISTINCT FROM sl.admin_area_3_name
                  AND fps.station_count > 0
                 GROUP BY sl.country_code, sl.admin_area_1_name, sl.admin_area_2_name,
                          sl.normalized_locality_name

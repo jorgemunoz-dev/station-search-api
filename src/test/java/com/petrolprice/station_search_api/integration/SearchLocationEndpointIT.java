@@ -159,11 +159,11 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 .andExpect(status().isBadRequest());
     }
 
-    private void insertStation(String id, String postalCode, String locality, String municipality) {
+    private void insertStation(String id, String postalCode, String localityName, String normalizedLocalityName) {
         jdbcTemplate.update(
                 """
             INSERT INTO station (
-                id, external_id, country, postal_code, locality, municipality,
+                id, external_id, country, postal_code, locality_name, normalized_locality_name,
                 location, created_at, updated_at
             ) VALUES (
                 ?::uuid, ?, 'ES', ?, ?, ?,
@@ -174,8 +174,8 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 id,
                 id,
                 postalCode,
-                locality,
-                municipality);
+                localityName,
+                normalizedLocalityName);
     }
 
     private void insertSearchLocationWithoutStations() {

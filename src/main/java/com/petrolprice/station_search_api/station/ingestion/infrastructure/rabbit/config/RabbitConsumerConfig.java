@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(RabbitRetryProperties.class)
+@EnableConfigurationProperties({RabbitRetryProperties.class, RabbitConsumerProperties.class})
 public class RabbitConsumerConfig {
 
     /**
@@ -44,24 +44,41 @@ public class RabbitConsumerConfig {
      * - Jackson message converter
      */
     @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+    public SimpleRabbitListenerContainerFactory snapshotRabbitListenerContainerFactory(
             SimpleRabbitListenerContainerFactoryConfigurer configurer,
             ConnectionFactory connectionFactory,
             JacksonJsonMessageConverter converter,
             RabbitMessageRecoverer recoverer,
-            RabbitRetryProperties retryProperties) {
+            RabbitRetryProperties retryProperties,
+            RabbitConsumerProperties consumers) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 
         // Apply spring.rabbitmq.listener.simple.*
         configurer.configure(factory, connectionFactory);
 
         factory.setMessageConverter(converter);
-
+        factory.setConcurrentConsumers(consumers.snapshot().concurrency());
+        factory.setMaxConcurrentConsumers(consumers.snapshot().maxConcurrency());
+        factory.setPrefetchCount(consumers.snapshot().prefetch());
         factory.setAdviceChain(RetryInterceptorBuilder.stateless()
                 .maxRetries(retryProperties.maxRetries())
                 .recoverer(recoverer)
                 .build());
 
+        return factory;
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory completionRabbitListenerContainerFactory(
+            SimpleRabbitListenerContainerFactoryConfigurer configurer, ConnectionFactory connectionFactory,
+            JacksonJsonMessageConverter converter, RabbitMessageRecoverer recoverer,
+            RabbitRetryProperties retryProperties, RabbitConsumerProperties consumers) {
+        SimpleRabbitListenerContainerFactory factory=new SimpleRabbitListenerContainerFactory();
+        configurer.configure(factory,connectionFactory); factory.setMessageConverter(converter);
+        factory.setConcurrentConsumers(consumers.completion().concurrency());
+        factory.setMaxConcurrentConsumers(consumers.completion().concurrency());
+        factory.setPrefetchCount(consumers.completion().prefetch());
+        factory.setAdviceChain(RetryInterceptorBuilder.stateless().maxRetries(retryProperties.maxRetries()).recoverer(recoverer).build());
         return factory;
     }
 }

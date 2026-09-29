@@ -10,7 +10,9 @@ import lombok.Builder;
 public record StationSearchParameters(
         StationSearchMode searchMode,
         String countryCode,
-        String locality,
+        String adminArea1,
+        String adminArea2,
+        String adminArea3,
         BigDecimal latitude,
         BigDecimal longitude,
         Integer radiusMeters,

@@ -11,9 +11,6 @@ spring:
     listener:
       simple:
         default-requeue-rejected: false
-        concurrency: 4
-        max-concurrency: 8
-        prefetch: 25
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:station_search}
@@ -21,8 +18,8 @@ spring:
     password: ${DB_PASSWORD:postgres}
 
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:4}
 
   jpa:
     hibernate:
@@ -30,6 +27,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc.batch_size: ${HIBERNATE_JDBC_BATCH_SIZE:50}
+        order_inserts: ${HIBERNATE_ORDER_INSERTS:true}
+        order_updates: ${HIBERNATE_ORDER_UPDATES:true}
 
 management:
   endpoints:
@@ -77,6 +77,14 @@ app:
         - /locations
   messaging:
     rabbit:
+      consumer:
+        snapshot:
+          concurrency: ${SNAPSHOT_CONCURRENCY:8}
+          max-concurrency: ${SNAPSHOT_MAX_CONCURRENCY:16}
+          prefetch: ${SNAPSHOT_PREFETCH:100}
+        completion:
+          concurrency: ${COMPLETION_CONCURRENCY:1}
+          prefetch: ${COMPLETION_PREFETCH:1}
       retry:
         max-retries: 2
         initial-interval: 500ms

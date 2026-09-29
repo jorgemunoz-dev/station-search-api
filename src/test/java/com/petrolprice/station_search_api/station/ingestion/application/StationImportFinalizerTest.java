@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
 import com.petrolprice.station_search_api.statistics.application.CalculateFuelPriceStatisticsUseCase;
 import com.petrolprice.station_search_api.statistics.application.command.CalculateFuelPriceStatisticsCommand;
+import jakarta.persistence.EntityManager;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,9 @@ class StationImportFinalizerTest {
     @Mock
     CalculateFuelPriceStatisticsUseCase statisticsCalculator;
 
+    @Mock
+    EntityManager entityManager;
+
     @InjectMocks
     StationImportFinalizer finalizer;
 
@@ -34,10 +38,10 @@ class StationImportFinalizerTest {
 
         finalizer.tryFinalize(snapshotId);
 
-        InOrder inOrder = inOrder(stationImportRepositoryPort, statisticsCalculator);
+        InOrder inOrder = inOrder(stationImportRepositoryPort, entityManager, statisticsCalculator);
 
         inOrder.verify(stationImportRepositoryPort).claimForStatisticsIfReady(snapshotId);
-
+        inOrder.verify(entityManager).flush();
         inOrder.verify(statisticsCalculator).calculate(new CalculateFuelPriceStatisticsCommand(snapshotId));
 
         inOrder.verify(stationImportRepositoryPort).markCompleted(snapshotId);
@@ -58,6 +62,7 @@ class StationImportFinalizerTest {
         verify(stationImportRepositoryPort, never()).markCompleted(any());
 
         verifyNoInteractions(statisticsCalculator);
+        verifyNoInteractions(entityManager);
 
         verifyNoMoreInteractions(stationImportRepositoryPort);
     }

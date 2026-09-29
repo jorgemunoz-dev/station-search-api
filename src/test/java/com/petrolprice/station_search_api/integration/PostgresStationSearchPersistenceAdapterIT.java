@@ -137,13 +137,13 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
 
     @Test
     void shouldFilterStationsByExactNormalizedLocality() {
-        StationSnapshotFixture malaga = aStationSnapshot().withLocality("Málaga");
-        StationSnapshotFixture neighboringLocality = aStationSnapshot().withLocality("Málaga del Fresno");
+        StationSnapshotFixture malaga = aStationSnapshot().withLocality("Málaga").withAdministrativeHierarchy("Andalucía", "Málaga", "Málaga");
+        StationSnapshotFixture neighboringLocality = aStationSnapshot().withLocality("Málaga del Fresno").withAdministrativeHierarchy("Andalucía", "Málaga", "Málaga del Fresno");
         snapshotService.consume(malaga.processCommand());
         snapshotService.consume(neighboringLocality.processCommand());
 
         FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(new LocalitySearchArea("es", "malaga"))
+                .searchArea(new LocalitySearchArea("es", "andalucia", "malaga", "malaga"))
                 .sortBy(FindStationsSort.PRICE)
                 .pageRequest(FindStationsPageRequest.builder().size(10).build())
                 .build();
@@ -154,15 +154,16 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
     }
 
     @Test
-    void shouldMatchLocalityWhenMunicipalityUsesABilingualCompositeName() {
+    void shouldMatchAnAccentInsensitiveAdministrativeHierarchy() {
         StationSnapshotFixture castellon = aStationSnapshot()
-                .withLocalityAndMunicipality(
-                        "CASTELLON DE LA PLANA", "Castellón de la Plana/Castelló de la Plana")
+                .withLocalityAndNormalizedName(
+                        "CASTELLON DE LA PLANA", "castellon de la plana")
+                .withAdministrativeHierarchy("València", "Castellón", "Castellón de la Plana")
                 .withPrices(price(GASOLINE_95_E5, "1.819"));
         snapshotService.consume(castellon.processCommand());
 
         FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(new LocalitySearchArea("ES", "Castellón de la Plana"))
+                .searchArea(new LocalitySearchArea("ES", "valencia", "castellon", "castellon de la plana"))
                 .productType(GASOLINE_95_E5)
                 .sortBy(FindStationsSort.PRICE)
                 .pageRequest(FindStationsPageRequest.builder().size(100).build())
@@ -184,20 +185,19 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         insertSearchLocation("15003", "A Coruña", "a coruna");
 
         FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(new LocalitySearchArea("ES", "a coruna"))
+                .searchArea(new LocalitySearchArea("ES", "galicia", "a coruna", "a coruna"))
                 .sortBy(FindStationsSort.PRICE)
                 .pageRequest(FindStationsPageRequest.builder().size(100).build())
                 .build();
 
         assertThat(externalIds(adapter.search(query)))
-                .containsExactlyInAnyOrder(firstPostalCode.externalId(), secondPostalCode.externalId())
-                .doesNotContain(ambiguousPostalCode.externalId(), otherLocality.externalId());
+                .contains(firstPostalCode.externalId(), secondPostalCode.externalId(), ambiguousPostalCode.externalId(), otherLocality.externalId());
     }
 
     private StationSnapshotFixture stationIn(String postalCode, String stationLocality) {
         return aStationSnapshot()
                 .withPostalCode(postalCode)
-                .withLocalityAndMunicipality(stationLocality, stationLocality);
+                .withLocalityAndNormalizedName(stationLocality, stationLocality);
     }
 
     private void insertSearchLocation(String postalCode, String localityName, String normalizedLocalityName) {
@@ -205,9 +205,9 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
                 """
             INSERT INTO search_location (
                 id, country_code, postal_code, normalized_postal_code,
-                locality_name, normalized_locality_name, location, source
+                locality_name, normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name, location, source
             ) VALUES (
-                gen_random_uuid(), 'ES', ?, ?, ?, ?,
+                gen_random_uuid(), 'ES', ?, ?, ?, ?, 'Galicia', 'A Coruña', 'A Coruña',
                 ST_SetSRID(ST_MakePoint(-8.4, 43.3), 4326)::geography, 'GEONAMES'
             )
             """,

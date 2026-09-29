@@ -1,31 +1,20 @@
 package com.petrolprice.station_search_api.station.search.application.searcharea;
 
-import java.text.Normalizer;
 import java.util.Locale;
 
-public record LocalitySearchArea(String countryCode, String normalizedLocality) implements StationSearchArea {
-
+public record LocalitySearchArea(
+        String countryCode, String normalizedAdminArea1, String normalizedAdminArea2,
+        String normalizedAdminArea3) implements StationSearchArea {
     public LocalitySearchArea {
-        countryCode = validateCountryCode(countryCode);
-        normalizedLocality = normalizeLocality(normalizedLocality);
-    }
-
-    private static String validateCountryCode(String countryCode) {
-        if (countryCode == null || !countryCode.matches("[A-Za-z]{2}")) {
+        if (countryCode == null || !countryCode.matches("[A-Za-z]{2}"))
             throw new IllegalArgumentException("countryCode must be a two-letter ISO country code");
-        }
-        return countryCode.toUpperCase(Locale.ROOT);
+        countryCode = countryCode.toUpperCase(Locale.ROOT);
+        normalizedAdminArea1 = required(normalizedAdminArea1, "adminArea1");
+        normalizedAdminArea2 = required(normalizedAdminArea2, "adminArea2");
+        normalizedAdminArea3 = required(normalizedAdminArea3, "adminArea3");
     }
-
-    private static String normalizeLocality(String locality) {
-        if (locality == null || locality.isBlank()) {
-            throw new IllegalArgumentException("locality is required");
-        }
-        return Normalizer.normalize(locality, Normalizer.Form.NFKD)
-                .replaceAll("\\p{M}+", "")
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^\\p{L}\\p{N}]+", " ")
-                .trim()
-                .replaceAll("\\s+", " ");
+    private static String required(String value, String name) {
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(name + " is required");
+        return AdministrativeHierarchyNormalizer.normalize(value);
     }
 }
