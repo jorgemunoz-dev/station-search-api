@@ -113,6 +113,21 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
+    void shouldStoreLocalityAndAdministrativeStatisticsForTheSameHierarchy() {
+        Integer rows = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*) FROM fuel_price_statistics
+                WHERE snapshot_id = ? AND country = 'ES' AND product_type = 'DIESEL_A'
+                  AND admin_area_1_name = 'Region' AND admin_area_2_name = 'North'
+                  AND admin_area_3_name = 'Alpha'
+                """,
+                Integer.class,
+                cheap.snapshotId());
+
+        assertThat(rows).isEqualTo(2);
+    }
+
+    @Test
     void shouldRankLocalitiesFilteredByAdministrativeContext() {
         var ranked = currentStatistics.localities("ES", ProductType.DIESEL_A, null, "South", null);
         assertThat(ranked).singleElement().satisfies(result -> {

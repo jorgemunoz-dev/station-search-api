@@ -29,7 +29,7 @@ public class StationSnapshotRabbitListener {
     @RabbitListener(queues = "station.snapshot.completed.queue", containerFactory = "completionRabbitListenerContainerFactory")
     public void onSnapshotCompleted(StationImportCompletedEvent event) {
         CompleteStationPublishingCommand command =
-                new CompleteStationPublishingCommand(event.snapshotId(), event.publishedStations(), event.completedAt());
+                new CompleteStationPublishingCommand(event.snapshotId(), event.publishedEvents(), event.completedAt());
 
         completeStationPublishingUseCase.complete(command);
     }

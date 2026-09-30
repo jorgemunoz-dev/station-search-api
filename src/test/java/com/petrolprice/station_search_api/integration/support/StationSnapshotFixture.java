@@ -189,7 +189,7 @@ public final class StationSnapshotFixture {
     }
 
     public StationImportCompletedEvent completionEvent(int publishedStations) {
-        return new StationImportCompletedEvent(snapshotId, publishedStations + 1, Instant.now());
+        return new StationImportCompletedEvent(snapshotId, publishedStations, Instant.now());
     }
 
     public static ProductPrice price(ProductType type, String value) {
