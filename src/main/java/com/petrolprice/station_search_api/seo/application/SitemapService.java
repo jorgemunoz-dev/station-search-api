@@ -31,8 +31,8 @@ public class SitemapService {
     @Autowired
     public SitemapService(
             SitemapLocationPort locationPort,
-            @Value("${app.seo.sitemap.cache-ttl:PT1H}") Duration cacheTtl) {
-        this(locationPort, cacheTtl, Clock.systemUTC());
+            @Value("${app.seo.sitemap.cache-ttl:PT1H}") String cacheTtl) {
+        this(locationPort, Duration.parse(cacheTtl), Clock.systemUTC());
     }
 
     SitemapService(SitemapLocationPort locationPort, Duration cacheTtl, Clock clock) {
