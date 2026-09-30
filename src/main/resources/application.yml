@@ -81,7 +81,8 @@ app:
         snapshot:
           concurrency: ${SNAPSHOT_CONCURRENCY:8}
           max-concurrency: ${SNAPSHOT_MAX_CONCURRENCY:16}
-          prefetch: ${SNAPSHOT_PREFETCH:100}
+          prefetch: ${SNAPSHOT_PREFETCH:500}
+          batch-size: ${SNAPSHOT_BATCH_SIZE:100}
         completion:
           concurrency: ${COMPLETION_CONCURRENCY:1}
           prefetch: ${COMPLETION_PREFETCH:1}
