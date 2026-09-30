@@ -31,6 +31,11 @@ public class PostgresStationRepository implements StationRepositoryPort {
                 .orElseGet(() -> save(stationSnapshot));
     }
 
+    @Override
+    public void flush() {
+        jpaStationRepository.flush();
+    }
+
     /**
      * Updates the persisted station using JPA dirty checking
      *

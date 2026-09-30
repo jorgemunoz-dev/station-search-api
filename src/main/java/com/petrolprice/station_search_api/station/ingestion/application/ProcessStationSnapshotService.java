@@ -9,6 +9,7 @@ import com.petrolprice.station_search_api.station.ingestion.application.port.out
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -44,6 +45,7 @@ public class ProcessStationSnapshotService {
     public void consume(List<ProcessStationSnapshotCommand> commands) {
         Map<UUID, Integer> processedBySnapshot = new LinkedHashMap<>();
         Set<UUID> initializedSnapshots = new LinkedHashSet<>();
+        List<ClaimedSnapshot> claimedSnapshots = new ArrayList<>();
 
         for (ProcessStationSnapshotCommand command : commands) {
             if (initializedSnapshots.add(command.snapshotId())) {
@@ -58,6 +60,18 @@ public class ProcessStationSnapshotService {
             }
 
             Station persistedStation = stationRepositoryPort.upsertFromSnapshot(command.station());
+            claimedSnapshots.add(new ClaimedSnapshot(command, persistedStation));
+        }
+
+        // Historical prices only carry the station UUID, rather than a mapped JPA association. Hibernate therefore
+        // cannot infer the insert dependency when it orders a JDBC batch, so stations must be flushed first.
+        if (!claimedSnapshots.isEmpty()) {
+            stationRepositoryPort.flush();
+        }
+
+        for (ClaimedSnapshot claimedSnapshot : claimedSnapshots) {
+            ProcessStationSnapshotCommand command = claimedSnapshot.command();
+            Station persistedStation = claimedSnapshot.station();
             if (isObservedToday(command)) {
                 currentFuelPriceRepositoryPort.replaceCurrentPrices(
                         persistedStation.getId(), command.station().getProductPrices());
@@ -75,6 +89,8 @@ public class ProcessStationSnapshotService {
             stationImportFinalizer.tryFinalize(snapshotId);
         });
     }
+
+    private record ClaimedSnapshot(ProcessStationSnapshotCommand command, Station station) {}
 
     private boolean isObservedToday(ProcessStationSnapshotCommand command) {
         LocalDate observedDate = command.observedAt().atZone(ZoneOffset.UTC).toLocalDate();

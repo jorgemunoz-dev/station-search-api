@@ -77,6 +77,8 @@ class ProcessStationSnapshotServiceTest {
 
             inOrder.verify(stationRepositoryPort).upsertFromSnapshot(stationSnapshot);
 
+            inOrder.verify(stationRepositoryPort).flush();
+
             inOrder.verify(currentFuelPriceRepositoryPort)
                     .replaceCurrentPrices(persistedStation.getId(), stationSnapshot.getProductPrices());
 
