@@ -6,7 +6,4 @@ public interface StationRepositoryPort {
     Station save(Station station);
 
     Station upsertFromSnapshot(Station station);
-
-    /** Flushes pending station changes before dependent price rows are inserted. */
-    void flush();
 }

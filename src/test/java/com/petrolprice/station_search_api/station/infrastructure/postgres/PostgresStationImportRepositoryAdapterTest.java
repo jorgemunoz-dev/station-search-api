@@ -30,7 +30,7 @@ class PostgresStationImportRepositoryAdapterTest {
 
         when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(0);
 
-        assertThatThrownBy(() -> adapter.incrementProcessedStations(snapshotId, 10))
+        assertThatThrownBy(() -> adapter.incrementProcessedStations(snapshotId))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(snapshotId.toString())
                 .hasMessageContaining("updated 0 rows");
@@ -42,7 +42,7 @@ class PostgresStationImportRepositoryAdapterTest {
 
         when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(2);
 
-        assertThatThrownBy(() -> adapter.incrementProcessedStations(snapshotId, 10))
+        assertThatThrownBy(() -> adapter.incrementProcessedStations(snapshotId))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("updated 2 rows");
     }

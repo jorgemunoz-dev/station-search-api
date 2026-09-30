@@ -35,14 +35,11 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
                 FALSE,
                 NOW()
             )
-            ON CONFLICT (snapshot_id) DO NOTHING
+            ON CONFLICT (snapshot_id) DO UPDATE
+            SET country = COALESCE(station_import.country, EXCLUDED.country)
             """;
 
         jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId).addValue("country", countryCode));
-
-        jdbcTemplate.update(
-                "UPDATE station_import SET country = :country WHERE snapshot_id = :snapshotId AND country IS NULL",
-                new MapSqlParameterSource("snapshotId", snapshotId).addValue("country", countryCode));
     }
 
     @Override
@@ -69,19 +66,16 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
     }
 
     @Override
-    public void incrementProcessedStations(UUID snapshotId, int processedStations) {
+    public void incrementProcessedStations(UUID snapshotId) {
         String sql =
                 """
             UPDATE station_import
-            SET processed_stations = processed_stations + :processedStations,
+            SET processed_stations = processed_stations + 1,
                 updated_at = NOW()
             WHERE snapshot_id = :snapshotId
             """;
 
-        int updated = jdbcTemplate.update(
-                sql,
-                new MapSqlParameterSource("snapshotId", snapshotId)
-                        .addValue("processedStations", processedStations));
+        int updated = jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
 
         assertOneRowUpdated(updated, snapshotId);
     }

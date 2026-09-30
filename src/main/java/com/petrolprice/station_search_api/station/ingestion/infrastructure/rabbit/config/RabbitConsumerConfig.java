@@ -60,9 +60,6 @@ public class RabbitConsumerConfig {
         factory.setConcurrentConsumers(consumers.snapshot().concurrency());
         factory.setMaxConcurrentConsumers(consumers.snapshot().maxConcurrency());
         factory.setPrefetchCount(consumers.snapshot().prefetch());
-        factory.setBatchListener(true);
-        factory.setConsumerBatchEnabled(true);
-        factory.setBatchSize(consumers.snapshot().batchSize());
         factory.setAdviceChain(RetryInterceptorBuilder.stateless()
                 .maxRetries(retryProperties.maxRetries())
                 .recoverer(recoverer)

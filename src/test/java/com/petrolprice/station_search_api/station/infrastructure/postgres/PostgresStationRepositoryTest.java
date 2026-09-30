@@ -36,13 +36,6 @@ class PostgresStationRepositoryTest {
     PostgresStationRepository adapter;
 
     @Test
-    void shouldFlushPendingStations() {
-        adapter.flush();
-
-        verify(jpaStationRepository).flush();
-    }
-
-    @Test
     void shouldUpdateExistingStationWithoutCallingSave() {
         // Given
         Station stationSnapshot = mock(Station.class);

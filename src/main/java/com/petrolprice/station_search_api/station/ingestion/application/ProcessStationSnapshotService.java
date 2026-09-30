@@ -9,13 +9,6 @@ import com.petrolprice.station_search_api.station.ingestion.application.port.out
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,64 +26,29 @@ public class ProcessStationSnapshotService {
 
     @Transactional
     public void consume(ProcessStationSnapshotCommand command) {
-        consume(List.of(command));
+
+        stationImportRepositoryPort.ensureExists(
+                command.snapshotId(), command.station().getCountry().name());
+
+        boolean claimed = stationImportRepositoryPort.claimEvent(command.snapshotId(), command.eventId());
+
+        if (!claimed) {
+            return;
+        }
+
+        Station persistedStation = stationRepositoryPort.upsertFromSnapshot(command.station());
+        if (isObservedToday(command)) {
+            currentFuelPriceRepositoryPort.replaceCurrentPrices(
+                    persistedStation.getId(), command.station().getProductPrices());
+        }
+        historicalPriceRepositoryPort.insertSnapshot(
+                command.snapshotId(),
+                persistedStation.getId(),
+                command.observedAt(),
+                command.station().getProductPrices());
+        stationImportRepositoryPort.incrementProcessedStations(command.snapshotId());
+        stationImportFinalizer.tryFinalize(command.snapshotId());
     }
-
-    /**
-     * Processes one broker delivery batch in a single database transaction. Progress is updated once per import
-     * instead of once per event, avoiding the per-snapshot row becoming a serialization point for concurrent
-     * consumers.
-     */
-    @Transactional
-    public void consume(List<ProcessStationSnapshotCommand> commands) {
-        Map<UUID, Integer> processedBySnapshot = new LinkedHashMap<>();
-        Set<UUID> initializedSnapshots = new LinkedHashSet<>();
-        List<ClaimedSnapshot> claimedSnapshots = new ArrayList<>();
-
-        for (ProcessStationSnapshotCommand command : commands) {
-            if (initializedSnapshots.add(command.snapshotId())) {
-                stationImportRepositoryPort.ensureExists(
-                        command.snapshotId(), command.station().getCountry().name());
-            }
-
-            boolean claimed = stationImportRepositoryPort.claimEvent(command.snapshotId(), command.eventId());
-
-            if (!claimed) {
-                continue;
-            }
-
-            Station persistedStation = stationRepositoryPort.upsertFromSnapshot(command.station());
-            claimedSnapshots.add(new ClaimedSnapshot(command, persistedStation));
-        }
-
-        // Historical prices only carry the station UUID, rather than a mapped JPA association. Hibernate therefore
-        // cannot infer the insert dependency when it orders a JDBC batch, so stations must be flushed first.
-        if (!claimedSnapshots.isEmpty()) {
-            stationRepositoryPort.flush();
-        }
-
-        for (ClaimedSnapshot claimedSnapshot : claimedSnapshots) {
-            ProcessStationSnapshotCommand command = claimedSnapshot.command();
-            Station persistedStation = claimedSnapshot.station();
-            if (isObservedToday(command)) {
-                currentFuelPriceRepositoryPort.replaceCurrentPrices(
-                        persistedStation.getId(), command.station().getProductPrices());
-            }
-            historicalPriceRepositoryPort.insertSnapshot(
-                    command.snapshotId(),
-                    persistedStation.getId(),
-                    command.observedAt(),
-                    command.station().getProductPrices());
-            processedBySnapshot.merge(command.snapshotId(), 1, Integer::sum);
-        }
-
-        processedBySnapshot.forEach((snapshotId, count) -> {
-            stationImportRepositoryPort.incrementProcessedStations(snapshotId, count);
-            stationImportFinalizer.tryFinalize(snapshotId);
-        });
-    }
-
-    private record ClaimedSnapshot(ProcessStationSnapshotCommand command, Station station) {}
 
     private boolean isObservedToday(ProcessStationSnapshotCommand command) {
         LocalDate observedDate = command.observedAt().atZone(ZoneOffset.UTC).toLocalDate();

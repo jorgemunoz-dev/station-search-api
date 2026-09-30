@@ -222,9 +222,7 @@ GeoNames/reprocess snapshots.
 
 ### Consumer and database tuning
 
-Snapshot events are consumed in transactional batches to reduce transaction commits and contention
-on the per-import progress row. `SNAPSHOT_CONCURRENCY=8`, `SNAPSHOT_MAX_CONCURRENCY=16`,
-`SNAPSHOT_PREFETCH=500`, `SNAPSHOT_BATCH_SIZE=100`,
+`SNAPSHOT_CONCURRENCY=8`, `SNAPSHOT_MAX_CONCURRENCY=16`, `SNAPSHOT_PREFETCH=100`,
 `COMPLETION_CONCURRENCY=1`, `COMPLETION_PREFETCH=1`, `DB_POOL_MAX_SIZE=20`,
 `DB_POOL_MIN_IDLE=4` and `HIBERNATE_JDBC_BATCH_SIZE=50` are configurable. Keep snapshot maximum
 concurrency below the JDBC pool maximum so the completion consumer and HTTP traffic retain a

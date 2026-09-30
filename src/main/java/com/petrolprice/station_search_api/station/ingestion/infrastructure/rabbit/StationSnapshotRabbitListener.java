@@ -6,7 +6,6 @@ import com.petrolprice.station_search_api.station.ingestion.application.command.
 import com.petrolprice.station_search_api.station.ingestion.application.command.ProcessStationSnapshotCommand;
 import com.petrolprice.station_search_api.station.ingestion.infrastructure.rabbit.dto.StationSnapshotMessage;
 import com.petrolprice.station_search_api.station.ingestion.infrastructure.rabbit.mapper.StationSnapshotMapper;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -22,9 +21,9 @@ public class StationSnapshotRabbitListener {
     private final CompleteStationPublishingUseCase completeStationPublishingUseCase;
 
     @RabbitListener(queues = "station.snapshot.ingestion.queue", containerFactory = "snapshotRabbitListenerContainerFactory")
-    public void onSnapshotCreated(List<StationSnapshotMessage> events) {
-        List<ProcessStationSnapshotCommand> commands = events.stream().map(mapper::toCommand).toList();
-        processStationSnapshotService.consume(commands);
+    public void onSnapshotCreated(StationSnapshotMessage event) {
+        ProcessStationSnapshotCommand command = mapper.toCommand(event);
+        processStationSnapshotService.consume(command);
     }
 
     @RabbitListener(queues = "station.snapshot.completed.queue", containerFactory = "completionRabbitListenerContainerFactory")

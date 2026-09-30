@@ -9,12 +9,12 @@ public class SearchLocationSql {
             SELECT
                 country AS station_country,
                 UPPER(REGEXP_REPLACE(postal_code, '[^A-Za-z0-9]', '', 'g')) AS station_postal_code,
-                MIN(NULLIF(BTRIM(locality_name), '')) AS station_locality_name
+                MIN(NULLIF(BTRIM(COALESCE(normalized_locality_name, locality_name)), '')) AS station_locality_name
             FROM station
             WHERE postal_code IS NOT NULL
-              AND NULLIF(BTRIM(locality_name), '') IS NOT NULL
+              AND NULLIF(BTRIM(COALESCE(normalized_locality_name, locality_name)), '') IS NOT NULL
             GROUP BY country, UPPER(REGEXP_REPLACE(postal_code, '[^A-Za-z0-9]', '', 'g'))
-            HAVING COUNT(DISTINCT NULLIF(BTRIM(locality_name), '')) = 1
+            HAVING COUNT(DISTINCT NULLIF(BTRIM(COALESCE(normalized_locality_name, locality_name)), '')) = 1
         ),
         postal_suggestions AS (
             SELECT

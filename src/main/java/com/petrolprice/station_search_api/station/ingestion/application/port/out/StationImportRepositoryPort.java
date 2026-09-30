@@ -17,7 +17,7 @@ public interface StationImportRepositoryPort {
      */
     boolean claimEvent(UUID snapshotId, UUID eventId);
 
-    void incrementProcessedStations(UUID snapshotId, int processedStations);
+    void incrementProcessedStations(UUID snapshotId);
 
     void markPublishingCompleted(UUID snapshotId, int publishedStations, Instant completedAt);
 

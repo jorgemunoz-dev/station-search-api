@@ -77,8 +77,6 @@ class ProcessStationSnapshotServiceTest {
 
             inOrder.verify(stationRepositoryPort).upsertFromSnapshot(stationSnapshot);
 
-            inOrder.verify(stationRepositoryPort).flush();
-
             inOrder.verify(currentFuelPriceRepositoryPort)
                     .replaceCurrentPrices(persistedStation.getId(), stationSnapshot.getProductPrices());
 
@@ -89,7 +87,7 @@ class ProcessStationSnapshotServiceTest {
                             command.observedAt(),
                             stationSnapshot.getProductPrices());
 
-            inOrder.verify(stationImportRepositoryPort).incrementProcessedStations(command.snapshotId(), 1);
+            inOrder.verify(stationImportRepositoryPort).incrementProcessedStations(command.snapshotId());
 
             inOrder.verify(stationImportFinalizer).tryFinalize(command.snapshotId());
 
@@ -141,7 +139,7 @@ class ProcessStationSnapshotServiceTest {
             verifyNoInteractions(historicalPriceRepositoryPort);
             verifyNoInteractions(stationImportFinalizer);
 
-            verify(stationImportRepositoryPort, never()).incrementProcessedStations(any(), anyInt());
+            verify(stationImportRepositoryPort, never()).incrementProcessedStations(any());
         }
 
         @Test
@@ -166,7 +164,7 @@ class ProcessStationSnapshotServiceTest {
             verifyNoInteractions(historicalPriceRepositoryPort);
             verifyNoInteractions(stationImportFinalizer);
 
-            verify(stationImportRepositoryPort, never()).incrementProcessedStations(any(), anyInt());
+            verify(stationImportRepositoryPort, never()).incrementProcessedStations(any());
         }
 
         @Test
@@ -192,7 +190,7 @@ class ProcessStationSnapshotServiceTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("Historical price persistence failed");
 
-            verify(stationImportRepositoryPort, never()).incrementProcessedStations(any(), anyInt());
+            verify(stationImportRepositoryPort, never()).incrementProcessedStations(any());
 
             verifyNoInteractions(stationImportFinalizer);
         }
@@ -210,7 +208,7 @@ class ProcessStationSnapshotServiceTest {
 
             doThrow(new RuntimeException("Processed stations increment failed"))
                     .when(stationImportRepositoryPort)
-                    .incrementProcessedStations(command.snapshotId(), 1);
+                    .incrementProcessedStations(command.snapshotId());
 
             assertThatThrownBy(() -> service.consume(command))
                     .isInstanceOf(RuntimeException.class)
@@ -244,7 +242,7 @@ class ProcessStationSnapshotServiceTest {
             verifyNoInteractions(historicalPriceRepositoryPort);
             verifyNoInteractions(stationImportFinalizer);
 
-            verify(stationImportRepositoryPort, never()).incrementProcessedStations(any(), anyInt());
+            verify(stationImportRepositoryPort, never()).incrementProcessedStations(any());
         }
     }
 
