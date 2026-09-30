@@ -227,3 +227,7 @@ GeoNames/reprocess snapshots.
 `DB_POOL_MIN_IDLE=4` and `HIBERNATE_JDBC_BATCH_SIZE=50` are configurable. Keep snapshot maximum
 concurrency below the JDBC pool maximum so the completion consumer and HTTP traffic retain a
 connection. `HIBERNATE_ORDER_INSERTS` and `HIBERNATE_ORDER_UPDATES` default to `true`.
+
+Import progress is split across 64 database rows per snapshot. This avoids serializing every
+consumer on the single `station_import` row while preserving one-message transactions, retries and
+dead-letter behavior. The shards are summed atomically when all published events have completed.

@@ -35,11 +35,14 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
                 FALSE,
                 NOW()
             )
-            ON CONFLICT (snapshot_id) DO UPDATE
-            SET country = COALESCE(station_import.country, EXCLUDED.country)
+            ON CONFLICT (snapshot_id) DO NOTHING
             """;
 
         jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId).addValue("country", countryCode));
+
+        jdbcTemplate.update(
+                "UPDATE station_import SET country = :country WHERE snapshot_id = :snapshotId AND country IS NULL",
+                new MapSqlParameterSource("snapshotId", snapshotId).addValue("country", countryCode));
     }
 
     @Override
@@ -66,16 +69,18 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
     }
 
     @Override
-    public void incrementProcessedStations(UUID snapshotId) {
+    public void incrementProcessedStations(UUID snapshotId, int progressShard) {
         String sql =
                 """
-            UPDATE station_import
-            SET processed_stations = processed_stations + 1,
-                updated_at = NOW()
-            WHERE snapshot_id = :snapshotId
+            INSERT INTO station_import_progress (snapshot_id, shard, processed_stations)
+            VALUES (:snapshotId, :progressShard, 1)
+            ON CONFLICT (snapshot_id, shard) DO UPDATE
+            SET processed_stations = station_import_progress.processed_stations + 1
             """;
 
-        int updated = jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
+        int updated = jdbcTemplate.update(
+                sql,
+                new MapSqlParameterSource("snapshotId", snapshotId).addValue("progressShard", progressShard));
 
         assertOneRowUpdated(updated, snapshotId);
     }
@@ -126,13 +131,19 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
                 """
             UPDATE station_import
             SET status = 'CALCULATING_STATISTICS',
+                processed_stations = progress.processed_stations,
                 statistics_started_at = NOW(),
                 updated_at = NOW()
-            WHERE snapshot_id = :snapshotId
-              AND status = 'PROCESSING'
-              AND publishing_completed = TRUE
-              AND published_stations IS NOT NULL
-              AND processed_stations = published_stations
+            FROM (
+                SELECT COALESCE(SUM(processed_stations), 0)::integer AS processed_stations
+                FROM station_import_progress
+                WHERE snapshot_id = :snapshotId
+            ) progress
+            WHERE station_import.snapshot_id = :snapshotId
+              AND station_import.status = 'PROCESSING'
+              AND station_import.publishing_completed = TRUE
+              AND station_import.published_stations IS NOT NULL
+              AND progress.processed_stations = station_import.published_stations
             """;
 
         int updated = jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));

@@ -15,9 +15,13 @@ public class StationImportProbe {
         return jdbcClient
                 .sql(
                         """
-                    SELECT status, processed_stations, published_stations, publishing_completed
-                    FROM station_import
-                    WHERE snapshot_id = :snapshotId
+                    SELECT i.status,
+                           GREATEST(i.processed_stations, COALESCE(SUM(p.processed_stations), 0)) processed_stations,
+                           i.published_stations, i.publishing_completed
+                    FROM station_import i
+                    LEFT JOIN station_import_progress p ON p.snapshot_id = i.snapshot_id
+                    WHERE i.snapshot_id = :snapshotId
+                    GROUP BY i.snapshot_id
                     """)
                 .param("snapshotId", snapshotId)
                 .query((rs, rowNum) -> new ImportState(
