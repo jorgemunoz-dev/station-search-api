@@ -2,11 +2,13 @@ package com.petrolprice.station_search_api.integration;
 
 import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.aStationSnapshot;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import com.petrolprice.station_search_api.integration.support.StationImportProbe;
 import com.petrolprice.station_search_api.integration.support.StationSnapshotFixture;
 import com.petrolprice.station_search_api.station.ingestion.application.CompleteStationPublishingService;
 import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -94,6 +96,9 @@ class StationImportWorkflowIT extends IntegrationTestBase {
     }
 
     private void assertCompleted(StationSnapshotFixture snapshot) {
+        await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertThat(probe.importState(snapshot.snapshotId()).status())
+                        .isEqualTo("COMPLETED"));
         StationImportProbe.ImportState state = probe.importState(snapshot.snapshotId());
         assertThat(state.status()).isEqualTo("COMPLETED");
         assertThat(state.processedStations()).isOne();

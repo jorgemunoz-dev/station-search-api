@@ -3,6 +3,7 @@ package com.petrolprice.station_search_api.station.infrastructure.postgres;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -69,23 +70,6 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
     }
 
     @Override
-    public void incrementProcessedStations(UUID snapshotId, int progressShard) {
-        String sql =
-                """
-            INSERT INTO station_import_progress (snapshot_id, shard, processed_stations)
-            VALUES (:snapshotId, :progressShard, 1)
-            ON CONFLICT (snapshot_id, shard) DO UPDATE
-            SET processed_stations = station_import_progress.processed_stations + 1
-            """;
-
-        int updated = jdbcTemplate.update(
-                sql,
-                new MapSqlParameterSource("snapshotId", snapshotId).addValue("progressShard", progressShard));
-
-        assertOneRowUpdated(updated, snapshotId);
-    }
-
-    @Override
     public void markPublishingCompleted(UUID snapshotId, int publishedStations, Instant completedAt) {
         String sql =
                 """
@@ -126,6 +110,26 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
     }
 
     @Override
+    public List<UUID> findReadyForStatistics(int limit) {
+        String sql =
+                """
+            SELECT i.snapshot_id
+            FROM station_import i
+            LEFT JOIN station_import_event e ON e.snapshot_id = i.snapshot_id
+            WHERE i.status = 'PROCESSING'
+              AND i.publishing_completed = TRUE
+              AND i.published_stations IS NOT NULL
+            GROUP BY i.snapshot_id, i.published_stations
+            HAVING COUNT(e.event_id) = i.published_stations
+            ORDER BY i.snapshot_id
+            LIMIT :limit
+            """;
+
+        return jdbcTemplate.query(
+                sql, new MapSqlParameterSource("limit", limit), (resultSet, row) -> resultSet.getObject(1, UUID.class));
+    }
+
+    @Override
     public boolean claimForStatisticsIfReady(UUID snapshotId) {
         String sql =
                 """
@@ -135,8 +139,8 @@ public class PostgresStationImportRepositoryAdapter implements StationImportRepo
                 statistics_started_at = NOW(),
                 updated_at = NOW()
             FROM (
-                SELECT COALESCE(SUM(processed_stations), 0)::integer AS processed_stations
-                FROM station_import_progress
+                SELECT COUNT(*)::integer AS processed_stations
+                FROM station_import_event
                 WHERE snapshot_id = :snapshotId
             ) progress
             WHERE station_import.snapshot_id = :snapshotId

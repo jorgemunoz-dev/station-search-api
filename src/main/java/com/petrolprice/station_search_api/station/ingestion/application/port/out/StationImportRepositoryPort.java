@@ -1,6 +1,7 @@
 package com.petrolprice.station_search_api.station.ingestion.application.port.out;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public interface StationImportRepositoryPort {
@@ -17,9 +18,9 @@ public interface StationImportRepositoryPort {
      */
     boolean claimEvent(UUID snapshotId, UUID eventId);
 
-    void incrementProcessedStations(UUID snapshotId, int progressShard);
-
     void markPublishingCompleted(UUID snapshotId, int publishedStations, Instant completedAt);
+
+    List<UUID> findReadyForStatistics(int limit);
 
     /**
      * Atomically changes PROCESSING -> CALCULATING_STATISTICS

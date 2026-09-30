@@ -25,29 +25,6 @@ class PostgresStationImportRepositoryAdapterTest {
     PostgresStationImportRepositoryAdapter adapter;
 
     @Test
-    void shouldFailWhenIncrementProcessedStationsDoesNotUpdateOneRow() {
-        UUID snapshotId = UUID.randomUUID();
-
-        when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(0);
-
-        assertThatThrownBy(() -> adapter.incrementProcessedStations(snapshotId, 7))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining(snapshotId.toString())
-                .hasMessageContaining("updated 0 rows");
-    }
-
-    @Test
-    void shouldFailWhenIncrementProcessedStationsUpdatesMoreThanOneRow() {
-        UUID snapshotId = UUID.randomUUID();
-
-        when(jdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(2);
-
-        assertThatThrownBy(() -> adapter.incrementProcessedStations(snapshotId, 7))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("updated 2 rows");
-    }
-
-    @Test
     void shouldFailWhenMarkCompletedDoesNotUpdateOneRow() {
         UUID snapshotId = UUID.randomUUID();
 

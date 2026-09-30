@@ -18,13 +18,10 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ProcessStationSnapshotService {
 
-    static final int PROGRESS_SHARDS = 64;
-
     private final StationRepositoryPort stationRepositoryPort;
     private final CurrentFuelPriceRepositoryPort currentFuelPriceRepositoryPort;
     private final HistoricalPriceRepositoryPort historicalPriceRepositoryPort;
     private final StationImportRepositoryPort stationImportRepositoryPort;
-    private final StationImportFinalizer stationImportFinalizer;
 
     @Transactional
     public void consume(ProcessStationSnapshotCommand command) {
@@ -48,9 +45,6 @@ public class ProcessStationSnapshotService {
                 persistedStation.getId(),
                 command.observedAt(),
                 command.station().getProductPrices());
-        stationImportRepositoryPort.incrementProcessedStations(
-                command.snapshotId(), Math.floorMod(command.eventId().hashCode(), PROGRESS_SHARDS));
-        stationImportFinalizer.tryFinalize(command.snapshotId());
     }
 
     private boolean isObservedToday(ProcessStationSnapshotCommand command) {

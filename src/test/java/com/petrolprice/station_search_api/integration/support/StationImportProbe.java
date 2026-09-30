@@ -16,10 +16,10 @@ public class StationImportProbe {
                 .sql(
                         """
                     SELECT i.status,
-                           GREATEST(i.processed_stations, COALESCE(SUM(p.processed_stations), 0)) processed_stations,
+                           GREATEST(i.processed_stations, COUNT(e.event_id)::integer) processed_stations,
                            i.published_stations, i.publishing_completed
                     FROM station_import i
-                    LEFT JOIN station_import_progress p ON p.snapshot_id = i.snapshot_id
+                    LEFT JOIN station_import_event e ON e.snapshot_id = i.snapshot_id
                     WHERE i.snapshot_id = :snapshotId
                     GROUP BY i.snapshot_id
                     """)
