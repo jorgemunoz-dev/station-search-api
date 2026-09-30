@@ -238,9 +238,15 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
             String locality,
             String normalizedLocality) {
         jdbcTemplate.update(
-                "UPDATE station SET postal_code = ?, admin_area_2_name = ?, locality_name = ?, normalized_locality_name = ? WHERE external_id = ?",
+                """
+                UPDATE station
+                SET postal_code = ?, admin_area_1_name = 'Region', admin_area_2_name = ?,
+                    admin_area_3_name = ?, locality_name = ?, normalized_locality_name = ?
+                WHERE external_id = ?
+                """,
                 postalCode,
                 adminArea2,
+                locality,
                 locality,
                 normalizedLocality,
                 station.externalId());
