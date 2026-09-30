@@ -1,0 +1,143 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 010-create-station-import-tables
+      author: jorge
+
+      changes:
+
+        - createTable:
+            tableName: station_import
+
+            columns:
+
+              - column:
+                  name: snapshot_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column:
+                  name: status
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: published_stations
+                  type: integer
+
+              - column:
+                  name: processed_stations
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: publishing_completed
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: publishing_completed_at
+                  type: timestamptz
+
+              - column:
+                  name: statistics_started_at
+                  type: timestamptz
+
+              - column:
+                  name: completed_at
+                  type: timestamptz
+
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - sql:
+            sql: >
+              ALTER TABLE station_import
+              ADD CONSTRAINT chk_station_import_status
+              CHECK (
+                status IN (
+                  'PROCESSING',
+                  'CALCULATING_STATISTICS',
+                  'COMPLETED'
+                )
+              );
+
+        - sql:
+            sql: >
+              ALTER TABLE station_import
+              ADD CONSTRAINT chk_station_import_processed_stations
+              CHECK (processed_stations >= 0);
+
+        - sql:
+            sql: >
+              ALTER TABLE station_import
+              ADD CONSTRAINT chk_station_import_published_stations
+              CHECK (
+                published_stations IS NULL
+                OR published_stations >= 0
+              );
+
+        - sql:
+            sql: >
+              ALTER TABLE station_import
+              ADD CONSTRAINT chk_station_import_station_count
+              CHECK (
+                published_stations IS NULL
+                OR processed_stations <= published_stations
+              );
+
+
+        - createTable:
+            tableName: station_import_event
+
+            columns:
+
+              - column:
+                  name: snapshot_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: event_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: processed_at
+                  type: timestamptz
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addPrimaryKey:
+            tableName: station_import_event
+            columnNames: snapshot_id, event_id
+            constraintName: pk_station_import_event
+
+        - addForeignKeyConstraint:
+            baseTableName: station_import_event
+            baseColumnNames: snapshot_id
+            referencedTableName: station_import
+            referencedColumnNames: snapshot_id
+            constraintName: fk_station_import_event_import
+            onDelete: CASCADE

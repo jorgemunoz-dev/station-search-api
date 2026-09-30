@@ -1,0 +1,18 @@
+@baseUrl = http://localhost:8080
+@countryCode = ES
+@productType = GASOLINE_95_E5
+
+### Find administrative hierarchy
+GET {{baseUrl}}/locations/search?query=Ardales&countryCode={{countryCode}}
+
+### Country statistics
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}
+
+### Full hierarchy current statistics
+GET {{baseUrl}}/statistics/fuel-prices/current?countryCode={{countryCode}}&productType={{productType}}&adminArea1=Andalucia&adminArea2=Málaga&adminArea3=Ardales
+
+### Full hierarchy history
+GET {{baseUrl}}/statistics/fuel-prices/history?countryCode={{countryCode}}&productType={{productType}}&adminArea1=Andalucia&adminArea2=Málaga&adminArea3=Ardales&from=2026-09-22&to=2026-09-28
+
+### Locality station search
+GET {{baseUrl}}/stations?searchMode=LOCALITY&countryCode={{countryCode}}&adminArea1=Andalucia&adminArea2=Málaga&adminArea3=Ardales&productType={{productType}}&sortBy=PRICE&page=0&size=100

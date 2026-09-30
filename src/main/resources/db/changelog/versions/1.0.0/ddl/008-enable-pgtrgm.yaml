@@ -6,4 +6,6 @@ databaseChangeLog:
 
       changes:
         - sql:
-            sql: CREATE EXTENSION IF NOT EXISTS pg_trgm;
+            sql: |
+              CREATE EXTENSION IF NOT EXISTS pg_trgm;
+              CREATE EXTENSION IF NOT EXISTS unaccent;

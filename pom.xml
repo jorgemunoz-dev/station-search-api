@@ -224,8 +224,8 @@
 						<configuration>
 							<inputSpec>${project.basedir}/src/main/resources/openapi/station-search-api.yml</inputSpec>
 							<generatorName>spring</generatorName>
-							<apiPackage>com.petrolprice.station_search_api.infrastructure.in.rest.api</apiPackage>
-							<modelPackage>com.petrolprice.station_search_api.infrastructure.in.rest.dto</modelPackage>
+							<apiPackage>com.petrolprice.station_search_api.contract.rest.api</apiPackage>
+							<modelPackage>com.petrolprice.station_search_api.contract.rest.model</modelPackage>
 
 							<configOptions>
 								<interfaceOnly>true</interfaceOnly>

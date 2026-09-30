@@ -1,172 +1,239 @@
 package com.petrolprice.station_search_api.integration;
 
+import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.aStationSnapshot;
+import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.openingPeriod;
+import static com.petrolprice.station_search_api.integration.support.StationSnapshotFixture.price;
+import static com.petrolprice.station_search_api.station.domain.type.Day.MON;
+import static com.petrolprice.station_search_api.station.domain.type.Day.SAT;
+import static com.petrolprice.station_search_api.station.domain.type.Day.TUE;
+import static com.petrolprice.station_search_api.station.domain.type.Day.WED;
+import static com.petrolprice.station_search_api.station.domain.type.ProductType.DIESEL_A;
+import static com.petrolprice.station_search_api.station.domain.type.ProductType.GASOLINE_95_E5;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.petrolprice.station_search_api.application.usecase.findstations.query.FindStationsPageRequest;
-import com.petrolprice.station_search_api.application.usecase.findstations.query.FindStationsQuery;
-import com.petrolprice.station_search_api.application.usecase.findstations.query.FindStationsSort;
-import com.petrolprice.station_search_api.application.usecase.findstations.result.FindStationsItem;
-import com.petrolprice.station_search_api.application.usecase.findstations.result.FindStationsResult;
-import com.petrolprice.station_search_api.application.usecase.findstations.searcharea.RadiusSearchArea;
-import com.petrolprice.station_search_api.domain.type.Day;
-import com.petrolprice.station_search_api.domain.type.ProductType;
-import com.petrolprice.station_search_api.infrastructure.out.persistence.postgres.PostgresStationSearchPersistenceAdapter;
+import com.petrolprice.station_search_api.integration.support.StationImportProbe;
+import com.petrolprice.station_search_api.integration.support.StationSnapshotFixture;
+import com.petrolprice.station_search_api.station.domain.type.ProductType;
+import com.petrolprice.station_search_api.station.infrastructure.postgres.PostgresStationSearchPersistenceAdapter;
+import com.petrolprice.station_search_api.station.ingestion.application.ProcessStationSnapshotService;
+import com.petrolprice.station_search_api.station.search.application.query.FindStationsPageRequest;
+import com.petrolprice.station_search_api.station.search.application.query.FindStationsQuery;
+import com.petrolprice.station_search_api.station.search.application.query.FindStationsSort;
+import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
+import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
+import com.petrolprice.station_search_api.station.search.application.searcharea.LocalitySearchArea;
+import com.petrolprice.station_search_api.station.search.application.searcharea.RadiusSearchArea;
 import java.math.BigDecimal;
-import java.util.UUID;
+import java.time.LocalTime;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.jdbc.Sql;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-@Sql(scripts = "/sql/station-search-dataset.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-public class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
-
+class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
     @Autowired
     private PostgresStationSearchPersistenceAdapter adapter;
 
+    @Autowired
+    private ProcessStationSnapshotService snapshotService;
+
+    @Autowired
+    private StationImportProbe probe;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    private BigDecimal latitude;
+    private BigDecimal longitude;
+    private StationSnapshotFixture cheapestDiesel;
+    private StationSnapshotFixture expensiveDiesel;
+    private StationSnapshotFixture gasolineOnly;
+    private StationSnapshotFixture outOfRange;
+    private StationSnapshotFixture withoutPrices;
+    private StationSnapshotFixture middleDiesel;
+
+    @BeforeEach
+    void createDynamicSearchScenario() {
+        probe.clean();
+
+        StationSnapshotFixture origin = aStationSnapshot();
+        latitude = origin.latitude();
+        longitude = origin.longitude();
+
+        cheapestDiesel = origin.withPrices(price(DIESEL_A, "1.400"), price(GASOLINE_95_E5, "1.600"))
+                .withOpeningPeriods(
+                        openingPeriod(List.of(MON, TUE, WED), LocalTime.of(8, 0), LocalTime.of(22, 0)),
+                        openingPeriod(List.of(SAT), LocalTime.of(9, 0), LocalTime.of(20, 0)));
+        expensiveDiesel = nearby("0.0003").withPrices(price(DIESEL_A, "1.700"), price(GASOLINE_95_E5, "1.500"));
+        gasolineOnly = nearby("0.0006").withPrices(price(GASOLINE_95_E5, "1.300"));
+        outOfRange = nearby("0.05").withPrices(price(DIESEL_A, "1.100"));
+        withoutPrices = nearby("0.0002").withPrices();
+        middleDiesel = nearby("0.0009").withPrices(price(DIESEL_A, "1.550"));
+
+        List.of(cheapestDiesel, expensiveDiesel, gasolineOnly, outOfRange, withoutPrices, middleDiesel)
+                .forEach(station -> snapshotService.consume(station.processCommand()));
+    }
+
     @Test
     void shouldFilterStationsByRadius() {
-        RadiusSearchArea radiusSearchArea =
-                new RadiusSearchArea(BigDecimal.valueOf(36.878694), BigDecimal.valueOf(-4.844639), 500);
+        FindStationsResult result = adapter.search(query(null, FindStationsSort.DISTANCE, 10));
 
-        FindStationsPageRequest pageRequest =
-                FindStationsPageRequest.builder().size(10).build();
-
-        FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(radiusSearchArea)
-                .sortBy(FindStationsSort.DISTANCE)
-                .pageRequest(pageRequest)
-                .build();
-
-        FindStationsResult result = adapter.search(query);
-
-        assertThat(result.items())
-                .extracting(item -> item.station().getId())
+        assertThat(externalIds(result))
                 .containsExactlyInAnyOrder(
-                        UUID.fromString("11111111-1111-1111-1111-111111111111"),
-                        UUID.fromString("55555555-5555-5555-5555-555555555555"),
-                        UUID.fromString("22222222-2222-2222-2222-222222222222"),
-                        UUID.fromString("33333333-3333-3333-3333-333333333333"),
-                        UUID.fromString("66666666-6666-6666-6666-666666666666"));
+                        cheapestDiesel.externalId(),
+                        expensiveDiesel.externalId(),
+                        gasolineOnly.externalId(),
+                        withoutPrices.externalId(),
+                        middleDiesel.externalId())
+                .doesNotContain(outOfRange.externalId());
     }
 
     @Test
     void shouldFilterStationsByProductType() {
-        RadiusSearchArea radiusSearchArea =
-                new RadiusSearchArea(BigDecimal.valueOf(36.878694), BigDecimal.valueOf(-4.844639), 500);
+        FindStationsResult result = adapter.search(query(DIESEL_A, FindStationsSort.DISTANCE, 10));
 
-        FindStationsPageRequest pageRequest =
-                FindStationsPageRequest.builder().size(10).build();
-
-        FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(radiusSearchArea)
-                .productType(ProductType.DIESEL_A)
-                .sortBy(FindStationsSort.DISTANCE)
-                .pageRequest(pageRequest)
-                .build();
-
-        FindStationsResult result = adapter.search(query);
-
-        assertThat(result.items())
-                .extracting(item -> item.station().getId())
+        assertThat(externalIds(result))
                 .containsExactlyInAnyOrder(
-                        UUID.fromString("11111111-1111-1111-1111-111111111111"),
-                        UUID.fromString("22222222-2222-2222-2222-222222222222"),
-                        UUID.fromString("66666666-6666-6666-6666-666666666666"));
+                        cheapestDiesel.externalId(), expensiveDiesel.externalId(), middleDiesel.externalId());
     }
 
     @Test
     void shouldSortStationsByPrice() {
-        RadiusSearchArea radiusSearchArea =
-                new RadiusSearchArea(BigDecimal.valueOf(36.878694), BigDecimal.valueOf(-4.844639), 500);
+        FindStationsResult result = adapter.search(query(DIESEL_A, FindStationsSort.PRICE, 10));
 
-        FindStationsPageRequest pageRequest =
-                FindStationsPageRequest.builder().size(10).build();
-
-        FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(radiusSearchArea)
-                .productType(ProductType.DIESEL_A)
-                .sortBy(FindStationsSort.PRICE)
-                .pageRequest(pageRequest)
-                .build();
-
-        FindStationsResult result = adapter.search(query);
-
-        assertThat(result.items())
-                .extracting(item -> item.station().getId())
-                .containsExactly(
-                        UUID.fromString("11111111-1111-1111-1111-111111111111"),
-                        UUID.fromString("66666666-6666-6666-6666-666666666666"),
-                        UUID.fromString("22222222-2222-2222-2222-222222222222"));
+        assertThat(externalIds(result))
+                .containsExactly(cheapestDiesel.externalId(), middleDiesel.externalId(), expensiveDiesel.externalId());
     }
 
     @Test
     void shouldRespectLimitAfterFilteringAndSorting() {
-        RadiusSearchArea radiusSearchArea =
-                new RadiusSearchArea(BigDecimal.valueOf(36.878694), BigDecimal.valueOf(-4.844639), 500);
+        FindStationsResult result = adapter.search(query(DIESEL_A, FindStationsSort.PRICE, 2));
 
-        FindStationsPageRequest pageRequest =
-                FindStationsPageRequest.builder().size(2).build();
-
-        FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(radiusSearchArea)
-                .productType(ProductType.DIESEL_A)
-                .sortBy(FindStationsSort.PRICE)
-                .pageRequest(pageRequest)
-                .build();
-
-        FindStationsResult result = adapter.search(query);
-
-        assertThat(result.items())
-                .extracting(item -> item.station().getId())
-                .containsExactly(
-                        UUID.fromString("11111111-1111-1111-1111-111111111111"),
-                        UUID.fromString("66666666-6666-6666-6666-666666666666"));
+        assertThat(externalIds(result)).containsExactly(cheapestDiesel.externalId(), middleDiesel.externalId());
+        assertThat(result.page().hasNext()).isTrue();
     }
 
     @Test
     void shouldLoadStationDetailsWithoutDuplicates() {
-        RadiusSearchArea radiusSearchArea =
-                new RadiusSearchArea(BigDecimal.valueOf(36.878694), BigDecimal.valueOf(-4.844639), 500);
+        FindStationsResult result = adapter.search(query(DIESEL_A, FindStationsSort.PRICE, 10));
 
-        FindStationsPageRequest pageRequest =
-                FindStationsPageRequest.builder().size(10).build();
+        assertThat(externalIds(result)).containsOnlyOnce(cheapestDiesel.externalId());
 
-        FindStationsQuery query = FindStationsQuery.builder()
-                .searchArea(radiusSearchArea)
-                .productType(ProductType.DIESEL_A)
-                .sortBy(FindStationsSort.PRICE)
-                .pageRequest(pageRequest)
-                .build();
-
-        FindStationsResult result = adapter.search(query);
-
-        assertThat(result.items())
-                .extracting(item -> item.station().getId())
-                .containsOnlyOnce(UUID.fromString("11111111-1111-1111-1111-111111111111"));
-
-        FindStationsItem s1 = result.items().stream()
-                .filter(item -> item.station().getId().equals(UUID.fromString("11111111-1111-1111-1111-111111111111")))
+        FindStationsItem station = result.items().stream()
+                .filter(item -> item.station().getExternalId().equals(cheapestDiesel.externalId()))
                 .findFirst()
                 .orElseThrow();
 
-        assertThat(s1.station().getProductPrices())
+        assertThat(station.station().getProductPrices())
                 .extracting(productPrice -> productPrice.getProductType())
-                .containsExactlyInAnyOrder(ProductType.DIESEL_A, ProductType.GASOLINE_95_E5);
-
-        assertThat(s1.station().getOpeningPeriods()).hasSize(2);
-
-        assertThat(s1.station().getOpeningPeriods()).anySatisfy(period -> {
-            assertThat(period.getDays()).containsExactlyInAnyOrder(Day.MON, Day.TUE, Day.WED);
-
-            assertThat(period.getOpen().toString()).isEqualTo("08:00");
-            assertThat(period.getClose().toString()).isEqualTo("22:00");
+                .containsExactlyInAnyOrder(DIESEL_A, GASOLINE_95_E5);
+        assertThat(station.station().getOpeningPeriods()).hasSize(2).anySatisfy(period -> {
+            assertThat(period.getDays()).containsExactlyInAnyOrder(MON, TUE, WED);
+            assertThat(period.getOpen()).isEqualTo(LocalTime.of(8, 0));
+            assertThat(period.getClose()).isEqualTo(LocalTime.of(22, 0));
         });
+    }
 
-        assertThat(s1.station().getOpeningPeriods()).anySatisfy(period -> {
-            assertThat(period.getDays()).containsExactly(Day.SAT);
+    @Test
+    void shouldFilterStationsByExactNormalizedLocality() {
+        StationSnapshotFixture malaga = aStationSnapshot().withLocality("Málaga").withAdministrativeHierarchy("Andalucía", "Málaga", "Málaga");
+        StationSnapshotFixture neighboringLocality = aStationSnapshot().withLocality("Málaga del Fresno").withAdministrativeHierarchy("Andalucía", "Málaga", "Málaga del Fresno");
+        snapshotService.consume(malaga.processCommand());
+        snapshotService.consume(neighboringLocality.processCommand());
 
-            assertThat(period.getOpen().toString()).isEqualTo("09:00");
-            assertThat(period.getClose().toString()).isEqualTo("20:00");
-        });
+        FindStationsQuery query = FindStationsQuery.builder()
+                .searchArea(new LocalitySearchArea("es", "andalucia", "malaga", "malaga"))
+                .sortBy(FindStationsSort.PRICE)
+                .pageRequest(FindStationsPageRequest.builder().size(10).build())
+                .build();
+
+        assertThat(externalIds(adapter.search(query)))
+                .containsExactly(malaga.externalId())
+                .doesNotContain(neighboringLocality.externalId());
+    }
+
+    @Test
+    void shouldMatchAnAccentInsensitiveAdministrativeHierarchy() {
+        StationSnapshotFixture castellon = aStationSnapshot()
+                .withLocalityAndNormalizedName(
+                        "CASTELLON DE LA PLANA", "castellon de la plana")
+                .withAdministrativeHierarchy("València", "Castellón", "Castellón de la Plana")
+                .withPrices(price(GASOLINE_95_E5, "1.819"));
+        snapshotService.consume(castellon.processCommand());
+
+        FindStationsQuery query = FindStationsQuery.builder()
+                .searchArea(new LocalitySearchArea("ES", "valencia", "castellon", "castellon de la plana"))
+                .productType(GASOLINE_95_E5)
+                .sortBy(FindStationsSort.PRICE)
+                .pageRequest(FindStationsPageRequest.builder().size(100).build())
+                .build();
+
+        assertThat(externalIds(adapter.search(query))).containsExactly(castellon.externalId());
+    }
+
+    @Test
+    void shouldResolveAllUnambiguousPostalCodesForAGeoNamesLocality() {
+        StationSnapshotFixture firstPostalCode = stationIn("15001", "CORUÑA (A)");
+        StationSnapshotFixture secondPostalCode = stationIn("15002", "CORUÑA (A)");
+        StationSnapshotFixture ambiguousPostalCode = stationIn("15003", "CORUÑA (A)");
+        StationSnapshotFixture otherLocality = stationIn("15003", "OLEIROS");
+        List.of(firstPostalCode, secondPostalCode, ambiguousPostalCode, otherLocality)
+                .forEach(station -> snapshotService.consume(station.processCommand()));
+        insertSearchLocation("15001", "A Coruña", "a coruna");
+        insertSearchLocation("15002", "A Coruña", "a coruna");
+        insertSearchLocation("15003", "A Coruña", "a coruna");
+
+        FindStationsQuery query = FindStationsQuery.builder()
+                .searchArea(new LocalitySearchArea("ES", "galicia", "a coruna", "a coruna"))
+                .sortBy(FindStationsSort.PRICE)
+                .pageRequest(FindStationsPageRequest.builder().size(100).build())
+                .build();
+
+        assertThat(externalIds(adapter.search(query)))
+                .contains(firstPostalCode.externalId(), secondPostalCode.externalId(), ambiguousPostalCode.externalId(), otherLocality.externalId());
+    }
+
+    private StationSnapshotFixture stationIn(String postalCode, String stationLocality) {
+        return aStationSnapshot()
+                .withPostalCode(postalCode)
+                .withLocalityAndNormalizedName(stationLocality, stationLocality);
+    }
+
+    private void insertSearchLocation(String postalCode, String localityName, String normalizedLocalityName) {
+        jdbcTemplate.update(
+                """
+            INSERT INTO search_location (
+                id, country_code, postal_code, normalized_postal_code,
+                locality_name, normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name, location, source
+            ) VALUES (
+                gen_random_uuid(), 'ES', ?, ?, ?, ?, 'Galicia', 'A Coruña', 'A Coruña',
+                ST_SetSRID(ST_MakePoint(-8.4, 43.3), 4326)::geography, 'GEONAMES'
+            )
+            """,
+                postalCode,
+                postalCode,
+                localityName,
+                normalizedLocalityName);
+    }
+
+    private StationSnapshotFixture nearby(String offset) {
+        BigDecimal delta = new BigDecimal(offset);
+        return aStationSnapshot().withLocation(latitude.add(delta), longitude.add(delta));
+    }
+
+    private FindStationsQuery query(ProductType productType, FindStationsSort sort, int size) {
+        return FindStationsQuery.builder()
+                .searchArea(new RadiusSearchArea(latitude, longitude, 500))
+                .productType(productType)
+                .sortBy(sort)
+                .pageRequest(FindStationsPageRequest.builder().size(size).build())
+                .build();
+    }
+
+    private List<String> externalIds(FindStationsResult result) {
+        return result.items().stream()
+                .map(item -> item.station().getExternalId())
+                .toList();
     }
 }

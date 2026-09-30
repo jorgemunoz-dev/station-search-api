@@ -1,0 +1,83 @@
+package com.petrolprice.station_search_api.station.infrastructure.postgres.mapper;
+
+import com.petrolprice.station_search_api.station.domain.model.*;
+import com.petrolprice.station_search_api.station.domain.type.Country;
+import com.petrolprice.station_search_api.station.domain.type.Day;
+import com.petrolprice.station_search_api.station.domain.type.ProductType;
+import com.petrolprice.station_search_api.station.infrastructure.postgres.projection.OpeningPeriodProjection;
+import com.petrolprice.station_search_api.station.infrastructure.postgres.projection.ProductPriceProjection;
+import com.petrolprice.station_search_api.station.infrastructure.postgres.projection.StationRankingProjection;
+import com.petrolprice.station_search_api.station.search.application.result.FindStationsItem;
+import java.math.BigDecimal;
+import java.util.List;
+import org.mapstruct.Mapper;
+
+@Mapper(componentModel = "spring")
+public interface StationSearchProjectionMapper {
+
+    default FindStationsItem toItem(
+            StationRankingProjection projection, List<ProductPrice> productPrices, List<OpeningPeriod> openingPeriods) {
+        Station station = Station.builder()
+                .id(projection.id())
+                .externalId(projection.externalId())
+                .country(toCountry(projection.country()))
+                .brand(projection.brand())
+                .normalizedBrand(projection.normalizedBrand())
+                .address(toAddress(projection))
+                .location(toGeoLocation(projection))
+                .productPrices(productPrices)
+                .openingPeriods(openingPeriods)
+                .build();
+
+        return new FindStationsItem(
+                station,
+                projection.distanceMeters() == null
+                        ? null
+                        : BigDecimal.valueOf(projection.distanceMeters()) // TODO: fix this
+                );
+    }
+
+    default OpeningPeriod toOpeningPeriod(List<OpeningPeriodProjection> projections) {
+        OpeningPeriodProjection first = projections.getFirst();
+
+        return OpeningPeriod.builder()
+                .days(projections.stream().map(p -> Day.valueOf(p.dayOfWeek())).toList())
+                .open(first.openTime())
+                .close(first.closeTime())
+                .build();
+    }
+
+    default Address toAddress(StationRankingProjection projection) {
+        return Address.builder()
+                .street(projection.street())
+                .postalCode(projection.postalCode())
+                .localityName(projection.localityName())
+                .normalizedLocalityName(projection.normalizedLocalityName())
+                .adminArea1Name(projection.adminArea1Name())
+                .adminArea2Name(projection.adminArea2Name())
+                .adminArea3Name(projection.adminArea3Name())
+                .build();
+    }
+
+    default GeoLocation toGeoLocation(StationRankingProjection projection) {
+        return GeoLocation.builder()
+                .latitude(BigDecimal.valueOf(projection.latitude()))
+                .longitude(BigDecimal.valueOf(projection.longitude()))
+                .build();
+    }
+
+    default ProductPrice toProductPrice(ProductPriceProjection projection) {
+        if (projection.productType() == null || projection.price() == null) {
+            return null;
+        }
+
+        return ProductPrice.builder()
+                .productType(ProductType.valueOf(projection.productType()))
+                .price(projection.price())
+                .build();
+    }
+
+    default Country toCountry(String country) {
+        return country == null ? null : Country.valueOf(country);
+    }
+}

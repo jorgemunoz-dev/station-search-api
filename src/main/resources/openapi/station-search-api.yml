@@ -9,9 +9,17 @@ paths:
       tags:
         - Stations
       operationId: searchStations
-      summary: Search stations by radius and filters
+      summary: Search stations by locality or geographical area
       description: |
-        Searches stations using one of two mutually exclusive modes.
+        Searches stations using one of three mutually exclusive modes.
+
+        LOCALITY mode:
+        - Requires countryCode, adminArea1, adminArea2 and adminArea3.
+        - Must not include radius or viewport parameters.
+        - Uses the administrative hierarchy as the locality identifier; names are matched accent-insensitively.
+        - Resolves the hierarchy through search_location by country and normalized postal code when
+          station rows do not contain administrative-area values.
+        - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:
         - Requires north, south, east and west.
@@ -54,6 +62,34 @@ paths:
           description: Defines how the geographical search area is specified.
           schema:
             $ref: "#/components/schemas/StationSearchMode"
+
+        # Locality filters
+        - name: countryCode
+          in: query
+          required: false
+          description: ISO 3166-1 alpha-2 country code. Required when searchMode is LOCALITY.
+          schema:
+            type: string
+            pattern: '^[A-Za-z]{2}$'
+            example: ES
+        - name: adminArea1
+          in: query
+          required: false
+          description: First-level administrative area. Required when searchMode is LOCALITY.
+          schema: {type: string, minLength: 1}
+          example: Andalucía
+        - name: adminArea2
+          in: query
+          required: false
+          description: Second-level administrative area. Required when searchMode is LOCALITY.
+          schema: {type: string, minLength: 1}
+          example: Málaga
+        - name: adminArea3
+          in: query
+          required: false
+          description: Local administrative area identifying the locality. Required when searchMode is LOCALITY.
+          schema: {type: string, minLength: 1}
+          example: Ardales
 
         # Radius filters
         - name: lat
@@ -173,12 +209,11 @@ paths:
           example: Malaga
         - name: countryCode
           in: query
-          required: false
+          required: true
           description: ISO 3166-1 alpha-2 country code.
           schema:
             type: string
             pattern: '^[A-Z]{2}$'
-            default: ES
           example: ES
         - name: limit
           in: query
@@ -202,8 +237,273 @@ paths:
                 items:
                   $ref: '#/components/schemas/LocationSuggestion'
 
+  /statistics/fuel-prices/current:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getCurrentFuelPriceStatistics
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Requires adminArea1., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Requires adminArea1 and adminArea2., schema: {type: string}}
+      responses:
+        '200':
+          description: Current aggregate
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentPriceStatisticsResponse'}
+
+  /statistics/fuel-prices/history:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getHistoricalFuelPriceStatistics
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: adminArea1, in: query, required: false, description: Country-specific level 1 area., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Country-specific level 2 area. Requires adminArea1., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Country-specific level 3 area. Requires adminArea1 and adminArea2., schema: {type: string}}
+        - {name: from, in: query, required: true, schema: {type: string, format: date}}
+        - {name: to, in: query, required: true, schema: {type: string, format: date}}
+      responses:
+        '200':
+          description: Daily historical aggregates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/HistoricalPricePointResponse'}
+
+  /statistics/fuel-prices/localities:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getLocalityFuelPriceStatistics
+      description: >
+        Returns one aggregate per locality. Administrative-area parameters only filter the
+        localities included in the ranking; they do not select a locality and they do not change
+        the response granularity. Use the complete adminArea hierarchy on the current or history
+        endpoint to obtain the aggregate for one exact town or city. The meaning of each position
+        comes from search_location and is country/source-specific.
+      parameters:
+        - {name: countryCode, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: adminArea1, in: query, required: false, description: Filters the locality ranking by the country-specific level 1 metadata., schema: {type: string}}
+        - {name: adminArea2, in: query, required: false, description: Filters the locality ranking by the country-specific level 2 metadata., schema: {type: string}}
+        - {name: adminArea3, in: query, required: false, description: Filters the locality ranking by the country-specific level 3 metadata. This is not an alias for locality., schema: {type: string}}
+      responses:
+        '200':
+          description: Ranked locality aggregates, optionally filtered by administrative context
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/RankedLocalityStatisticsResponse'}
+
+  /statistics/fuel-prices/summary:
+    get:
+      tags:
+        - Fuel Price Statistics
+      operationId: getFuelPriceSummary
+      summary: Get fuel price summary
+      description: >
+        Returns aggregated fuel price statistics for a country and product,
+        including average price, variation, minimum and maximum prices and number of stations analysed.
+
+      parameters:
+        - name: countryCode
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: ES
+        - name: productType
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ProductType'
+        - name: days
+          in: query
+          required: false
+          description: Number of previous days used to calculate the statistics.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 7
+          example: 7
+      responses:
+        '200':
+          description: Fuel price summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FuelPriceSummaryResponse'
+
+  /statistics/fuel-prices/savings:
+    get:
+      tags: [Fuel Price Statistics]
+      operationId: getFuelSaving
+      parameters:
+        - {name: stationId, in: query, required: true, schema: {type: string, format: uuid}}
+        - {name: productType, in: query, required: true, schema: {$ref: '#/components/schemas/ProductType'}}
+        - {name: referencePrice, in: query, required: true, schema: {type: number}}
+        - {name: tankLiters, in: query, required: false, schema: {type: number, default: 55}}
+      responses:
+        '200':
+          description: Theoretical saving against the reference price
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FuelSavingResponse'}
+
 components:
+
   schemas:
+
+    FuelPriceSummaryResponse:
+      type: object
+      required:
+        - countryCode
+        - productType
+        - averagePrice
+        - stationsAnalyzed
+        - updatedAt
+      properties:
+        countryCode:
+          type: string
+          example: ES
+        productType:
+          $ref: '#/components/schemas/ProductType'
+        averagePrice:
+          type: number
+          format: double
+          example: 1.389
+        previousAveragePrice:
+          type: number
+          format: double
+          example: 1.409
+        variation:
+          type: number
+          format: double
+          description: Difference against the beginning of the selected period.
+          example: -0.020
+        variationPercentage:
+          type: number
+          format: double
+          example: -1.42
+        minimumPrice:
+          type: number
+          format: double
+          example: 1.358
+        maximumPrice:
+          type: number
+          format: double
+          example: 1.439
+        stationsAnalyzed:
+          type: integer
+          format: int64
+          example: 12458
+        estimatedSaving:
+          $ref: '#/components/schemas/EstimatedSaving'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-08-31T12:30:00Z'
+
+    FuelSavingResponse:
+      type: object
+      properties:
+        stationPrice: {type: number}
+        referencePrice: {type: number}
+        savingPerLiter: {type: number}
+        tankLiters: {type: number, default: 55}
+        savingPerTank: {type: number}
+
+    GeographicScopeResponse:
+      type: object
+      properties:
+        adminArea1Name: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
+
+    StationPricePointResponse:
+      type: object
+      properties:
+        stationId: {type: string, format: uuid}
+        brand: {type: string}
+        price: {type: number}
+        latitude: {type: number}
+        longitude: {type: number}
+
+    CurrentPriceStatisticsResponse:
+      type: object
+      properties:
+        countryCode: {type: string}
+        productType: {$ref: '#/components/schemas/ProductType'}
+        scope: {$ref: '#/components/schemas/GeographicScopeResponse'}
+        averagePrice: {type: number}
+        minimumPrice: {type: number}
+        maximumPrice: {type: number}
+        stationCount: {type: integer, format: int64}
+        cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
+        mostExpensiveStation: {$ref: '#/components/schemas/StationPricePointResponse'}
+        countryAverageDifference: {type: number, nullable: true}
+        adminArea2AverageDifference: {type: number, nullable: true}
+        updatedAt: {type: string, format: date-time}
+
+    HistoricalPricePointResponse:
+      type: object
+      properties:
+        date: {type: string, format: date}
+        averagePrice: {type: number}
+        minimumPrice: {type: number}
+        maximumPrice: {type: number}
+        stationCount: {type: integer, format: int64}
+        periodAveragePrice: {type: number}
+        periodMinimumPrice: {type: number}
+        periodMaximumPrice: {type: number}
+        changeFromPreviousDay: {type: number, nullable: true}
+        changeFromSevenDaysAgo: {type: number, nullable: true}
+        changeFromThirtyDaysAgo: {type: number, nullable: true}
+        percentageFromPreviousDay: {type: number, nullable: true}
+        percentageFromSevenDaysAgo: {type: number, nullable: true}
+        percentageFromThirtyDaysAgo: {type: number, nullable: true}
+
+    RankedLocalityStatisticsResponse:
+      type: object
+      properties:
+        normalizedLocalityName: {type: string}
+        localityName: {type: string}
+        adminArea1Name: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
+        averagePrice: {type: number}
+        minimumPrice: {type: number}
+        maximumPrice: {type: number}
+        stationCount: {type: integer, format: int64}
+        cheapestStation: {$ref: '#/components/schemas/StationPricePointResponse'}
+        countryAverageDifference: {type: number}
+        cheapestRank: {type: integer}
+        mostExpensiveRank: {type: integer}
+
+    EstimatedSaving:
+      type: object
+      properties:
+        pricePerLiter:
+          type: number
+          format: double
+          example: 0.136
+        tankSizeLiters:
+          type: number
+          format: double
+          example: 55
+        amount:
+          type: number
+          format: double
+          example: 7.48
+
     LocationSuggestion:
       type: object
       required:
@@ -211,6 +511,8 @@ components:
         - primaryText
         - secondaryText
         - countryCode
+        - stationLocalityName
+        - normalizedLocalityName
         - latitude
         - longitude
       properties:
@@ -237,8 +539,28 @@ components:
         postalCode:
           type: string
           nullable: true
-          description: Postal code when the suggestion represents a postal code.
+          description: Postal code associated with the GeoNames suggestion, when available.
           example: '29001'
+
+        stationLocalityName:
+          type: string
+          description: >
+            Locality value to send to station searches. It is resolved from station data when the
+            postal code maps unambiguously to one station locality; otherwise it falls back to the
+            GeoNames locality name.
+          example: Coruña (A)
+
+        normalizedLocalityName:
+          type: string
+          description: Stable normalized locality value accepted by statistics endpoints.
+          example: malaga
+
+        adminArea1Name: {type: string, nullable: true}
+        adminArea1Code: {type: string, nullable: true}
+        adminArea2Name: {type: string, nullable: true}
+        adminArea2Code: {type: string, nullable: true}
+        adminArea3Name: {type: string, nullable: true}
+        adminArea3Code: {type: string, nullable: true}
 
         latitude:
           type: number
@@ -267,6 +589,7 @@ components:
       enum:
         - VIEWPORT
         - RADIUS
+        - LOCALITY
     ProductType:
       type: string
       enum:
@@ -417,11 +740,15 @@ components:
           type: string
         postalCode:
           type: string
-        locality:
+        localityName:
           type: string
-        municipality:
+        normalizedLocalityName:
           type: string
-        province:
+        adminArea1Name:
+          type: string
+        adminArea2Name:
+          type: string
+        adminArea3Name:
           type: string
 
     ProductPriceResponse:

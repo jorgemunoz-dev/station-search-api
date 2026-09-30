@@ -1,5 +1,9 @@
 # station-search-api Architecture
 
+The structured documentation for the current solution—including its business view, architecture,
+flows, data model, edge cases, and database-query rationale—is available in
+[`docs/solution.md`](docs/solution.md).
+
 ## Overview
 
 `station-search-api` is the microservice responsible for storing and exposing data related to fuel stations and EV charging stations.
@@ -57,27 +61,24 @@ The main goal is to keep the domain isolated from technical concerns suhc as:
 
 ## Package Structure
 
-```text
-com.petrolprice.station_search_api
-├── StationSearchApiApplication.java
-├── domain
-│   ├── model
-│   ├── service
-│   └── port
-│       ├── in
-│       └── out
-├── application
-│   ├── usecase
-│   ├── command
-│   └── mapper
-└── infrastructure
-    ├── in
-    │   ├── rest
-    │   └── messaging
-    ├── out
-    │   └── persistence
-    └── config
-```
+The project is organized as a feature-first modular monolith. The modules are `station` (with
+`ingestion` and `search` capabilities), `location`, `statistics`, and technical `platform`
+configuration. Each business module keeps its own domain, application ports, and infrastructure
+adapters.
+
+The rationale, dependency rules, target tree, and incremental migration sequence are documented in
+[ADR-001: Feature-first modular monolith](docs/architecture/adr-001-feature-first-modular-monolith.md).
+
+The country/locality model shared by location search and statistics is documented in
+[ADR-002: Country and locality statistics](docs/architecture/adr-002-country-locality-statistics.md).
+
+Runnable HTTP examples for discovering administrative areas and querying national or area-level
+statistics are available in
+[`requests/locality-statistics.http`](requests/locality-statistics.http).
+Copy-and-paste cURL examples for all public endpoints are available in
+[`requests/curl-examples.md`](requests/curl-examples.md).
+An endpoint-by-endpoint usage guide is available in
+[`docs/api/endpoints.md`](docs/api/endpoints.md).
 
 ---
 
@@ -214,3 +215,23 @@ This is the only place where providers and frameworks code should live.
 ## Roadmap
 
 See [ROADMAP.md](./ROADMAP.md)
+
+## Multi-country administrative hierarchy
+
+Stations use `locality_name`, `normalized_locality_name` and the generic `admin_area_1_name` through
+`admin_area_3_name` fields. Exact station/statistics selection uses the ordered administrative
+hierarchy. Missing station metadata is resolved from `search_location` using country and normalized
+postal code. Because this pre-production schema changed in-place, recreate the database and import
+GeoNames/reprocess snapshots.
+
+### Consumer and database tuning
+
+`SNAPSHOT_CONCURRENCY=8`, `SNAPSHOT_MAX_CONCURRENCY=16`, `SNAPSHOT_PREFETCH=100`,
+`COMPLETION_CONCURRENCY=1`, `COMPLETION_PREFETCH=1`, `DB_POOL_MAX_SIZE=20`,
+`DB_POOL_MIN_IDLE=4` and `HIBERNATE_JDBC_BATCH_SIZE=50` are configurable. Keep snapshot maximum
+concurrency below the JDBC pool maximum so the completion consumer and HTTP traffic retain a
+connection. `HIBERNATE_ORDER_INSERTS` and `HIBERNATE_ORDER_UPDATES` default to `true`.
+
+Import progress uses the idempotent `station_import_event` ledger as its source of truth. A periodic
+reconciler finalizes completed imports, avoiding a shared progress-row update for every event while
+preserving one-message transactions, retries and dead-letter behavior.

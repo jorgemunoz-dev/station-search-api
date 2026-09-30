@@ -75,6 +75,13 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$[0].type", is("LOCALITY")))
                 .andExpect(jsonPath("$[0].primaryText", is("Ardales")))
                 .andExpect(jsonPath("$[0].countryCode", is("ES")))
+                .andExpect(jsonPath("$[0].postalCode", is("29550")))
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")))
+                .andExpect(jsonPath("$[0].normalizedLocalityName", is("ardales")))
+                .andExpect(jsonPath("$[0].adminArea1Name", is("Andalucía")))
+                .andExpect(jsonPath("$[0].adminArea1Code", is("01")))
+                .andExpect(jsonPath("$[0].adminArea2Name", is("Málaga")))
+                .andExpect(jsonPath("$[0].adminArea2Code", is("29")))
                 .andExpect(jsonPath("$[0].latitude", is(36.8780)))
                 .andExpect(jsonPath("$[0].longitude", is(-4.8460)));
     }
@@ -87,12 +94,47 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                         .queryParam("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].type", is("POSTAL_CODE")))
-                .andExpect(jsonPath("$[0].postalCode", is("29550")));
+                .andExpect(jsonPath("$[0].postalCode", is("29550")))
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")));
+    }
+
+    @Test
+    void shouldResolveStationLocalityFromAnUnambiguousPostalCode() throws Exception {
+        insertStation("22222222-2222-2222-2222-222222222222", "29550", "ARDales pueblo", "Ardales (El)");
+        insertStation("33333333-3333-3333-3333-333333333333", "29550", "Another locality", "Ardales (El)");
+        insertSearchLocationWithoutStations();
+
+        mockMvc.perform(get("/locations/search")
+                        .queryParam("query", "ard")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].primaryText", is("Ardales")))
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales (El)")));
+    }
+
+    @Test
+    void shouldKeepGeoNamesLocalityWhenPostalCodeIsAmbiguous() throws Exception {
+        insertStation("22222222-2222-2222-2222-222222222222", "29550", "Ardales", "Ardales (El)");
+        insertStation("33333333-3333-3333-3333-333333333333", "29550", "Carratraca", "Carratraca");
+
+        mockMvc.perform(get("/locations/search")
+                        .queryParam("query", "ard")
+                        .queryParam("countryCode", "ES")
+                        .queryParam("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")));
     }
 
     @Test
     void shouldReturnBadRequestWhenQueryIsMissing() throws Exception {
         mockMvc.perform(get("/locations/search").queryParam("countryCode", "ES"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenCountryCodeIsMissing() throws Exception {
+        mockMvc.perform(get("/locations/search").queryParam("query", "ard"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -115,5 +157,42 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                         .queryParam("countryCode", "ES")
                         .queryParam("limit", "21"))
                 .andExpect(status().isBadRequest());
+    }
+
+    private void insertStation(String id, String postalCode, String localityName, String normalizedLocalityName) {
+        jdbcTemplate.update(
+                """
+            INSERT INTO station (
+                id, external_id, country, postal_code, locality_name, normalized_locality_name,
+                location, created_at, updated_at
+            ) VALUES (
+                ?::uuid, ?, 'ES', ?, ?, ?,
+                ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography,
+                NOW(), NOW()
+            )
+            """,
+                id,
+                id,
+                postalCode,
+                localityName,
+                normalizedLocalityName);
+    }
+
+    private void insertSearchLocationWithoutStations() {
+        jdbcTemplate.update(
+                """
+            INSERT INTO search_location (
+                id, country_code, postal_code, normalized_postal_code,
+                locality_name, normalized_locality_name,
+                admin_area_1_name, admin_area_1_code, admin_area_2_name, admin_area_2_code,
+                location, accuracy, source
+            ) VALUES (
+                '44444444-4444-4444-4444-444444444444', 'ES', '29551', '29551',
+                'Ardales', 'ardales',
+                'Andalucía', '01', 'Málaga', '29',
+                ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography,
+                10, 'GEONAMES'
+            )
+            """);
     }
 }

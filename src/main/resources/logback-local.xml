@@ -3,7 +3,7 @@
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>
-                %d{HH:mm:ss.SSS} %-5level [%thread] [traceId=%X{traceId:-}, spanId=%X{spanId:-}] %logger{40} - %msg%n
+                %d{HH:mm:ss.SSS} %-5level [%thread] [traceId=%X{traceId:-}, spanId=%X{spanId:-}, requestId=%X{requestId:-}] %logger{40} - %msg%n
             </pattern>
         </encoder>
     </appender>
