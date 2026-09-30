@@ -94,15 +94,28 @@ public class SearchObservabilityFilter extends OncePerRequestFilter {
                 .register(meterRegistry)
                 .increment());
 
-        log.atInfo()
-                .addKeyValue("event", "station_search_completed")
+        long durationMs = TimeUnit.NANOSECONDS.toMillis(durationNanos);
+        if (durationNanos < properties.slowQueryThreshold().toNanos()) {
+            return;
+        }
+
+        Counter.builder("station.search.slow")
+                .description("Number of station API queries exceeding the configured latency threshold")
+                .tag("endpoint", endpoint)
+                .tag("outcome", outcome)
+                .register(meterRegistry)
+                .increment();
+
+        log.atWarn()
+                .addKeyValue("event", "station_search_slow")
                 .addKeyValue("method", request.getMethod())
                 .addKeyValue("endpoint", endpoint)
                 .addKeyValue("status", response.getStatus())
                 .addKeyValue("outcome", outcome)
-                .addKeyValue("durationMs", TimeUnit.NANOSECONDS.toMillis(durationNanos))
+                .addKeyValue("durationMs", durationMs)
+                .addKeyValue("thresholdMs", properties.slowQueryThreshold().toMillis())
                 .addKeyValue("filters", filterNames)
-                .log("Station API query completed");
+                .log("Slow station API query");
     }
 
     private String endpoint(HttpServletRequest request) {

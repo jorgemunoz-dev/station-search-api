@@ -1,5 +1,9 @@
 # station-search-api Architecture
 
+The structured documentation for the current solution—including its business view, architecture,
+flows, data model, edge cases, and database-query rationale—is available in
+[`docs/solution.md`](docs/solution.md).
+
 ## Overview
 
 `station-search-api` is the microservice responsible for storing and exposing data related to fuel stations and EV charging stations.

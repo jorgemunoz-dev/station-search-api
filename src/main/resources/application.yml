@@ -47,7 +47,7 @@ management:
 
   tracing:
     sampling:
-      probability: 1.0
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
 
   opentelemetry:
     tracing:
@@ -72,9 +72,10 @@ app:
       cache-ttl: ${SITEMAP_CACHE_TTL:PT1H}
   observability:
     search:
+      slow-query-threshold: ${SEARCH_SLOW_QUERY_THRESHOLD:2s}
       paths:
         - /stations
-        - /locations
+        - /locations/**
   messaging:
     rabbit:
       consumer:

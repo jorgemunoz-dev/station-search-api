@@ -1,17 +1,19 @@
 package com.petrolprice.station_search_api.station.ingestion.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
 import com.petrolprice.station_search_api.statistics.application.CalculateFuelPriceStatisticsUseCase;
 import com.petrolprice.station_search_api.statistics.application.command.CalculateFuelPriceStatisticsCommand;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.persistence.EntityManager;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -27,8 +29,16 @@ class StationImportFinalizerTest {
     @Mock
     EntityManager entityManager;
 
-    @InjectMocks
     StationImportFinalizer finalizer;
+
+    SimpleMeterRegistry meterRegistry;
+
+    @BeforeEach
+    void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
+        finalizer = new StationImportFinalizer(
+                stationImportRepositoryPort, statisticsCalculator, entityManager, meterRegistry);
+    }
 
     @Test
     void shouldMarkSnapshotAsCompletedWhenClaimSucceeds() {
@@ -47,6 +57,12 @@ class StationImportFinalizerTest {
         inOrder.verify(stationImportRepositoryPort).markCompleted(snapshotId);
 
         inOrder.verifyNoMoreInteractions();
+
+        assertThat(meterRegistry.get("station.import.statistics.duration")
+                        .tag("outcome", "SUCCESS")
+                        .timer()
+                        .count())
+                .isEqualTo(1);
     }
 
     @Test
@@ -65,6 +81,8 @@ class StationImportFinalizerTest {
         verifyNoInteractions(entityManager);
 
         verifyNoMoreInteractions(stationImportRepositoryPort);
+
+        assertThat(meterRegistry.find("station.import.statistics.duration").timer()).isNull();
     }
 
     @Test
@@ -86,6 +104,12 @@ class StationImportFinalizerTest {
         verify(statisticsCalculator).calculate(new CalculateFuelPriceStatisticsCommand(snapshotId));
 
         verify(stationImportRepositoryPort).markCompleted(snapshotId);
+
+        assertThat(meterRegistry.get("station.import.statistics.duration")
+                        .tag("outcome", "FAILURE")
+                        .timer()
+                        .count())
+                .isEqualTo(1);
     }
 
     @Test
@@ -102,5 +126,11 @@ class StationImportFinalizerTest {
                 .hasMessage("Statistics failed");
 
         verify(stationImportRepositoryPort, never()).markCompleted(snapshotId);
+
+        assertThat(meterRegistry.get("station.import.statistics.duration")
+                        .tag("outcome", "FAILURE")
+                        .timer()
+                        .count())
+                .isEqualTo(1);
     }
 }

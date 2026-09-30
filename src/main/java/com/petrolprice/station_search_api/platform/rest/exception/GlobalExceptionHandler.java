@@ -69,12 +69,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleUnexpectedException(Exception ex) {
-        log.error("Unexpected error", ex);
+        log.atError()
+                .setCause(ex)
+                .addKeyValue("event", "unhandled_request_error")
+                .addKeyValue("exceptionType", ex.getClass().getName())
+                .log("Unhandled request error");
 
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
 
         problem.setTitle("Internal Server Error");
         problem.setDetail("An unexpected error occurred");
+        String requestId = MDC.get("requestId");
+        if (requestId != null) {
+            problem.setProperty("requestId", requestId);
+        }
         String traceId = MDC.get("traceId");
         if (traceId != null) {
             problem.setProperty("traceId", traceId);

@@ -10,11 +10,9 @@ import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class ProcessStationSnapshotService {
 
