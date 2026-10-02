@@ -128,6 +128,24 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
+    void shouldResolveBlankStationHierarchyFromSearchLocation() {
+        jdbcTemplate.update(
+                "UPDATE station SET admin_area_1_name = '   ' WHERE external_id IN (?, ?)",
+                cheap.externalId(),
+                expensive.externalId());
+
+        calculationRepository.replaceForSnapshot(cheap.snapshotId());
+
+        var alpha = currentStatistics
+                .current(new CurrentStatisticsQuery(
+                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeHierarchy("Region", "North", "Alpha")))
+                .orElseThrow();
+
+        assertThat(alpha.stationCount()).isEqualTo(1);
+        assertThat(alpha.scope().adminArea1Name()).isEqualTo("Region");
+    }
+
+    @Test
     void shouldKeepOnlyTheLatestSnapshotInCurrentStatistics() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         UUID stationId = stationId(cheap.externalId());

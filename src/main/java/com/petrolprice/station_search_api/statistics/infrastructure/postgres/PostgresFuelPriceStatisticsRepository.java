@@ -269,10 +269,10 @@ public class PostgresFuelPriceStatisticsRepository
                 WITH source AS (
                     SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
                            hp.observed_at,
-                           COALESCE(s.normalized_locality_name, location.normalized_locality_name) normalized_locality_name,
-                           COALESCE(s.admin_area_1_name, location.admin_area_1_name) admin_area_1_name,
-                           COALESCE(s.admin_area_2_name, location.admin_area_2_name) admin_area_2_name,
-                           COALESCE(s.admin_area_3_name, location.admin_area_3_name) admin_area_3_name
+                           COALESCE(NULLIF(BTRIM(s.normalized_locality_name), ''), location.normalized_locality_name) normalized_locality_name,
+                           COALESCE(NULLIF(BTRIM(s.admin_area_1_name), ''), location.admin_area_1_name) admin_area_1_name,
+                           COALESCE(NULLIF(BTRIM(s.admin_area_2_name), ''), location.admin_area_2_name) admin_area_2_name,
+                           COALESCE(NULLIF(BTRIM(s.admin_area_3_name), ''), location.admin_area_3_name) admin_area_3_name
                     FROM historical_product_price hp
                     JOIN station s ON s.id = hp.station_id
                     LEFT JOIN LATERAL (
