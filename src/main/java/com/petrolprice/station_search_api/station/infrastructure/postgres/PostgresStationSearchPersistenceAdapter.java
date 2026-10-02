@@ -85,29 +85,20 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
             FindStationsQuery query, LocalitySearchArea area) {
         String candidates = """
             SELECT s.id, s.external_id, s.country, s.brand, s.normalized_brand, s.street,
-                   s.postal_code, COALESCE(s.locality_name, resolved.locality_name) locality_name,
-                   COALESCE(s.normalized_locality_name, resolved.normalized_locality_name) normalized_locality_name,
-                   COALESCE(s.admin_area_1_name, resolved.admin_area_1_name) admin_area_1_name,
-                   COALESCE(s.admin_area_2_name, resolved.admin_area_2_name) admin_area_2_name,
-                   COALESCE(s.admin_area_3_name, resolved.admin_area_3_name) admin_area_3_name,
+                   s.postal_code, locality.name locality_name,
+                   locality.normalized_name normalized_locality_name,
+                   admin1.name admin_area_1_name, admin2.name admin_area_2_name,
+                   admin3.name admin_area_3_name,
                    s.location, NULL::double precision distance_meters
             FROM station s
-            LEFT JOIN LATERAL (
-                SELECT sl.locality_name, sl.normalized_locality_name, sl.admin_area_1_name,
-                       sl.admin_area_2_name, sl.admin_area_3_name
-                FROM search_location sl
-                WHERE sl.country_code=s.country
-                  AND sl.normalized_postal_code=UPPER(REGEXP_REPLACE(s.postal_code,'[^A-Za-z0-9]','','g'))
-                  AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(sl.admin_area_1_name),'[^[:alnum:]]+',' ','g')))=:adminArea1
-                  AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(sl.admin_area_2_name),'[^[:alnum:]]+',' ','g')))=:adminArea2
-                  AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(sl.admin_area_3_name),'[^[:alnum:]]+',' ','g')))=:adminArea3
-                ORDER BY sl.accuracy DESC NULLS LAST, sl.id LIMIT 1
-            ) resolved ON TRUE
-            WHERE s.country=:countryCode AND ((
-                BTRIM(LOWER(REGEXP_REPLACE(unaccent(s.admin_area_1_name),'[^[:alnum:]]+',' ','g')))=:adminArea1 AND
-                BTRIM(LOWER(REGEXP_REPLACE(unaccent(s.admin_area_2_name),'[^[:alnum:]]+',' ','g')))=:adminArea2 AND
-                BTRIM(LOWER(REGEXP_REPLACE(unaccent(s.admin_area_3_name),'[^[:alnum:]]+',' ','g')))=:adminArea3
-            ) OR resolved.admin_area_3_name IS NOT NULL)
+            LEFT JOIN geographic_area locality ON locality.id=s.locality_id
+            JOIN geographic_area admin1 ON admin1.id=s.admin_area_1_id
+            JOIN geographic_area admin2 ON admin2.id=s.admin_area_2_id
+            LEFT JOIN geographic_area admin3 ON admin3.id=s.admin_area_3_id
+            WHERE s.country=:countryCode
+              AND admin1.normalized_name=:adminArea1
+              AND admin2.normalized_name=:adminArea2
+              AND (locality.normalized_name=:adminArea3 OR admin3.normalized_name=:adminArea3)
             """;
         MapSqlParameterSource parameters=createCommonParameters(query)
                 .addValue("countryCode",area.countryCode()).addValue("adminArea1",area.normalizedAdminArea1())
@@ -134,11 +125,11 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 s.normalized_brand,
                 s.street,
                 s.postal_code,
-                s.locality_name,
-                s.normalized_locality_name,
-                s.admin_area_1_name,
-                s.admin_area_2_name,
-                s.admin_area_3_name,
+                locality.name AS locality_name,
+                locality.normalized_name AS normalized_locality_name,
+                admin1.name AS admin_area_1_name,
+                admin2.name AS admin_area_2_name,
+                admin3.name AS admin_area_3_name,
                 s.location,
                 ST_Distance(
                     s.location,
@@ -148,6 +139,10 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                     )::geography
                 ) AS distance_meters
             FROM station s
+            LEFT JOIN geographic_area locality ON locality.id=s.locality_id
+            LEFT JOIN geographic_area admin1 ON admin1.id=s.admin_area_1_id
+            LEFT JOIN geographic_area admin2 ON admin2.id=s.admin_area_2_id
+            LEFT JOIN geographic_area admin3 ON admin3.id=s.admin_area_3_id
             WHERE ST_DWithin(
                 s.location,
                 ST_SetSRID(
@@ -186,14 +181,18 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 s.normalized_brand,
                 s.street,
                 s.postal_code,
-                s.locality_name,
-                s.normalized_locality_name,
-                s.admin_area_1_name,
-                s.admin_area_2_name,
-                s.admin_area_3_name,
+                locality.name AS locality_name,
+                locality.normalized_name AS normalized_locality_name,
+                admin1.name AS admin_area_1_name,
+                admin2.name AS admin_area_2_name,
+                admin3.name AS admin_area_3_name,
                 s.location,
                 NULL::double precision AS distance_meters
             FROM station s
+            LEFT JOIN geographic_area locality ON locality.id=s.locality_id
+            LEFT JOIN geographic_area admin1 ON admin1.id=s.admin_area_1_id
+            LEFT JOIN geographic_area admin2 ON admin2.id=s.admin_area_2_id
+            LEFT JOIN geographic_area admin3 ON admin3.id=s.admin_area_3_id
             WHERE (
                 (
                     :west <= :east

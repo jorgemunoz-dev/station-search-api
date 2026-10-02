@@ -14,29 +14,25 @@ public class PostgresSitemapLocationAdapter implements SitemapLocationPort {
     static final String FIND_LOCALITIES_WITH_CONTENT =
             """
             WITH locality_content AS (
-                SELECT sl.country_code, sl.admin_area_1_name, sl.admin_area_2_name,
-                       sl.normalized_locality_name, MAX(s.updated_at) AS content_updated_at
-                FROM search_location sl
-                JOIN station s
-                  ON s.country = sl.country_code
-                 AND UPPER(REGEXP_REPLACE(s.postal_code, '[^A-Za-z0-9]', '', 'g')) = sl.normalized_postal_code
-                GROUP BY sl.country_code, sl.admin_area_1_name, sl.admin_area_2_name,
-                         sl.normalized_locality_name
+                SELECT locality.country_code, admin1.name admin_area_1_name,
+                       admin2.name admin_area_2_name, locality.normalized_name normalized_locality_name,
+                       MAX(s.updated_at) AS content_updated_at
+                FROM station s JOIN geographic_area locality ON locality.id=s.locality_id
+                LEFT JOIN geographic_area admin1 ON admin1.id=s.admin_area_1_id
+                LEFT JOIN geographic_area admin2 ON admin2.id=s.admin_area_2_id
+                GROUP BY locality.country_code, admin1.name, admin2.name, locality.normalized_name
 
                 UNION ALL
 
-                SELECT sl.country_code, sl.admin_area_1_name, sl.admin_area_2_name,
-                       sl.normalized_locality_name, MAX(fps.calculated_at) AS content_updated_at
-                FROM search_location sl
-                JOIN fuel_price_statistics fps
-                  ON fps.country = sl.country_code
-                 AND fps.normalized_locality_name = sl.normalized_locality_name
-                 AND fps.admin_area_1_name IS NOT DISTINCT FROM sl.admin_area_1_name
-                 AND fps.admin_area_2_name IS NOT DISTINCT FROM sl.admin_area_2_name
-                 AND fps.admin_area_3_name IS NOT DISTINCT FROM sl.admin_area_3_name
-                 AND fps.station_count > 0
-                GROUP BY sl.country_code, sl.admin_area_1_name, sl.admin_area_2_name,
-                         sl.normalized_locality_name
+                SELECT locality.country_code, admin1.name, admin2.name, locality.normalized_name,
+                       MAX(fps.calculated_at)
+                FROM fuel_price_statistics fps
+                JOIN geographic_area locality ON locality.id=fps.area_id AND locality.type='LOCALITY'
+                JOIN station s ON s.locality_id=locality.id
+                LEFT JOIN geographic_area admin1 ON admin1.id=s.admin_area_1_id
+                LEFT JOIN geographic_area admin2 ON admin2.id=s.admin_area_2_id
+                WHERE fps.station_count > 0
+                GROUP BY locality.country_code, admin1.name, admin2.name, locality.normalized_name
             )
             SELECT country_code, admin_area_1_name, admin_area_2_name, normalized_locality_name,
                    MAX(content_updated_at) AS content_updated_at

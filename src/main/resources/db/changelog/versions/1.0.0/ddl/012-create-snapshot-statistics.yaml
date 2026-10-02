@@ -37,19 +37,13 @@ databaseChangeLog:
                   type: uuid
                   constraints: {nullable: false}
               - column:
-                  name: country
-                  type: varchar(2)
+                  name: area_id
+                  type: bigint
                   constraints: {nullable: false}
               - column:
                   name: product_type
                   type: varchar(50)
                   constraints: {nullable: false}
-              - column:
-                  name: normalized_locality_name
-                  type: varchar(150)
-              - column: {name: admin_area_1_name, type: varchar(150)}
-              - column: {name: admin_area_2_name, type: varchar(150)}
-              - column: {name: admin_area_3_name, type: varchar(150)}
               - column:
                   name: average_price
                   type: "numeric(12,6)"
@@ -85,43 +79,14 @@ databaseChangeLog:
             referencedColumnNames: snapshot_id
             constraintName: fk_statistics_snapshot
             onDelete: CASCADE
-        - sql:
-            sql: >-
-              CREATE UNIQUE INDEX uk_statistics_snapshot_country
-              ON fuel_price_statistics (snapshot_id, country, product_type)
-              WHERE normalized_locality_name IS NULL
-                AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
-        - sql:
-            sql: >-
-              CREATE UNIQUE INDEX uk_statistics_snapshot_locality
-              ON fuel_price_statistics (snapshot_id, country, product_type, normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name)
-              WHERE normalized_locality_name IS NOT NULL
-        - sql:
-            sql: >-
-              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_1
-              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_1_name)
-              WHERE normalized_locality_name IS NULL
-                AND admin_area_1_name IS NOT NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
-        - sql:
-            sql: >-
-              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_2
-              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_1_name, admin_area_2_name)
-              WHERE normalized_locality_name IS NULL
-                AND admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL AND admin_area_3_name IS NULL
-        - sql:
-            sql: >-
-              CREATE UNIQUE INDEX uk_statistics_snapshot_admin_area_3
-              ON fuel_price_statistics (snapshot_id, country, product_type, admin_area_1_name, admin_area_2_name, admin_area_3_name)
-              WHERE normalized_locality_name IS NULL
-                AND admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL AND admin_area_3_name IS NOT NULL
+        - addForeignKeyConstraint: {baseTableName: fuel_price_statistics, baseColumnNames: area_id, referencedTableName: geographic_area, referencedColumnNames: id, constraintName: fk_statistics_area, onDelete: RESTRICT}
+        - addForeignKeyConstraint: {baseTableName: fuel_price_statistics, baseColumnNames: cheapest_station_id, referencedTableName: station, referencedColumnNames: id, constraintName: fk_statistics_cheapest_station, onDelete: RESTRICT}
+        - addForeignKeyConstraint: {baseTableName: fuel_price_statistics, baseColumnNames: most_expensive_station_id, referencedTableName: station, referencedColumnNames: id, constraintName: fk_statistics_most_expensive_station, onDelete: RESTRICT}
+        - addUniqueConstraint: {tableName: fuel_price_statistics, columnNames: "snapshot_id, area_id, product_type", constraintName: uk_statistics_snapshot_area_product}
         - createIndex:
             tableName: fuel_price_statistics
             indexName: idx_statistics_current_lookup
             columns:
-              - column: {name: country}
+              - column: {name: area_id}
               - column: {name: product_type}
-              - column: {name: normalized_locality_name}
-              - column: {name: admin_area_1_name}
-              - column: {name: admin_area_2_name}
-              - column: {name: admin_area_3_name}
               - column: {name: calculated_at, descending: true}

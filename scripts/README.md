@@ -1,12 +1,18 @@
-# GeoNames importer
+# GeoNames postal importer
 
-Install `psycopg` 3 and import a GeoNames 12-column postal file:
+The importer loads a GeoNames postal-code `.txt` or `.zip` into the canonical
+`geographic_area` hierarchy and keeps `search_location` as its postal/spatial
+projection. Run Liquibase before importing.
 
 ```bash
-python -m pip install 'psycopg[binary]>=3.1'
-./scripts/import_geonames.py ES.zip --dsn postgresql://postgres:postgres@localhost/station_search --country ES
+python3 scripts/import_geonames.py \
+  --file ES.zip \
+  --country ES \
+  --country-name España \
+  --database-url postgresql://user:password@localhost/database \
+  --replace-country
 ```
 
-`.txt` and single-member `.zip` files are accepted. `--batch-size` controls batches and
-`--replace-country` atomically replaces one country. Validation, deletion and UUID-v5 UPSERTs run in
-one transaction. Stable IDs include country, normalized postal/locality and all administrative levels.
+`--replace-country` removes obsolete **GeoNames search rows** only after the new
+file has been validated and imported. Canonical area IDs are never deleted or
+recreated. Invalid source rows can be shown with `--log-rejections`.

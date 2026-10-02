@@ -8,4 +8,7 @@ databaseChangeLog:
               CREATE INDEX idx_current_price_product_station ON station_current_product_price (product_type, station_id) INCLUDE (price, updated_at);
               CREATE INDEX idx_historical_price_product_observed_station ON historical_product_price (product_type, observed_at, station_id) INCLUDE (price);
               CREATE INDEX idx_station_country_postal_code ON station (country, postal_code);
-              CREATE INDEX idx_station_country_admin_hierarchy ON station (country, admin_area_1_name, admin_area_2_name, admin_area_3_name);
+              CREATE INDEX idx_station_admin_area_1 ON station (admin_area_1_id);
+              CREATE INDEX idx_station_admin_area_2 ON station (admin_area_2_id);
+              CREATE INDEX idx_station_admin_area_3 ON station (admin_area_3_id);
+              CREATE INDEX idx_station_locality ON station (locality_id);

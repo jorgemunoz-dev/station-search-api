@@ -3,6 +3,7 @@ package com.petrolprice.station_search_api.station.ingestion.application;
 import com.petrolprice.station_search_api.station.domain.model.Station;
 import com.petrolprice.station_search_api.station.ingestion.application.command.ProcessStationSnapshotCommand;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.CurrentFuelPriceRepositoryPort;
+import com.petrolprice.station_search_api.station.ingestion.application.port.out.GeographicAreaResolverPort;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.HistoricalPriceRepositoryPort;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationImportRepositoryPort;
 import com.petrolprice.station_search_api.station.ingestion.application.port.out.StationRepositoryPort;
@@ -20,6 +21,7 @@ public class ProcessStationSnapshotService {
     private final CurrentFuelPriceRepositoryPort currentFuelPriceRepositoryPort;
     private final HistoricalPriceRepositoryPort historicalPriceRepositoryPort;
     private final StationImportRepositoryPort stationImportRepositoryPort;
+    private final GeographicAreaResolverPort geographicAreaResolverPort;
 
     @Transactional
     public void consume(ProcessStationSnapshotCommand command) {
@@ -33,7 +35,8 @@ public class ProcessStationSnapshotService {
             return;
         }
 
-        Station persistedStation = stationRepositoryPort.upsertFromSnapshot(command.station());
+        Station station = withCanonicalGeography(command.station());
+        Station persistedStation = stationRepositoryPort.upsertFromSnapshot(station);
         if (isObservedToday(command)) {
             currentFuelPriceRepositoryPort.replaceCurrentPrices(
                     persistedStation.getId(), command.station().getProductPrices());
@@ -43,6 +46,20 @@ public class ProcessStationSnapshotService {
                 persistedStation.getId(),
                 command.observedAt(),
                 command.station().getProductPrices());
+    }
+
+    private Station withCanonicalGeography(Station station) {
+        if (station.getAddress() == null) {
+            return station;
+        }
+        var resolution = geographicAreaResolverPort.resolve(station.getCountry(), station.getAddress());
+        var address = station.getAddress().toBuilder()
+                .adminArea1Id(resolution.adminArea1Id())
+                .adminArea2Id(resolution.adminArea2Id())
+                .adminArea3Id(resolution.adminArea3Id())
+                .localityId(resolution.localityId())
+                .build();
+        return station.toBuilder().address(address).build();
     }
 
     private boolean isObservedToday(ProcessStationSnapshotCommand command) {
