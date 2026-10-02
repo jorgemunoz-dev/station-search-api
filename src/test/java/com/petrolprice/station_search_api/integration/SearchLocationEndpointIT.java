@@ -36,11 +36,13 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 ), a1 AS (
                   INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source,source_code)
                   SELECT 'ES','ADMIN_AREA_1','Andalucía','andalucia',id,'TEST','01' FROM country
-                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                  ON CONFLICT (country_code,type,parent_id,normalized_name)
+                  DO UPDATE SET name=EXCLUDED.name, source_code=EXCLUDED.source_code RETURNING id
                 ), a2 AS (
                   INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source,source_code)
                   SELECT 'ES','ADMIN_AREA_2','Málaga','malaga',id,'TEST','29' FROM a1
-                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                  ON CONFLICT (country_code,type,parent_id,normalized_name)
+                  DO UPDATE SET name=EXCLUDED.name, source_code=EXCLUDED.source_code RETURNING id
                 ), locality AS (
                   INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
                   SELECT 'ES','LOCALITY','Ardales','ardales',id,'TEST' FROM a2
