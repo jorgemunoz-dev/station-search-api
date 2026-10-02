@@ -2,6 +2,7 @@ package com.petrolprice.station_search_api.seo.infrastructure.rest;
 
 import com.petrolprice.station_search_api.seo.application.SitemapService;
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -18,9 +19,15 @@ public class SitemapController {
     private final SitemapService sitemapService;
     private final Duration cacheTtl;
 
+    @Autowired
     public SitemapController(
             SitemapService sitemapService,
-            @Value("${app.seo.sitemap.cache-ttl:PT1H}") Duration cacheTtl) {
+            @Value("${app.seo.sitemap.cache-ttl:PT1H}") String cacheTtl) {
+        this.sitemapService = sitemapService;
+        this.cacheTtl = Duration.parse(cacheTtl);
+    }
+
+    SitemapController(SitemapService sitemapService, Duration cacheTtl) {
         this.sitemapService = sitemapService;
         this.cacheTtl = cacheTtl;
     }
