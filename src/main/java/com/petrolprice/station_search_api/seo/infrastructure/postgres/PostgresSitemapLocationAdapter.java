@@ -28,7 +28,7 @@ public class PostgresSitemapLocationAdapter implements SitemapLocationPort {
                 SELECT sl.country_code, sl.admin_area_1_name, sl.admin_area_2_name,
                        sl.normalized_locality_name, MAX(fps.calculated_at) AS content_updated_at
                 FROM search_location sl
-                JOIN fuel_price_statistics fps
+                JOIN current_fuel_price_statistics fps
                   ON fps.country = sl.country_code
                  AND fps.normalized_locality_name = sl.normalized_locality_name
                  AND fps.admin_area_1_name IS NOT DISTINCT FROM sl.admin_area_1_name

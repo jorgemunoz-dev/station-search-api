@@ -38,7 +38,7 @@ public class PostgresFuelPriceStatisticsRepository
         String sql =
                 """
                 WITH selected AS (
-                    SELECT * FROM fuel_price_statistics
+                    SELECT * FROM current_fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
                       AND normalized_locality_name IS NULL
                       AND ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
@@ -47,15 +47,14 @@ public class PostgresFuelPriceStatisticsRepository
                            OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_2_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea2)
                       AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
                            OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_3_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea3)
-                    ORDER BY calculated_at DESC LIMIT 1
                 ), country_statistics AS (
-                    SELECT average_price FROM fuel_price_statistics
+                    SELECT average_price FROM current_fuel_price_statistics
                     WHERE snapshot_id = (SELECT snapshot_id FROM selected)
                       AND country = :country AND product_type = :productType
                       AND normalized_locality_name IS NULL
                       AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
                 ), admin_area_2_statistics AS (
-                    SELECT average_price FROM fuel_price_statistics f
+                    SELECT average_price FROM current_fuel_price_statistics f
                     WHERE f.snapshot_id=(SELECT snapshot_id FROM selected) AND f.country=:country
                       AND f.product_type=:productType AND f.normalized_locality_name IS NULL
                       AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(f.admin_area_1_name),'[^[:alnum:]]+',' ','g')))=:adminArea1
@@ -177,11 +176,10 @@ public class PostgresFuelPriceStatisticsRepository
                 """
                 WITH latest_snapshot AS (
                     SELECT snapshot_id, average_price country_average
-                    FROM fuel_price_statistics
+                    FROM current_fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
                       AND normalized_locality_name IS NULL
                       AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
-                    ORDER BY calculated_at DESC LIMIT 1
                 ), locality_metadata AS (
                     SELECT DISTINCT ON (normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name)
                            normalized_locality_name, locality_name,
@@ -196,7 +194,7 @@ public class PostgresFuelPriceStatisticsRepository
                            l.admin_area_3_name locality_admin_area_3_name,
                            RANK() OVER (ORDER BY average_price, l.locality_name) cheapest_rank,
                            RANK() OVER (ORDER BY average_price DESC, l.locality_name) expensive_rank
-                    FROM fuel_price_statistics f
+                    FROM current_fuel_price_statistics f
                     JOIN locality_metadata l ON l.normalized_locality_name=f.normalized_locality_name
                      AND l.admin_area_1_name IS NOT DISTINCT FROM f.admin_area_1_name
                      AND l.admin_area_2_name IS NOT DISTINCT FROM f.admin_area_2_name
@@ -243,7 +241,7 @@ public class PostgresFuelPriceStatisticsRepository
         String sql =
                 """
                 SELECT hp.price FROM historical_product_price hp
-                JOIN fuel_price_statistics f ON f.snapshot_id = hp.snapshot_id
+                JOIN current_fuel_price_statistics f ON f.snapshot_id = hp.snapshot_id
                   AND f.product_type = hp.product_type AND f.normalized_locality_name IS NULL
                   AND f.admin_area_1_name IS NULL AND f.admin_area_2_name IS NULL
                   AND f.admin_area_3_name IS NULL
@@ -321,6 +319,37 @@ public class PostgresFuelPriceStatisticsRepository
                 FROM scopes
                 GROUP BY snapshot_id, country, product_type, normalized_locality_name,
                          admin_area_1_name, admin_area_2_name, admin_area_3_name
+                """;
+        jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
+        promoteToCurrent(snapshotId);
+    }
+
+    private void promoteToCurrent(UUID snapshotId) {
+        String sql =
+                """
+                WITH incoming AS (
+                    SELECT country, snapshot_id, MAX(calculated_at) calculated_at
+                    FROM fuel_price_statistics
+                    WHERE snapshot_id = :snapshotId
+                    GROUP BY country, snapshot_id
+                ), eligible AS (
+                    SELECT incoming.*
+                    FROM incoming
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM current_fuel_price_statistics published
+                        WHERE published.country = incoming.country
+                          AND published.calculated_at > incoming.calculated_at
+                    )
+                ), deleted AS (
+                    DELETE FROM current_fuel_price_statistics published
+                    USING eligible
+                    WHERE published.country = eligible.country
+                    RETURNING published.id
+                )
+                INSERT INTO current_fuel_price_statistics
+                SELECT statistics.*
+                FROM fuel_price_statistics statistics
+                JOIN eligible USING (country, snapshot_id)
                 """;
         jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
     }

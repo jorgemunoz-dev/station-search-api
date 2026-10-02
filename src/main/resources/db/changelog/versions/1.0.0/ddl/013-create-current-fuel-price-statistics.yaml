@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-create-current-fuel-price-statistics
+      author: codex
+      changes:
+        - createTable:
+            tableName: current_fuel_price_statistics
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: snapshot_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: country, type: varchar(2), constraints: {nullable: false}}
+              - column: {name: product_type, type: varchar(50), constraints: {nullable: false}}
+              - column: {name: normalized_locality_name, type: varchar(150)}
+              - column: {name: admin_area_1_name, type: varchar(150)}
+              - column: {name: admin_area_2_name, type: varchar(150)}
+              - column: {name: admin_area_3_name, type: varchar(150)}
+              - column: {name: average_price, type: "numeric(12,6)", constraints: {nullable: false}}
+              - column: {name: minimum_price, type: "numeric(10,3)", constraints: {nullable: false}}
+              - column: {name: maximum_price, type: "numeric(10,3)", constraints: {nullable: false}}
+              - column: {name: station_count, type: bigint, constraints: {nullable: false}}
+              - column: {name: cheapest_station_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: most_expensive_station_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: calculated_at, type: timestamptz, constraints: {nullable: false}}
+        - addForeignKeyConstraint:
+            baseTableName: current_fuel_price_statistics
+            baseColumnNames: snapshot_id
+            referencedTableName: station_import
+            referencedColumnNames: snapshot_id
+            constraintName: fk_current_statistics_snapshot
+            onDelete: CASCADE
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_current_statistics_country
+              ON current_fuel_price_statistics (country, product_type)
+              WHERE normalized_locality_name IS NULL
+                AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_current_statistics_locality
+              ON current_fuel_price_statistics (country, product_type, normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name)
+              WHERE normalized_locality_name IS NOT NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_current_statistics_admin_area_1
+              ON current_fuel_price_statistics (country, product_type, admin_area_1_name)
+              WHERE normalized_locality_name IS NULL
+                AND admin_area_1_name IS NOT NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_current_statistics_admin_area_2
+              ON current_fuel_price_statistics (country, product_type, admin_area_1_name, admin_area_2_name)
+              WHERE normalized_locality_name IS NULL
+                AND admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL AND admin_area_3_name IS NULL
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_current_statistics_admin_area_3
+              ON current_fuel_price_statistics (country, product_type, admin_area_1_name, admin_area_2_name, admin_area_3_name)
+              WHERE normalized_locality_name IS NULL
+                AND admin_area_1_name IS NOT NULL AND admin_area_2_name IS NOT NULL AND admin_area_3_name IS NOT NULL
+        - sql:
+            sql: >-
+              INSERT INTO current_fuel_price_statistics
+              SELECT statistics.*
+              FROM fuel_price_statistics statistics
+              JOIN (
+                SELECT DISTINCT ON (country) country, snapshot_id
+                FROM fuel_price_statistics
+                ORDER BY country, calculated_at DESC, snapshot_id
+              ) latest USING (country, snapshot_id)
