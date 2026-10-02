@@ -32,6 +32,19 @@ class FindStationsQueryFactoryTest {
     }
 
     @Test
+    void shouldPreferCanonicalLocalityId() {
+        var query = factory.create(StationSearchParameters.builder()
+                .searchMode(StationSearchMode.LOCALITY)
+                .countryCode("es")
+                .localityId(30L)
+                .sortBy(StationSearchSortBy.PRICE)
+                .size(50)
+                .build());
+
+        assertThat(query.searchArea()).isEqualTo(new LocalitySearchArea(30L, "ES", null, null, null));
+    }
+
+    @Test
     void shouldRejectCoordinatesInLocalitySearch() {
         StationSearchParameters parameters = StationSearchParameters.builder()
                 .searchMode(StationSearchMode.LOCALITY)

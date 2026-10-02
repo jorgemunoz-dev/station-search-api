@@ -83,6 +83,9 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
 
     private List<StationRankingProjection> findRankedStationsByLocality(
             FindStationsQuery query, LocalitySearchArea area) {
+        if (area.localityId() != null) {
+            return findRankedStationsByLocalityId(query, area);
+        }
         String candidates = """
             SELECT s.id, s.external_id, s.country, s.brand, s.normalized_brand, s.street,
                    s.postal_code, locality.name locality_name,
@@ -104,6 +107,28 @@ public class PostgresStationSearchPersistenceAdapter implements StationSearchRep
                 .addValue("countryCode",area.countryCode()).addValue("adminArea1",area.normalizedAdminArea1())
                 .addValue("adminArea2",area.normalizedAdminArea2()).addValue("adminArea3",area.normalizedAdminArea3());
         return executeRankingQuery(query,candidates,localityOrderBy(query.sortBy()),parameters);
+    }
+
+    private List<StationRankingProjection> findRankedStationsByLocalityId(
+            FindStationsQuery query, LocalitySearchArea area) {
+        String candidates = """
+            SELECT s.id, s.external_id, s.country, s.brand, s.normalized_brand, s.street,
+                   s.postal_code, locality.name locality_name,
+                   locality.normalized_name normalized_locality_name,
+                   admin1.name admin_area_1_name, admin2.name admin_area_2_name,
+                   admin3.name admin_area_3_name,
+                   s.location, NULL::double precision distance_meters
+            FROM station s
+            JOIN geographic_area locality ON locality.id=s.locality_id
+            LEFT JOIN geographic_area admin1 ON admin1.id=s.admin_area_1_id
+            LEFT JOIN geographic_area admin2 ON admin2.id=s.admin_area_2_id
+            LEFT JOIN geographic_area admin3 ON admin3.id=s.admin_area_3_id
+            WHERE s.country=:countryCode AND s.locality_id=:localityId
+            """;
+        MapSqlParameterSource parameters = createCommonParameters(query)
+                .addValue("countryCode", area.countryCode())
+                .addValue("localityId", area.localityId());
+        return executeRankingQuery(query, candidates, localityOrderBy(query.sortBy()), parameters);
     }
 
     /*

@@ -14,11 +14,11 @@ paths:
         Searches stations using one of three mutually exclusive modes.
 
         LOCALITY mode:
-        - Requires countryCode, adminArea1, adminArea2 and adminArea3.
+        - Preferably requires countryCode and localityId.
+        - For backwards compatibility, countryCode, adminArea1, adminArea2 and adminArea3 are also accepted.
         - Must not include radius or viewport parameters.
-        - Uses the administrative hierarchy as the locality identifier; names are matched accent-insensitively.
-        - Resolves the hierarchy through search_location by country and normalized postal code when
-          station rows do not contain administrative-area values.
+        - localityId is matched directly against the indexed canonical ID stored by station.
+        - Legacy administrative names are normalized and resolved for backwards compatibility.
         - Only supports PRICE sorting because there is no reference point.
 
         VIEWPORT mode:
@@ -90,6 +90,12 @@ paths:
           description: Local administrative area identifying the locality. Required when searchMode is LOCALITY.
           schema: {type: string, minLength: 1}
           example: Ardales
+        - name: localityId
+          in: query
+          required: false
+          description: Canonical locality ID. Preferred over the legacy administrative-name parameters.
+          schema: {type: integer, format: int64, minimum: 1}
+          example: 30
 
         # Radius filters
         - name: lat
@@ -511,6 +517,7 @@ components:
         - primaryText
         - secondaryText
         - countryCode
+        - localityId
         - stationLocalityName
         - normalizedLocalityName
         - latitude
@@ -541,6 +548,15 @@ components:
           nullable: true
           description: Postal code associated with the GeoNames suggestion, when available.
           example: '29001'
+
+        localityId:
+          type: integer
+          format: int64
+          description: Canonical locality ID to use for LOCALITY station searches.
+
+        adminArea1Id: {type: integer, format: int64, nullable: true}
+        adminArea2Id: {type: integer, format: int64, nullable: true}
+        adminArea3Id: {type: integer, format: int64, nullable: true}
 
         stationLocalityName:
           type: string

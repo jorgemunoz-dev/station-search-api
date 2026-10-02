@@ -65,6 +65,7 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$[0].type", is("LOCALITY")))
                 .andExpect(jsonPath("$[0].primaryText", is("Ardales")))
                 .andExpect(jsonPath("$[0].countryCode", is("ES")))
+                .andExpect(jsonPath("$[0].localityId").isNumber())
                 .andExpect(jsonPath("$[0].postalCode", is("29550")))
                 .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")))
                 .andExpect(jsonPath("$[0].normalizedLocalityName", is("ardales")))
