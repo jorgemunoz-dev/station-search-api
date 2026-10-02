@@ -116,10 +116,10 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     void shouldStoreLocalityAndAdministrativeStatisticsForTheSameHierarchy() {
         Integer rows = jdbcTemplate.queryForObject(
                 """
-                SELECT COUNT(*) FROM fuel_price_statistics
-                WHERE snapshot_id = ? AND country = 'ES' AND product_type = 'DIESEL_A'
-                  AND admin_area_1_name = 'Region' AND admin_area_2_name = 'North'
-                  AND admin_area_3_name = 'Alpha'
+                SELECT COUNT(*) FROM fuel_price_statistics fps
+                JOIN geographic_area area ON area.id=fps.area_id
+                WHERE fps.snapshot_id = ? AND fps.product_type = 'DIESEL_A'
+                  AND area.normalized_name = 'alpha' AND area.type IN ('ADMIN_AREA_3','LOCALITY')
                 """,
                 Integer.class,
                 cheap.snapshotId());
@@ -239,34 +239,42 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
             String normalizedLocality) {
         jdbcTemplate.update(
                 """
-                UPDATE station
-                SET postal_code = ?, admin_area_1_name = 'Region', admin_area_2_name = ?,
-                    admin_area_3_name = ?, locality_name = ?, normalized_locality_name = ?
-                WHERE external_id = ?
+                WITH country AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source,source_code)
+                  VALUES ('ES','COUNTRY','España','espana',NULL,'TEST','ES')
+                  ON CONFLICT (country_code) WHERE type='COUNTRY' DO UPDATE SET name=EXCLUDED.name RETURNING id
+                ), a1 AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','ADMIN_AREA_1','Region','region',id,'TEST' FROM country
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                ), a2 AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','ADMIN_AREA_2',?,LOWER(?),id,'TEST' FROM a1
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                ), a3 AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','ADMIN_AREA_3',?,LOWER(?),id,'TEST' FROM a2
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                ), locality AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','LOCALITY',?,?,id,'TEST' FROM a3
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                )
+                UPDATE station SET postal_code=?,admin_area_1_id=(SELECT id FROM a1),
+                  admin_area_2_id=(SELECT id FROM a2),admin_area_3_id=(SELECT id FROM a3),
+                  locality_id=(SELECT id FROM locality) WHERE external_id=?
                 """,
-                postalCode,
-                adminArea2,
-                locality,
-                locality,
-                normalizedLocality,
-                station.externalId());
+                adminArea2, adminArea2, locality, locality, locality, normalizedLocality,
+                postalCode, station.externalId());
         jdbcTemplate.update(
                 """
-                INSERT INTO search_location (
-                    id, country_code, postal_code, normalized_postal_code,
-                    locality_name, normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name,
-                    location, accuracy, source, created_at, updated_at
-                ) VALUES (?, 'ES', ?, ?, ?, ?, 'Region', ?, ?, ST_GeogFromText('SRID=4326;POINT(-3 40)'),
-                          10, 'TEST', NOW(), NOW())
+                INSERT INTO search_location(id,country_code,postal_code,normalized_postal_code,locality_id,
+                  location,accuracy,source)
+                SELECT ?, 'ES', ?, ?, id, ST_GeogFromText('SRID=4326;POINT(-3 40)'),10,'TEST'
+                FROM geographic_area WHERE country_code='ES' AND type='LOCALITY' AND normalized_name=?
                 ON CONFLICT (id) DO NOTHING
                 """,
-                UUID.randomUUID(),
-                postalCode,
-                postalCode,
-                locality,
-                normalizedLocality,
-                adminArea2,
-                locality);
+                UUID.randomUUID(), postalCode, postalCode, normalizedLocality);
     }
 
     private UUID stationId(String externalId) {

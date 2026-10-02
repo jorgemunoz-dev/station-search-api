@@ -49,7 +49,7 @@ public class PostgresGeographicAreaResolver implements GeographicAreaResolverPor
                 SELECT h.locality_id, parent.id, parent.parent_id, parent.type, parent.normalized_name
                 FROM hierarchy h JOIN geographic_area parent ON parent.id=h.parent_id
             ), candidates AS (
-                SELECT locality_id,
+                SELECT locality_id, COUNT(*) OVER () postal_candidate_count,
                        MAX(id) FILTER (WHERE type='ADMIN_AREA_1') admin_area_1_id,
                        MAX(id) FILTER (WHERE type='ADMIN_AREA_2') admin_area_2_id,
                        MAX(id) FILTER (WHERE type='ADMIN_AREA_3') admin_area_3_id,
@@ -61,12 +61,13 @@ public class PostgresGeographicAreaResolver implements GeographicAreaResolverPor
             )
             SELECT admin_area_1_id, admin_area_2_id, admin_area_3_id, locality_id
             FROM candidates
-            WHERE (:locality='' OR locality_name=:locality OR EXISTS (
+            WHERE (postal_candidate_count=1 OR :locality='' OR locality_name=:locality OR EXISTS (
                      SELECT 1 FROM geographic_area ga WHERE ga.id=locality_id AND :locality=ANY(ga.aliases))
                      OR similarity(locality_name,:locality)>=0.85)
               AND (:admin1='' OR admin1_name=:admin1)
               AND (:admin2='' OR admin2_name=:admin2)
-              AND (:admin3='' OR admin3_name=:admin3)
+              AND (:admin3='' OR admin3_name=:admin3
+                   OR (admin3_name IS NULL AND locality_name=:admin3))
             ORDER BY (locality_name=:locality) DESC,
                      EXISTS (SELECT 1 FROM geographic_area ga WHERE ga.id=locality_id AND :locality=ANY(ga.aliases)) DESC,
                      similarity(locality_name,:locality) DESC, locality_id
