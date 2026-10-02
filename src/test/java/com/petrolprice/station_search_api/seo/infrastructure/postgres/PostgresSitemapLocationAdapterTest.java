@@ -12,10 +12,10 @@ class PostgresSitemapLocationAdapterTest {
         assertThat(sql)
                 .contains("FROM search_location sl")
                 .contains("JOIN station s")
-                .contains("JOIN fuel_price_statistics fps")
+                .contains("JOIN current_fuel_price_statistics fps")
                 .contains("fps.station_count > 0")
                 .doesNotContain("LEFT JOIN station")
-                .doesNotContain("LEFT JOIN fuel_price_statistics");
+                .doesNotContain("LEFT JOIN current_fuel_price_statistics");
     }
 
     @Test

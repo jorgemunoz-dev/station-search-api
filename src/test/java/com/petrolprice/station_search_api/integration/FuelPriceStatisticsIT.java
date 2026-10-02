@@ -128,6 +128,48 @@ class FuelPriceStatisticsIT extends IntegrationTestBase {
     }
 
     @Test
+    void shouldResolveBlankStationHierarchyFromSearchLocation() {
+        jdbcTemplate.update(
+                "UPDATE station SET admin_area_1_name = '   ' WHERE external_id IN (?, ?)",
+                cheap.externalId(),
+                expensive.externalId());
+
+        calculationRepository.replaceForSnapshot(cheap.snapshotId());
+
+        var alpha = currentStatistics
+                .current(new CurrentStatisticsQuery(
+                        "ES", ProductType.DIESEL_A, GeographicScope.administrativeHierarchy("Region", "North", "Alpha")))
+                .orElseThrow();
+
+        assertThat(alpha.stationCount()).isEqualTo(1);
+        assertThat(alpha.scope().adminArea1Name()).isEqualTo("Region");
+    }
+
+    @Test
+    void shouldKeepOnlyTheLatestSnapshotInCurrentStatistics() {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        UUID stationId = stationId(cheap.externalId());
+        createCalculatedSnapshot(
+                stationId, "1.900", today.plusDays(1).atTime(8, 0).toInstant(ZoneOffset.UTC));
+        createCalculatedSnapshot(
+                stationId, "1.100", today.minusDays(1).atTime(8, 0).toInstant(ZoneOffset.UTC));
+
+        Integer currentSnapshots = jdbcTemplate.queryForObject(
+                "SELECT COUNT(DISTINCT snapshot_id) FROM current_fuel_price_statistics WHERE country = 'ES'",
+                Integer.class);
+        Integer historicalSnapshots = jdbcTemplate.queryForObject(
+                "SELECT COUNT(DISTINCT snapshot_id) FROM fuel_price_statistics WHERE country = 'ES'",
+                Integer.class);
+        var country = currentStatistics
+                .current(new CurrentStatisticsQuery("ES", ProductType.DIESEL_A, GeographicScope.country()))
+                .orElseThrow();
+
+        assertThat(currentSnapshots).isEqualTo(1);
+        assertThat(historicalSnapshots).isEqualTo(3);
+        assertThat(country.averagePrice()).isEqualByComparingTo("1.900");
+    }
+
+    @Test
     void shouldRankLocalitiesFilteredByAdministrativeContext() {
         var ranked = currentStatistics.localities("ES", ProductType.DIESEL_A, null, "South", null);
         assertThat(ranked).singleElement().satisfies(result -> {

@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
@@ -38,7 +39,7 @@ public class PostgresFuelPriceStatisticsRepository
         String sql =
                 """
                 WITH selected AS (
-                    SELECT * FROM fuel_price_statistics
+                    SELECT * FROM current_fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
                       AND normalized_locality_name IS NULL
                       AND ((CAST(:adminArea1 AS varchar) IS NULL AND admin_area_1_name IS NULL)
@@ -47,15 +48,14 @@ public class PostgresFuelPriceStatisticsRepository
                            OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_2_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea2)
                       AND ((CAST(:adminArea3 AS varchar) IS NULL AND admin_area_3_name IS NULL)
                            OR BTRIM(LOWER(REGEXP_REPLACE(unaccent(admin_area_3_name), '[^[:alnum:]]+', ' ', 'g'))) = :adminArea3)
-                    ORDER BY calculated_at DESC LIMIT 1
                 ), country_statistics AS (
-                    SELECT average_price FROM fuel_price_statistics
+                    SELECT average_price FROM current_fuel_price_statistics
                     WHERE snapshot_id = (SELECT snapshot_id FROM selected)
                       AND country = :country AND product_type = :productType
                       AND normalized_locality_name IS NULL
                       AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
                 ), admin_area_2_statistics AS (
-                    SELECT average_price FROM fuel_price_statistics f
+                    SELECT average_price FROM current_fuel_price_statistics f
                     WHERE f.snapshot_id=(SELECT snapshot_id FROM selected) AND f.country=:country
                       AND f.product_type=:productType AND f.normalized_locality_name IS NULL
                       AND BTRIM(LOWER(REGEXP_REPLACE(unaccent(f.admin_area_1_name),'[^[:alnum:]]+',' ','g')))=:adminArea1
@@ -177,11 +177,10 @@ public class PostgresFuelPriceStatisticsRepository
                 """
                 WITH latest_snapshot AS (
                     SELECT snapshot_id, average_price country_average
-                    FROM fuel_price_statistics
+                    FROM current_fuel_price_statistics
                     WHERE country = :country AND product_type = :productType
                       AND normalized_locality_name IS NULL
                       AND admin_area_1_name IS NULL AND admin_area_2_name IS NULL AND admin_area_3_name IS NULL
-                    ORDER BY calculated_at DESC LIMIT 1
                 ), locality_metadata AS (
                     SELECT DISTINCT ON (normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name)
                            normalized_locality_name, locality_name,
@@ -196,7 +195,7 @@ public class PostgresFuelPriceStatisticsRepository
                            l.admin_area_3_name locality_admin_area_3_name,
                            RANK() OVER (ORDER BY average_price, l.locality_name) cheapest_rank,
                            RANK() OVER (ORDER BY average_price DESC, l.locality_name) expensive_rank
-                    FROM fuel_price_statistics f
+                    FROM current_fuel_price_statistics f
                     JOIN locality_metadata l ON l.normalized_locality_name=f.normalized_locality_name
                      AND l.admin_area_1_name IS NOT DISTINCT FROM f.admin_area_1_name
                      AND l.admin_area_2_name IS NOT DISTINCT FROM f.admin_area_2_name
@@ -243,7 +242,7 @@ public class PostgresFuelPriceStatisticsRepository
         String sql =
                 """
                 SELECT hp.price FROM historical_product_price hp
-                JOIN fuel_price_statistics f ON f.snapshot_id = hp.snapshot_id
+                JOIN current_fuel_price_statistics f ON f.snapshot_id = hp.snapshot_id
                   AND f.product_type = hp.product_type AND f.normalized_locality_name IS NULL
                   AND f.admin_area_1_name IS NULL AND f.admin_area_2_name IS NULL
                   AND f.admin_area_3_name IS NULL
@@ -260,6 +259,7 @@ public class PostgresFuelPriceStatisticsRepository
     }
 
     @Override
+    @Transactional
     public void replaceForSnapshot(UUID snapshotId) {
         jdbcTemplate.update(
                 "DELETE FROM fuel_price_statistics WHERE snapshot_id = :snapshotId",
@@ -269,10 +269,10 @@ public class PostgresFuelPriceStatisticsRepository
                 WITH source AS (
                     SELECT hp.snapshot_id, s.country, hp.product_type, hp.station_id, hp.price,
                            hp.observed_at,
-                           COALESCE(s.normalized_locality_name, location.normalized_locality_name) normalized_locality_name,
-                           COALESCE(s.admin_area_1_name, location.admin_area_1_name) admin_area_1_name,
-                           COALESCE(s.admin_area_2_name, location.admin_area_2_name) admin_area_2_name,
-                           COALESCE(s.admin_area_3_name, location.admin_area_3_name) admin_area_3_name
+                           COALESCE(NULLIF(BTRIM(s.normalized_locality_name), ''), location.normalized_locality_name) normalized_locality_name,
+                           COALESCE(NULLIF(BTRIM(s.admin_area_1_name), ''), location.admin_area_1_name) admin_area_1_name,
+                           COALESCE(NULLIF(BTRIM(s.admin_area_2_name), ''), location.admin_area_2_name) admin_area_2_name,
+                           COALESCE(NULLIF(BTRIM(s.admin_area_3_name), ''), location.admin_area_3_name) admin_area_3_name
                     FROM historical_product_price hp
                     JOIN station s ON s.id = hp.station_id
                     LEFT JOIN LATERAL (
@@ -323,6 +323,43 @@ public class PostgresFuelPriceStatisticsRepository
                          admin_area_1_name, admin_area_2_name, admin_area_3_name
                 """;
         jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
+        promoteToCurrent(snapshotId);
+    }
+
+    private void promoteToCurrent(UUID snapshotId) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource("snapshotId", snapshotId);
+        String deleteSql =
+                """
+                WITH incoming AS (
+                    SELECT country, snapshot_id, MAX(calculated_at) calculated_at
+                    FROM fuel_price_statistics
+                    WHERE snapshot_id = :snapshotId
+                    GROUP BY country, snapshot_id
+                )
+                DELETE FROM current_fuel_price_statistics published
+                USING incoming
+                WHERE published.country = incoming.country
+                  AND NOT EXISTS (
+                      SELECT 1 FROM current_fuel_price_statistics newer
+                      WHERE newer.country = incoming.country
+                        AND newer.calculated_at > incoming.calculated_at
+                  )
+                """;
+        jdbcTemplate.update(deleteSql, parameters);
+
+        String insertSql =
+                """
+                INSERT INTO current_fuel_price_statistics
+                SELECT statistics.*
+                FROM fuel_price_statistics statistics
+                WHERE statistics.snapshot_id = :snapshotId
+                  AND NOT EXISTS (
+                      SELECT 1 FROM current_fuel_price_statistics newer
+                      WHERE newer.country = statistics.country
+                        AND newer.calculated_at > statistics.calculated_at
+                  )
+                """;
+        jdbcTemplate.update(insertSql, parameters);
     }
 
     private MapSqlParameterSource baseParameters(String countryCode, ProductType productType) {

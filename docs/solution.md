@@ -170,8 +170,10 @@ erDiagram
     STATION_IMPORT ||--o{ STATION_IMPORT_EVENT : counts
     STATION_IMPORT ||--o{ HISTORICAL_PRODUCT_PRICE : groups
     STATION_IMPORT ||--o{ FUEL_PRICE_STATISTICS : produces
+    STATION_IMPORT ||--o{ CURRENT_FUEL_PRICE_STATISTICS : publishes
     STATION }o..o{ SEARCH_LOCATION : resolves_by_postcode
     STATION ||--o{ FUEL_PRICE_STATISTICS : identifies_extreme
+    STATION ||--o{ CURRENT_FUEL_PRICE_STATISTICS : identifies_current_extreme
 ```
 
 | Table | Purpose |
@@ -184,6 +186,7 @@ erDiagram
 | `station_import` | import state, expected event count, and timestamps |
 | `station_import_event` | idempotency ledger and actual processed-event count |
 | `fuel_price_statistics` | snapshot aggregates by product and geographic scope |
+| `current_fuel_price_statistics` | latest aggregate snapshot per country for bounded current reads |
 
 ## 5. Database queries and design rationale
 
@@ -252,10 +255,15 @@ Statistics are calculated after all advertised snapshot events are present:
 This deliberately denormalizes aggregates into `fuel_price_statistics`: ingestion does more work,
 but REST reads avoid scanning and grouping the full price history on every request. Keeping
 `snapshot_id` on every aggregate also ensures comparisons use internally consistent source data.
+After calculating a snapshot, ingestion atomically promotes it to `current_fuel_price_statistics`
+when it is not older than the published snapshot for that country. That table therefore remains
+bounded to one complete snapshot per country, while `fuel_price_statistics` is retained because the
+history and summary endpoints use its daily aggregates. Backfills cannot replace newer current data.
 
 ### 5.4 Current statistics
 
-1. **`selected`** gets the newest country/product row matching the exact requested scope. `NULL`
+1. **`selected`** gets the country/product row matching the exact requested scope from the bounded
+   `current_fuel_price_statistics` table. `NULL`
    means that level is not part of the scope; normalized comparisons make names accent-insensitive.
 2. **`country_statistics`** reads the country baseline from the *same snapshot*.
 3. **`admin_area_2_statistics`** optionally obtains the level-2 baseline from that snapshot.
