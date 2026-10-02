@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
@@ -258,6 +259,7 @@ public class PostgresFuelPriceStatisticsRepository
     }
 
     @Override
+    @Transactional
     public void replaceForSnapshot(UUID snapshotId) {
         jdbcTemplate.update(
                 "DELETE FROM fuel_price_statistics WHERE snapshot_id = :snapshotId",
@@ -325,33 +327,39 @@ public class PostgresFuelPriceStatisticsRepository
     }
 
     private void promoteToCurrent(UUID snapshotId) {
-        String sql =
+        MapSqlParameterSource parameters = new MapSqlParameterSource("snapshotId", snapshotId);
+        String deleteSql =
                 """
                 WITH incoming AS (
                     SELECT country, snapshot_id, MAX(calculated_at) calculated_at
                     FROM fuel_price_statistics
                     WHERE snapshot_id = :snapshotId
                     GROUP BY country, snapshot_id
-                ), eligible AS (
-                    SELECT incoming.*
-                    FROM incoming
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM current_fuel_price_statistics published
-                        WHERE published.country = incoming.country
-                          AND published.calculated_at > incoming.calculated_at
-                    )
-                ), deleted AS (
-                    DELETE FROM current_fuel_price_statistics published
-                    USING eligible
-                    WHERE published.country = eligible.country
-                    RETURNING published.id
                 )
+                DELETE FROM current_fuel_price_statistics published
+                USING incoming
+                WHERE published.country = incoming.country
+                  AND NOT EXISTS (
+                      SELECT 1 FROM current_fuel_price_statistics newer
+                      WHERE newer.country = incoming.country
+                        AND newer.calculated_at > incoming.calculated_at
+                  )
+                """;
+        jdbcTemplate.update(deleteSql, parameters);
+
+        String insertSql =
+                """
                 INSERT INTO current_fuel_price_statistics
                 SELECT statistics.*
                 FROM fuel_price_statistics statistics
-                JOIN eligible USING (country, snapshot_id)
+                WHERE statistics.snapshot_id = :snapshotId
+                  AND NOT EXISTS (
+                      SELECT 1 FROM current_fuel_price_statistics newer
+                      WHERE newer.country = statistics.country
+                        AND newer.calculated_at > statistics.calculated_at
+                  )
                 """;
-        jdbcTemplate.update(sql, new MapSqlParameterSource("snapshotId", snapshotId));
+        jdbcTemplate.update(insertSql, parameters);
     }
 
     private MapSqlParameterSource baseParameters(String countryCode, ProductType productType) {
