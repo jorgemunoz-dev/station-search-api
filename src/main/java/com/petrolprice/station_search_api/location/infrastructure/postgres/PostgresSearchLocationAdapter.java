@@ -31,6 +31,7 @@ public class PostgresSearchLocationAdapter implements SearchLocationPort {
                 .addValue("countryCode", query.countryCode())
                 .addValue("normalizedTextQuery", normalizedTextQuery)
                 .addValue("normalizedPostalQuery", normalizedPostalQuery)
+                .addValue("candidateLimit", Math.max(query.limit() * 10, 50))
                 .addValue("limit", query.limit());
 
         return jdbcTemplate.query(SearchLocationSql.SEARCH, parameters, rowMapper).stream()
@@ -45,12 +46,16 @@ public class PostgresSearchLocationAdapter implements SearchLocationPort {
                 projection.secondaryText(),
                 projection.countryCode(),
                 projection.postalCode(),
+                projection.localityId(),
                 projection.stationLocalityName(),
                 projection.normalizedLocalityName(),
+                projection.adminArea1Id(),
                 projection.adminArea1Name(),
                 projection.adminArea1Code(),
+                projection.adminArea2Id(),
                 projection.adminArea2Name(),
                 projection.adminArea2Code(),
+                projection.adminArea3Id(),
                 projection.adminArea3Name(),
                 projection.adminArea3Code(),
                 projection.latitude(),

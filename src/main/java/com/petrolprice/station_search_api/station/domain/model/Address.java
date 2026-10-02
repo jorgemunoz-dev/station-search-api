@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Address {
@@ -17,4 +17,8 @@ public class Address {
     private String adminArea1Name;
     private String adminArea2Name;
     private String adminArea3Name;
+    private Long adminArea1Id;
+    private Long adminArea2Id;
+    private Long adminArea3Id;
+    private Long localityId;
 }

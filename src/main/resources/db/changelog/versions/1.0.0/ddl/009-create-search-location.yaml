@@ -37,40 +37,10 @@ databaseChangeLog:
                     nullable: false
 
               - column:
-                  name: locality_name
-                  type: varchar(150)
+                  name: locality_id
+                  type: bigint
                   constraints:
                     nullable: false
-
-              - column:
-                  name: normalized_locality_name
-                  type: varchar(150)
-                  constraints:
-                    nullable: false
-
-              - column:
-                  name: admin_area_1_name
-                  type: varchar(150)
-
-              - column:
-                  name: admin_area_1_code
-                  type: varchar(50)
-
-              - column:
-                  name: admin_area_2_name
-                  type: varchar(150)
-
-              - column:
-                  name: admin_area_2_code
-                  type: varchar(50)
-
-              - column:
-                  name: admin_area_3_name
-                  type: varchar(150)
-
-              - column:
-                  name: admin_area_3_code
-                  type: varchar(50)
 
               - column:
                   name: location
@@ -114,44 +84,23 @@ databaseChangeLog:
 
         - createIndex:
             tableName: search_location
-            indexName: idx_search_location_country_locality
+            indexName: idx_search_location_locality
             columns:
-              - column:
-                  name: country_code
-              - column:
-                  name: normalized_locality_name
-
-        - sql:
-            sql: >
-              CREATE INDEX idx_search_location_locality_trgm
-              ON search_location
-              USING GIN (normalized_locality_name gin_trgm_ops);
+              - column: {name: locality_id}
 
         - sql:
             sql: >
               CREATE INDEX idx_search_location_location
               ON search_location
               USING GIST (location);
-
-  - changeSet:
-      id: 009-search-location-hierarchy-indexes
-      author: codex
-      changes:
-        - createIndex:
-            tableName: search_location
-            indexName: idx_search_location_hierarchy
-            columns:
-              - column: {name: country_code}
-              - column: {name: admin_area_1_name}
-              - column: {name: admin_area_2_name}
-              - column: {name: admin_area_3_name}
-        - createIndex:
-            tableName: search_location
-            indexName: idx_search_location_identity
-            columns:
-              - column: {name: country_code}
-              - column: {name: normalized_postal_code}
-              - column: {name: normalized_locality_name}
-              - column: {name: admin_area_1_code}
-              - column: {name: admin_area_2_code}
-              - column: {name: admin_area_3_code}
+        - addForeignKeyConstraint:
+            baseTableName: search_location
+            baseColumnNames: locality_id
+            referencedTableName: geographic_area
+            referencedColumnNames: id
+            constraintName: fk_search_location_locality
+            onDelete: RESTRICT
+        - sql:
+            sql: ALTER TABLE search_location ADD CONSTRAINT ck_search_location_accuracy CHECK (accuracy IS NULL OR accuracy BETWEEN 0 AND 10);
+        - sql:
+            sql: CREATE INDEX idx_geographic_area_name_trgm ON geographic_area USING GIN (normalized_name gin_trgm_ops);

@@ -137,8 +137,10 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
 
     @Test
     void shouldFilterStationsByExactNormalizedLocality() {
-        StationSnapshotFixture malaga = aStationSnapshot().withLocality("Málaga").withAdministrativeHierarchy("Andalucía", "Málaga", "Málaga");
-        StationSnapshotFixture neighboringLocality = aStationSnapshot().withLocality("Málaga del Fresno").withAdministrativeHierarchy("Andalucía", "Málaga", "Málaga del Fresno");
+        StationSnapshotFixture malaga = aStationSnapshot().withPostalCode("29001").withLocality("Málaga").withAdministrativeHierarchy("Andalucía", "Málaga", "Málaga");
+        StationSnapshotFixture neighboringLocality = aStationSnapshot().withPostalCode("29002").withLocality("Málaga del Fresno").withAdministrativeHierarchy("Andalucía", "Málaga", "Málaga del Fresno");
+        insertCanonicalLocation("29001", "Andalucía", "andalucia", "Málaga", "malaga", "Málaga", "malaga", "Málaga", "malaga");
+        insertCanonicalLocation("29002", "Andalucía", "andalucia", "Málaga", "malaga", "Málaga del Fresno", "malaga del fresno", "Málaga del Fresno", "malaga del fresno");
         snapshotService.consume(malaga.processCommand());
         snapshotService.consume(neighboringLocality.processCommand());
 
@@ -158,8 +160,11 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         StationSnapshotFixture castellon = aStationSnapshot()
                 .withLocalityAndNormalizedName(
                         "CASTELLON DE LA PLANA", "castellon de la plana")
+                .withPostalCode("12001")
                 .withAdministrativeHierarchy("València", "Castellón", "Castellón de la Plana")
                 .withPrices(price(GASOLINE_95_E5, "1.819"));
+        insertCanonicalLocation("12001", "València", "valencia", "Castellón", "castellon",
+                "Castellón de la Plana", "castellon de la plana", "CASTELLON DE LA PLANA", "castellon de la plana");
         snapshotService.consume(castellon.processCommand());
 
         FindStationsQuery query = FindStationsQuery.builder()
@@ -178,11 +183,11 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
         StationSnapshotFixture secondPostalCode = stationIn("15002", "CORUÑA (A)");
         StationSnapshotFixture ambiguousPostalCode = stationIn("15003", "CORUÑA (A)");
         StationSnapshotFixture otherLocality = stationIn("15003", "OLEIROS");
-        List.of(firstPostalCode, secondPostalCode, ambiguousPostalCode, otherLocality)
-                .forEach(station -> snapshotService.consume(station.processCommand()));
         insertSearchLocation("15001", "A Coruña", "a coruna");
         insertSearchLocation("15002", "A Coruña", "a coruna");
         insertSearchLocation("15003", "A Coruña", "a coruna");
+        List.of(firstPostalCode, secondPostalCode, ambiguousPostalCode, otherLocality)
+                .forEach(station -> snapshotService.consume(station.processCommand()));
 
         FindStationsQuery query = FindStationsQuery.builder()
                 .searchArea(new LocalitySearchArea("ES", "galicia", "a coruna", "a coruna"))
@@ -197,24 +202,54 @@ class PostgresStationSearchPersistenceAdapterIT extends IntegrationTestBase {
     private StationSnapshotFixture stationIn(String postalCode, String stationLocality) {
         return aStationSnapshot()
                 .withPostalCode(postalCode)
-                .withLocalityAndNormalizedName(stationLocality, stationLocality);
+                .withLocalityAndNormalizedName(stationLocality, stationLocality)
+                .withAdministrativeHierarchy("Galicia", "A Coruña", "A Coruña");
     }
 
     private void insertSearchLocation(String postalCode, String localityName, String normalizedLocalityName) {
+        insertCanonicalLocation(postalCode, "Galicia", "galicia", "A Coruña", "a coruna",
+                "A Coruña", "a coruna", localityName, normalizedLocalityName);
+    }
+
+    private void insertCanonicalLocation(
+            String postalCode,
+            String area1,
+            String normalizedArea1,
+            String area2,
+            String normalizedArea2,
+            String area3,
+            String normalizedArea3,
+            String localityName,
+            String normalizedLocalityName) {
         jdbcTemplate.update(
                 """
-            INSERT INTO search_location (
-                id, country_code, postal_code, normalized_postal_code,
-                locality_name, normalized_locality_name, admin_area_1_name, admin_area_2_name, admin_area_3_name, location, source
-            ) VALUES (
-                gen_random_uuid(), 'ES', ?, ?, ?, ?, 'Galicia', 'A Coruña', 'A Coruña',
-                ST_SetSRID(ST_MakePoint(-8.4, 43.3), 4326)::geography, 'GEONAMES'
-            )
-            """,
-                postalCode,
-                postalCode,
-                localityName,
-                normalizedLocalityName);
+                WITH country AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source,source_code)
+                  VALUES ('ES','COUNTRY','España','espana',NULL,'TEST','ES')
+                  ON CONFLICT (country_code) WHERE type='COUNTRY' DO UPDATE SET name=EXCLUDED.name RETURNING id
+                ), a1 AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','ADMIN_AREA_1',?,?,id,'TEST' FROM country
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                ), a2 AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','ADMIN_AREA_2',?,?,id,'TEST' FROM a1
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                ), a3 AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','ADMIN_AREA_3',?,?,id,'TEST' FROM a2
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                ), locality AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','LOCALITY',?,?,id,'TEST' FROM a3
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                )
+                INSERT INTO search_location(id,country_code,postal_code,normalized_postal_code,locality_id,location,source)
+                SELECT gen_random_uuid(),'ES',?,?,id,
+                  ST_SetSRID(ST_MakePoint(-8.4,43.3),4326)::geography,'GEONAMES' FROM locality
+                """,
+                area1, normalizedArea1, area2, normalizedArea2, area3, normalizedArea3,
+                localityName, normalizedLocalityName, postalCode, postalCode);
     }
 
     private StationSnapshotFixture nearby(String offset) {

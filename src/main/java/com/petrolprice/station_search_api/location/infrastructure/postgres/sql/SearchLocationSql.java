@@ -1,160 +1,89 @@
 package com.petrolprice.station_search_api.location.infrastructure.postgres.sql;
 
-public class SearchLocationSql {
+public final class SearchLocationSql {
     private SearchLocationSql() {}
 
-    public static final String SEARCH =
-            """
-        WITH unambiguous_station_localities AS (
-            SELECT
-                country AS station_country,
-                UPPER(REGEXP_REPLACE(postal_code, '[^A-Za-z0-9]', '', 'g')) AS station_postal_code,
-                MIN(NULLIF(BTRIM(COALESCE(normalized_locality_name, locality_name)), '')) AS station_locality_name
-            FROM station
-            WHERE postal_code IS NOT NULL
-              AND NULLIF(BTRIM(COALESCE(normalized_locality_name, locality_name)), '') IS NOT NULL
-            GROUP BY country, UPPER(REGEXP_REPLACE(postal_code, '[^A-Za-z0-9]', '', 'g'))
-            HAVING COUNT(DISTINCT NULLIF(BTRIM(COALESCE(normalized_locality_name, locality_name)), '')) = 1
-        ),
-        postal_suggestions AS (
-            SELECT
-                'POSTAL_CODE' AS suggestion_type,
-                postal_code AS primary_text,
-                CONCAT_WS(
-                    ', ',
-                    locality_name,
-                    admin_area_2_name,
-                    admin_area_1_name
-                ) AS secondary_text,
-                country_code,
-                postal_code,
-                COALESCE(station_locality_name, locality_name) AS station_locality_name,
-                normalized_locality_name,
-                admin_area_1_name,
-                admin_area_1_code,
-                admin_area_2_name,
-                admin_area_2_code,
-                admin_area_3_name,
-                admin_area_3_code,
-                ST_Y(location::geometry) AS latitude,
-                ST_X(location::geometry) AS longitude,
-                CASE
-                    WHEN normalized_postal_code = :normalizedPostalQuery
-                        THEN 0
-                    ELSE 1
-                END AS match_priority,
-                1.0::real AS similarity_score
-            FROM search_location
-            LEFT JOIN unambiguous_station_localities
-              ON station_country = country_code
-             AND station_postal_code = search_location.normalized_postal_code
-            WHERE country_code = :countryCode
-              AND normalized_postal_code LIKE :normalizedPostalQuery || '%%'
-        ),
-        ranked_localities AS (
-            SELECT
-                locality_name,
-                normalized_locality_name,
-                admin_area_1_name,
-                admin_area_1_code,
-                admin_area_2_name,
-                admin_area_2_code,
-                admin_area_3_name,
-                admin_area_3_code,
-                country_code,
-                postal_code,
-                location,
-                accuracy,
-                COALESCE(station_locality_name, locality_name) AS station_locality_name,
-                CASE
-                    WHEN normalized_locality_name = :normalizedTextQuery
-                        THEN 2
-                    WHEN normalized_locality_name LIKE :normalizedTextQuery || '%%'
-                        THEN 3
-                    ELSE 4
-                END AS match_priority,
-                similarity(
-                    normalized_locality_name,
-                    :normalizedTextQuery
-                ) AS similarity_score,
-                ROW_NUMBER() OVER (
-                    PARTITION BY
-                        country_code,
-                        normalized_locality_name,
-                        COALESCE(admin_area_1_code, ''),
-                        COALESCE(admin_area_2_code, ''),
-                        COALESCE(admin_area_3_code, '')
-                    ORDER BY
-                        (station_locality_name IS NOT NULL) DESC,
-                        accuracy DESC NULLS LAST,
-                        postal_code
-                ) AS duplicate_position
-            FROM search_location
-            LEFT JOIN unambiguous_station_localities
-              ON station_country = country_code
-             AND station_postal_code = search_location.normalized_postal_code
-            WHERE country_code = :countryCode
+    public static final String SEARCH = """
+        WITH RECURSIVE candidate_search AS MATERIALIZED (
+            SELECT sl.*
+            FROM search_location sl
+            JOIN geographic_area locality ON locality.id = sl.locality_id
+            WHERE sl.country_code = :countryCode
               AND (
-                  normalized_locality_name LIKE :normalizedTextQuery || '%%'
-                  OR normalized_locality_name % :normalizedTextQuery
+                    sl.normalized_postal_code LIKE :normalizedPostalQuery || '%'
+                 OR locality.normalized_name LIKE :normalizedTextQuery || '%'
+                 OR locality.normalized_name % :normalizedTextQuery
               )
-        ),
-        locality_suggestions AS (
-            SELECT
-                'LOCALITY' AS suggestion_type,
-                locality_name AS primary_text,
-                CONCAT_WS(
-                    ', ',
-                    admin_area_2_name,
-                    admin_area_1_name
-                ) AS secondary_text,
-                country_code,
-                postal_code,
-                station_locality_name,
-                normalized_locality_name,
-                admin_area_1_name,
-                admin_area_1_code,
-                admin_area_2_name,
-                admin_area_2_code,
-                admin_area_3_name,
-                admin_area_3_code,
-                ST_Y(location::geometry) AS latitude,
-                ST_X(location::geometry) AS longitude,
-                match_priority,
-                similarity_score
-            FROM ranked_localities
-            WHERE duplicate_position = 1
-        ),
-        combined_suggestions AS (
-            SELECT *
-            FROM postal_suggestions
-
+            ORDER BY
+              CASE
+                WHEN sl.normalized_postal_code = :normalizedPostalQuery THEN 0
+                WHEN sl.normalized_postal_code LIKE :normalizedPostalQuery || '%' THEN 1
+                WHEN locality.normalized_name = :normalizedTextQuery THEN 2
+                WHEN locality.normalized_name LIKE :normalizedTextQuery || '%' THEN 3
+                ELSE 4
+              END,
+              similarity(locality.normalized_name, :normalizedTextQuery) DESC,
+              sl.accuracy DESC NULLS LAST
+            LIMIT :candidateLimit
+        ), hierarchy AS (
+            SELECT sl.id search_id, area.id, area.parent_id, area.type, area.name,
+                   area.normalized_name, area.source_code
+            FROM candidate_search sl
+            JOIN geographic_area area ON area.id = sl.locality_id
             UNION ALL
-
-            SELECT *
-            FROM locality_suggestions
+            SELECT h.search_id, parent.id, parent.parent_id, parent.type, parent.name,
+                   parent.normalized_name, parent.source_code
+            FROM hierarchy h
+            JOIN geographic_area parent ON parent.id = h.parent_id
+        ), metadata AS (
+            SELECT sl.id, sl.country_code, sl.postal_code, sl.normalized_postal_code,
+                   sl.locality_id, sl.location, sl.accuracy,
+                   MAX(h.name) FILTER (WHERE h.type='LOCALITY') locality_name,
+                   MAX(h.normalized_name) FILTER (WHERE h.type='LOCALITY') normalized_locality_name,
+                   MAX(h.id) FILTER (WHERE h.type='ADMIN_AREA_1') admin_area_1_id,
+                   MAX(h.name) FILTER (WHERE h.type='ADMIN_AREA_1') admin_area_1_name,
+                   MAX(h.source_code) FILTER (WHERE h.type='ADMIN_AREA_1') admin_area_1_code,
+                   MAX(h.id) FILTER (WHERE h.type='ADMIN_AREA_2') admin_area_2_id,
+                   MAX(h.name) FILTER (WHERE h.type='ADMIN_AREA_2') admin_area_2_name,
+                   MAX(h.source_code) FILTER (WHERE h.type='ADMIN_AREA_2') admin_area_2_code,
+                   MAX(h.id) FILTER (WHERE h.type='ADMIN_AREA_3') admin_area_3_id,
+                   MAX(h.name) FILTER (WHERE h.type='ADMIN_AREA_3') admin_area_3_name,
+                   MAX(h.source_code) FILTER (WHERE h.type='ADMIN_AREA_3') admin_area_3_code
+            FROM candidate_search sl
+            JOIN hierarchy h ON h.search_id = sl.id
+            GROUP BY sl.id, sl.country_code, sl.postal_code, sl.normalized_postal_code,
+                     sl.locality_id, sl.location, sl.accuracy
+        ), candidates AS (
+            SELECT 'POSTAL_CODE' suggestion_type, postal_code primary_text,
+                   CONCAT_WS(', ',locality_name,admin_area_2_name,admin_area_1_name) secondary_text,
+                   *, CASE WHEN normalized_postal_code=:normalizedPostalQuery THEN 0 ELSE 1 END priority,
+                   1.0::real score
+            FROM metadata
+            WHERE normalized_postal_code LIKE :normalizedPostalQuery || '%'
+            UNION ALL
+            SELECT 'LOCALITY', locality_name,
+                   CONCAT_WS(', ',admin_area_2_name,admin_area_1_name), *,
+                   CASE WHEN normalized_locality_name=:normalizedTextQuery THEN 2
+                        WHEN normalized_locality_name LIKE :normalizedTextQuery || '%' THEN 3 ELSE 4 END,
+                   similarity(normalized_locality_name,:normalizedTextQuery)
+            FROM metadata
+            WHERE normalized_locality_name LIKE :normalizedTextQuery || '%'
+               OR normalized_locality_name % :normalizedTextQuery
+        ), ranked AS (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY suggestion_type, country_code,
+                CASE WHEN suggestion_type='POSTAL_CODE' THEN normalized_postal_code ELSE locality_id::text END
+                ORDER BY accuracy DESC NULLS LAST, id) duplicate_position
+            FROM candidates
         )
-        SELECT
-            suggestion_type,
-            primary_text,
-            secondary_text,
-            country_code,
-            postal_code,
-            station_locality_name,
-            normalized_locality_name,
-            admin_area_1_name,
-            admin_area_1_code,
-            admin_area_2_name,
-            admin_area_2_code,
-            admin_area_3_name,
-            admin_area_3_code,
-            latitude,
-            longitude
-        FROM combined_suggestions
-        ORDER BY
-            match_priority,
-            similarity_score DESC,
-            primary_text
+        SELECT suggestion_type,primary_text,secondary_text,country_code,postal_code,
+               locality_id, locality_name station_locality_name, normalized_locality_name,
+               admin_area_1_id,admin_area_1_name,admin_area_1_code,
+               admin_area_2_id,admin_area_2_name,admin_area_2_code,
+               admin_area_3_id,admin_area_3_name,admin_area_3_code,
+               ST_Y(location::geometry) latitude,ST_X(location::geometry) longitude
+        FROM ranked
+        WHERE duplicate_position=1
+        ORDER BY priority,score DESC,primary_text
         LIMIT :limit
         """;
 }

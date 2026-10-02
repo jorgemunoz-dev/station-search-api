@@ -8,6 +8,13 @@ import org.junit.jupiter.api.Test;
 
 class SearchLocationSqlTest {
     @Test
+    void shouldFilterCandidatesBeforeWalkingTheHierarchy() {
+        assertThat(SearchLocationSql.SEARCH.indexOf("candidate_search AS MATERIALIZED"))
+                .isLessThan(SearchLocationSql.SEARCH.indexOf("hierarchy AS"));
+        assertThat(SearchLocationSql.SEARCH).contains("LIMIT :candidateLimit");
+    }
+
+    @Test
     void shouldNormalizeInputValues() {
         SearchLocationQuery query = new SearchLocationQuery("  Málaga  ", "es", 10);
 

@@ -13,6 +13,7 @@ public record StationSearchParameters(
         String adminArea1,
         String adminArea2,
         String adminArea3,
+        Long localityId,
         BigDecimal latitude,
         BigDecimal longitude,
         Integer radiusMeters,

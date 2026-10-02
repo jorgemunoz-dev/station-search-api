@@ -28,40 +28,30 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
     void setUp() {
         jdbcTemplate.update(
                 """
-            INSERT INTO search_location (
-                id,
-                country_code,
-                postal_code,
-                normalized_postal_code,
-                locality_name,
-                normalized_locality_name,
-                admin_area_1_name,
-                admin_area_1_code,
-                admin_area_2_name,
-                admin_area_2_code,
-                location,
-                accuracy,
-                source
-            )
-            VALUES (
-                '11111111-1111-1111-1111-111111111111',
-                'ES',
-                '29550',
-                '29550',
-                'Ardales',
-                'ardales',
-                'Andalucía',
-                '01',
-                'Málaga',
-                '29',
-                ST_SetSRID(
-                    ST_MakePoint(-4.8460, 36.8780),
-                    4326
-                )::geography,
-                6,
-                'GEONAMES'
-            )
-            """);
+                WITH country AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source,source_code)
+                  VALUES ('ES','COUNTRY','España','espana',NULL,'TEST','ES')
+                  ON CONFLICT (country_code) WHERE type='COUNTRY' DO UPDATE SET name=EXCLUDED.name
+                  RETURNING id
+                ), a1 AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source,source_code)
+                  SELECT 'ES','ADMIN_AREA_1','Andalucía','andalucia',id,'TEST','01' FROM country
+                  ON CONFLICT (country_code,type,parent_id,normalized_name)
+                  DO UPDATE SET name=EXCLUDED.name, source_code=EXCLUDED.source_code RETURNING id
+                ), a2 AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source,source_code)
+                  SELECT 'ES','ADMIN_AREA_2','Málaga','malaga',id,'TEST','29' FROM a1
+                  ON CONFLICT (country_code,type,parent_id,normalized_name)
+                  DO UPDATE SET name=EXCLUDED.name, source_code=EXCLUDED.source_code RETURNING id
+                ), locality AS (
+                  INSERT INTO geographic_area(country_code,type,name,normalized_name,parent_id,source)
+                  SELECT 'ES','LOCALITY','Ardales','ardales',id,'TEST' FROM a2
+                  ON CONFLICT (country_code,type,parent_id,normalized_name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+                )
+                INSERT INTO search_location(id,country_code,postal_code,normalized_postal_code,locality_id,location,accuracy,source)
+                SELECT '11111111-1111-1111-1111-111111111111','ES','29550','29550',id,
+                  ST_SetSRID(ST_MakePoint(-4.8460,36.8780),4326)::geography,6,'GEONAMES' FROM locality
+                """);
     }
 
     @Test
@@ -75,6 +65,7 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$[0].type", is("LOCALITY")))
                 .andExpect(jsonPath("$[0].primaryText", is("Ardales")))
                 .andExpect(jsonPath("$[0].countryCode", is("ES")))
+                .andExpect(jsonPath("$[0].localityId").isNumber())
                 .andExpect(jsonPath("$[0].postalCode", is("29550")))
                 .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")))
                 .andExpect(jsonPath("$[0].normalizedLocalityName", is("ardales")))
@@ -110,7 +101,7 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
                         .queryParam("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].primaryText", is("Ardales")))
-                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales (El)")));
+                .andExpect(jsonPath("$[0].stationLocalityName", is("Ardales")));
     }
 
     @Test
@@ -163,36 +154,28 @@ class SearchLocationEndpointIT extends IntegrationTestBase {
         jdbcTemplate.update(
                 """
             INSERT INTO station (
-                id, external_id, country, postal_code, locality_name, normalized_locality_name,
+                id, external_id, country, postal_code, locality_id, admin_area_1_id, admin_area_2_id,
                 location, created_at, updated_at
-            ) VALUES (
-                ?::uuid, ?, 'ES', ?, ?, ?,
-                ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography,
-                NOW(), NOW()
-            )
+            ) SELECT ?::uuid, ?, 'ES', ?, locality.id, a1.id, a2.id,
+                ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography, NOW(), NOW()
+              FROM geographic_area locality
+              JOIN geographic_area a2 ON a2.id=locality.parent_id
+              JOIN geographic_area a1 ON a1.id=a2.parent_id
+              WHERE locality.country_code='ES' AND locality.type='LOCALITY' AND locality.normalized_name='ardales'
             """,
                 id,
                 id,
-                postalCode,
-                localityName,
-                normalizedLocalityName);
+                postalCode);
     }
 
     private void insertSearchLocationWithoutStations() {
         jdbcTemplate.update(
                 """
             INSERT INTO search_location (
-                id, country_code, postal_code, normalized_postal_code,
-                locality_name, normalized_locality_name,
-                admin_area_1_name, admin_area_1_code, admin_area_2_name, admin_area_2_code,
-                location, accuracy, source
-            ) VALUES (
-                '44444444-4444-4444-4444-444444444444', 'ES', '29551', '29551',
-                'Ardales', 'ardales',
-                'Andalucía', '01', 'Málaga', '29',
-                ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography,
-                10, 'GEONAMES'
-            )
+                id, country_code, postal_code, normalized_postal_code, locality_id, location, accuracy, source
+            ) SELECT '44444444-4444-4444-4444-444444444444', 'ES', '29551', '29551', id,
+                ST_SetSRID(ST_MakePoint(-4.8460, 36.8780), 4326)::geography, 10, 'GEONAMES'
+              FROM geographic_area WHERE country_code='ES' AND type='LOCALITY' AND normalized_name='ardales'
             """);
     }
 }

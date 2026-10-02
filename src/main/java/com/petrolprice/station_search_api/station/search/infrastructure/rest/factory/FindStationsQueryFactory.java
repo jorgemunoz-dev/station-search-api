@@ -63,8 +63,17 @@ public class FindStationsQueryFactory {
 
     private LocalitySearchArea createLocalitySearchArea(StationSearchParameters parameters) {
         rejectGeographicalParameters(parameters);
+        if (parameters.localityId() != null) {
+            if (parameters.countryCode() == null || !parameters.countryCode().matches("[A-Za-z]{2}")) {
+                throw new InvalidStationSearchRequestException("LOCALITY search by localityId requires countryCode");
+            }
+            if (parameters.localityId() <= 0) {
+                throw new InvalidStationSearchRequestException("localityId must be positive");
+            }
+            return new LocalitySearchArea(parameters.localityId(), parameters.countryCode(), null, null, null);
+        }
         if (parameters.countryCode() == null || parameters.adminArea1() == null || parameters.adminArea2() == null || parameters.adminArea3() == null) {
-            throw new InvalidStationSearchRequestException("LOCALITY search requires countryCode, adminArea1, adminArea2 and adminArea3");
+            throw new InvalidStationSearchRequestException("LOCALITY search requires localityId and countryCode, or the legacy administrative hierarchy");
         }
         if (!parameters.countryCode().matches("[A-Za-z]{2}")) {
             throw new InvalidStationSearchRequestException("countryCode must be a two-letter ISO country code");
@@ -89,7 +98,7 @@ public class FindStationsQueryFactory {
     }
 
     private void rejectLocalityParameters(StationSearchParameters parameters) {
-        if (parameters.countryCode() != null || parameters.adminArea1() != null || parameters.adminArea2() != null || parameters.adminArea3() != null) {
+        if (parameters.countryCode() != null || parameters.adminArea1() != null || parameters.adminArea2() != null || parameters.adminArea3() != null || parameters.localityId() != null) {
             throw new InvalidStationSearchRequestException(
                     "RADIUS and VIEWPORT searches must not contain countryCode or administrative-area parameters");
         }

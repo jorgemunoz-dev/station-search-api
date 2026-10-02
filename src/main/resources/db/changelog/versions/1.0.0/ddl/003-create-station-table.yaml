@@ -7,6 +7,45 @@ databaseChangeLog:
       changes:
 
         - createTable:
+            tableName: geographic_area
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints: {primaryKey: true, nullable: false}
+              - column: {name: country_code, type: varchar(2), constraints: {nullable: false}}
+              - column: {name: type, type: varchar(20), constraints: {nullable: false}}
+              - column: {name: name, type: varchar(150), constraints: {nullable: false}}
+              - column: {name: normalized_name, type: varchar(150), constraints: {nullable: false}}
+              - column: {name: parent_id, type: bigint}
+              - column: {name: source, type: varchar(30), constraints: {nullable: false}}
+              - column: {name: source_code, type: varchar(100)}
+              - column: {name: aliases, type: "text[]", defaultValueComputed: "ARRAY[]::text[]", constraints: {nullable: false}}
+              - column: {name: active, type: boolean, defaultValueBoolean: true, constraints: {nullable: false}}
+              - column: {name: created_at, type: timestamptz, defaultValueComputed: CURRENT_TIMESTAMP, constraints: {nullable: false}}
+              - column: {name: updated_at, type: timestamptz, defaultValueComputed: CURRENT_TIMESTAMP, constraints: {nullable: false}}
+        - addForeignKeyConstraint:
+            baseTableName: geographic_area
+            baseColumnNames: parent_id
+            referencedTableName: geographic_area
+            referencedColumnNames: id
+            constraintName: fk_geographic_area_parent
+            onDelete: RESTRICT
+        - sql:
+            sql: |
+              ALTER TABLE geographic_area ADD CONSTRAINT ck_geographic_area_country_code CHECK (country_code ~ '^[A-Z]{2}$');
+              ALTER TABLE geographic_area ADD CONSTRAINT ck_geographic_area_type CHECK (type IN ('COUNTRY','ADMIN_AREA_1','ADMIN_AREA_2','ADMIN_AREA_3','LOCALITY'));
+              ALTER TABLE geographic_area ADD CONSTRAINT ck_geographic_area_parent CHECK ((type = 'COUNTRY' AND parent_id IS NULL) OR (type <> 'COUNTRY' AND parent_id IS NOT NULL));
+              CREATE UNIQUE INDEX uk_geographic_area_country ON geographic_area (country_code) WHERE type = 'COUNTRY';
+              CREATE UNIQUE INDEX uk_geographic_area_external_code ON geographic_area (source, country_code, type, parent_id, source_code) WHERE source_code IS NOT NULL;
+              CREATE UNIQUE INDEX uk_geographic_area_normalized_sibling ON geographic_area (country_code, type, parent_id, normalized_name);
+              CREATE INDEX idx_geographic_area_parent ON geographic_area (parent_id);
+              CREATE INDEX idx_geographic_area_country_type ON geographic_area (country_code, type);
+              CREATE INDEX idx_geographic_area_parent_normalized ON geographic_area (parent_id, type, normalized_name);
+              CREATE INDEX idx_geographic_area_aliases ON geographic_area USING GIN (aliases);
+
+        - createTable:
             tableName: station
 
             columns:
@@ -46,21 +85,10 @@ databaseChangeLog:
                   name: postal_code
                   type: varchar(20)
 
-              - column:
-                  name: locality_name
-                  type: varchar(150)
-              - column:
-                  name: normalized_locality_name
-                  type: varchar(150)
-              - column:
-                  name: admin_area_1_name
-                  type: varchar(150)
-              - column:
-                  name: admin_area_2_name
-                  type: varchar(150)
-              - column:
-                  name: admin_area_3_name
-                  type: varchar(150)
+              - column: {name: admin_area_1_id, type: bigint}
+              - column: {name: admin_area_2_id, type: bigint}
+              - column: {name: admin_area_3_id, type: bigint}
+              - column: {name: locality_id, type: bigint}
 
               - column:
                   name: location
@@ -84,3 +112,7 @@ databaseChangeLog:
             tableName: station
             columnNames: country, external_id
             constraintName: uk_station_external
+        - addForeignKeyConstraint: {baseTableName: station, baseColumnNames: admin_area_1_id, referencedTableName: geographic_area, referencedColumnNames: id, constraintName: fk_station_admin_area_1, onDelete: RESTRICT}
+        - addForeignKeyConstraint: {baseTableName: station, baseColumnNames: admin_area_2_id, referencedTableName: geographic_area, referencedColumnNames: id, constraintName: fk_station_admin_area_2, onDelete: RESTRICT}
+        - addForeignKeyConstraint: {baseTableName: station, baseColumnNames: admin_area_3_id, referencedTableName: geographic_area, referencedColumnNames: id, constraintName: fk_station_admin_area_3, onDelete: RESTRICT}
+        - addForeignKeyConstraint: {baseTableName: station, baseColumnNames: locality_id, referencedTableName: geographic_area, referencedColumnNames: id, constraintName: fk_station_locality, onDelete: RESTRICT}

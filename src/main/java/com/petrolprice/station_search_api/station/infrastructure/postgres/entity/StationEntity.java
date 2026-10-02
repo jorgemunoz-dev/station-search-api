@@ -38,20 +38,17 @@ public class StationEntity {
     @Column(name = "postal_code")
     private String postalCode;
 
-    @Column(name = "locality_name")
-    private String localityName;
+    @Column(name = "admin_area_1_id")
+    private Long adminArea1Id;
 
-    @Column(name = "normalized_locality_name")
-    private String normalizedLocalityName;
+    @Column(name = "admin_area_2_id")
+    private Long adminArea2Id;
 
-    @Column(name = "admin_area_1_name")
-    private String adminArea1Name;
+    @Column(name = "admin_area_3_id")
+    private Long adminArea3Id;
 
-    @Column(name = "admin_area_2_name")
-    private String adminArea2Name;
-
-    @Column(name = "admin_area_3_name")
-    private String adminArea3Name;
+    @Column(name = "locality_id")
+    private Long localityId;
 
     @Column(nullable = false, columnDefinition = "geography(Point,4326)")
     private Point location;
