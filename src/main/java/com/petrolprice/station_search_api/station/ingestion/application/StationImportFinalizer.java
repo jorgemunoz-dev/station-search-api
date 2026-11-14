@@ -38,7 +38,7 @@ public class StationImportFinalizer {
             stationImportRepositoryPort.markCompleted(snapshotId);
             completed = true;
 
-            log.atInfo()
+            log.atDebug()
                     .addKeyValue("event", "station_import_completed")
                     .addKeyValue("snapshotId", snapshotId)
                     .log("Station import statistics completed");

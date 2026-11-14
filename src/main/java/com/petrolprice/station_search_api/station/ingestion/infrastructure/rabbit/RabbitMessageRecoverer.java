@@ -1,7 +1,12 @@
 package com.petrolprice.station_search_api.station.ingestion.infrastructure.rabbit;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
@@ -14,6 +19,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class RabbitMessageRecoverer implements MessageRecoverer {
     private final MeterRegistry meterRegistry;
+    private final ConcurrentMap<String, AtomicLong> lastFailures = new ConcurrentHashMap<>();
 
     @Override
     public void recover(Message message, Throwable cause) {
@@ -26,6 +32,20 @@ public class RabbitMessageRecoverer implements MessageRecoverer {
                 .tag("queue", queue == null ? "unknown" : queue)
                 .register(meterRegistry)
                 .increment();
+
+        // A lazy counter starts at one on its first scrape, so increase() can
+        // miss the first rejected message. A timestamp also catches that event.
+        lastFailures
+                .computeIfAbsent(queue == null ? "unknown" : queue, name -> {
+                    AtomicLong value = new AtomicLong();
+                    Gauge.builder("station.rabbit.last.failure.timestamp", value, AtomicLong::doubleValue)
+                            .description("Epoch seconds of the last message rejected after retries")
+                            .baseUnit("seconds")
+                            .tag("queue", name)
+                            .register(meterRegistry);
+                    return value;
+                })
+                .set(Instant.now().getEpochSecond());
 
         log.atError()
                 .setCause(rootCause)

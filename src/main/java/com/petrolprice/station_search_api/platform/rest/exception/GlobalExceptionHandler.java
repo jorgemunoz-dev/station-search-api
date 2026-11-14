@@ -1,5 +1,7 @@
 package com.petrolprice.station_search_api.platform.rest.exception;
 
+import com.petrolprice.station_search_api.platform.observability.SearchObservabilityFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.HandlerMapping;
 
 @Slf4j
 @RestControllerAdvice
@@ -68,11 +71,15 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ProblemDetail> handleUnexpectedException(Exception ex) {
+    public ResponseEntity<ProblemDetail> handleUnexpectedException(Exception ex, HttpServletRequest request) {
+        request.setAttribute(SearchObservabilityFilter.FAILURE_LOGGED_ATTRIBUTE, true);
         log.atError()
                 .setCause(ex)
                 .addKeyValue("event", "unhandled_request_error")
                 .addKeyValue("exceptionType", ex.getClass().getName())
+                .addKeyValue("method", request.getMethod())
+                .addKeyValue("endpoint", request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE))
+                .addKeyValue("status", 500)
                 .log("Unhandled request error");
 
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);

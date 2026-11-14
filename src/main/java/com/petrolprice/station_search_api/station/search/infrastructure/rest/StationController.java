@@ -5,6 +5,7 @@ import com.petrolprice.station_search_api.contract.rest.model.ProductType;
 import com.petrolprice.station_search_api.contract.rest.model.StationSearchMode;
 import com.petrolprice.station_search_api.contract.rest.model.StationSearchResponse;
 import com.petrolprice.station_search_api.contract.rest.model.StationSearchSortBy;
+import com.petrolprice.station_search_api.platform.observability.LocalitySearchAnalytics;
 import com.petrolprice.station_search_api.station.search.application.FindStationsUseCase;
 import com.petrolprice.station_search_api.station.search.application.query.FindStationsQuery;
 import com.petrolprice.station_search_api.station.search.application.result.FindStationsResult;
@@ -23,6 +24,7 @@ public class StationController implements StationsApi {
     private final FindStationsUseCase findStationsUseCase;
     private final FindStationsQueryFactory queryFactory;
     private final StationMapper responseMapper;
+    private final LocalitySearchAnalytics analytics;
 
     @Override
     public ResponseEntity<StationSearchResponse> searchStations(
@@ -65,6 +67,8 @@ public class StationController implements StationsApi {
 
         FindStationsResult result = findStationsUseCase.find(query);
 
-        return ResponseEntity.ok(responseMapper.toResponse(result));
+        StationSearchResponse response = responseMapper.toResponse(result);
+        analytics.record(query, result.items().size());
+        return ResponseEntity.ok(response);
     }
 }

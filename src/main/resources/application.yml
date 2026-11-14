@@ -42,6 +42,13 @@ management:
       show-details: always
 
   metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      minimum-expected-value:
+        http.server.requests: 1ms
+      maximum-expected-value:
+        http.server.requests: 10s
     tags:
       application: ${spring.application.name}
 
@@ -75,7 +82,8 @@ app:
       slow-query-threshold: ${SEARCH_SLOW_QUERY_THRESHOLD:2s}
       paths:
         - /stations
-        - /locations/**
+        - /locations/search
+        - /statistics/fuel-prices/**
   messaging:
     rabbit:
       consumer:
